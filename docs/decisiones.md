@@ -23,7 +23,7 @@ El repo de GitHub se crea **privado** y se hace público más adelante.
 - `UserFacingError.title` y `.detail` son **claves i18n** (más `params` para interpolar), así el
   backend no tiene textos y la UI traduce.
 - `ScreenSource` suma `stop()` con implementación vacía por defecto.
-- CI: `macos-13` ya no existe en GitHub Actions; la build de macOS x64 corre en `macos-15-intel`.
+- CI: `macos-13` y `macos-14` no están disponibles en GitHub Actions; macOS corre en `macos-15` (arm64) y `macos-15-intel` (x64).
 - Los DTOs del IPC viven en `openlight_types::ipc` (para que `openlight-core` los use) y los
   comandos en `app/src-tauri/src/ipc.rs`. Los nombres de eventos se exportan a TS como constantes
   (`EVENT_SESSION_STATE`, ...).

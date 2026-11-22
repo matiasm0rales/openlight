@@ -1,0 +1,31 @@
+[package]
+name = "openlight"
+description = "OpenLight: ambilight para focos Tuya / Smart Life"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+default-run = "openlight"
+
+[lib]
+name = "openlight_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build.workspace = true
+
+[dependencies]
+openlight-types.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+specta.workspace = true
+specta-typescript.workspace = true
+tauri.workspace = true
+tauri-specta.workspace = true
+tauri-plugin-opener.workspace = true
+
+[lints.rust]
+unsafe_code = "deny"

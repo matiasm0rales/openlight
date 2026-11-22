@@ -1,0 +1,16 @@
+[package]
+name = "tuya-discovery"
+description = "Descubrimiento de focos Tuya en la LAN (UDP 6666/6667/7000)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+
+[dependencies]
+# openlight-types.workspace = true  (descomentar al implementar)
+
+[lints]
+workspace = true

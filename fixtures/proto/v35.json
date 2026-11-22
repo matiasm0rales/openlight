@@ -1,0 +1,200 @@
+{
+  "version": "3.5",
+  "dev_id": "openlightfakedevice001",
+  "local_key": "OpenLightKey0001",
+  "t": 1795392000,
+  "tinytuya_version": "1.20.0",
+  "negotiation": {
+    "local_key_hex": "4f70656e4c696768744b657930303031",
+    "local_nonce_hex": "35ddbd5f39cb64484f2cbb3add66bcda",
+    "remote_nonce_hex": "a0a1a2a3a4a5a6a7a8a9aaabacadaeaf",
+    "device_iv_hex": "c0c1c2c3c4c5c6c7c8c9cacb",
+    "frames": [
+      {
+        "name": "sess_key_neg_start",
+        "cmd": 3,
+        "cmd_name": "SESS_KEY_NEG_START",
+        "seqno": 1,
+        "key_hex": "4f70656e4c696768744b657930303031",
+        "plaintext": {
+          "hex": "35ddbd5f39cb64484f2cbb3add66bcda"
+        },
+        "frame_hex": "00006699000000000001000000030000002c49949e4d69b4c26990d45f3ae811e344b0a4157d647acb2ef1145bd33cfbabe0fa2667a324158829cbb1764d00009966"
+      },
+      {
+        "name": "sess_key_neg_resp",
+        "cmd": 4,
+        "cmd_name": "SESS_KEY_NEG_RESP",
+        "seqno": 1,
+        "direction": "device_to_client",
+        "key_hex": "4f70656e4c696768744b657930303031",
+        "plaintext": {
+          "hex": "a0a1a2a3a4a5a6a7a8a9aaabacadaeaf4a3fe35aaa7a8ec8217a217377383a4999fabacb9ba3e45d73595c8b637fb479"
+        },
+        "frame_hex": "000066990000000000010000000400000050c0c1c2c3c4c5c6c7c8c9cacbdbeb227be7b1bbd02795999c1deafe4e16a6152575605e4a489ba3810cea2d238471677ee841db0e4d89f29479b67abbae4bae6d5a9107663b1c62f70a1c7428834b2c2e00009966"
+      },
+      {
+        "name": "sess_key_neg_finish",
+        "cmd": 5,
+        "cmd_name": "SESS_KEY_NEG_FINISH",
+        "seqno": 2,
+        "key_hex": "4f70656e4c696768744b657930303031",
+        "plaintext": {
+          "hex": "28392ee815d9ae5b05c32ea7e35f98839651acda7fc7bb88391b359c8203c7f8"
+        },
+        "frame_hex": "00006699000000000002000000050000003c18def02c2bc23adce8d8ded58967a4b8d53a6c1c4c868d9499843f4410c2f89f9e815acddefd20c47a61a6cecf4104b7a71f9524319596b7d4b9f29200009966"
+      }
+    ],
+    "session_key_hex": "e8d74f45f493b0bf3d507329bafa8f2d"
+  },
+  "client_frames": [
+    {
+      "name": "dp_query",
+      "cmd": 16,
+      "cmd_name": "DP_QUERY_NEW",
+      "seqno": 3,
+      "key_hex": "e8d74f45f493b0bf3d507329bafa8f2d",
+      "plaintext": {
+        "utf8": "{}"
+      },
+      "frame_hex": "00006699000000000003000000100000001e2c561597741a3aa999e67e0797b9bf47e164b9a7ebaa164536878a4f043b00009966"
+    },
+    {
+      "name": "control_switch_mode",
+      "cmd": 13,
+      "cmd_name": "CONTROL_NEW",
+      "seqno": 4,
+      "key_hex": "e8d74f45f493b0bf3d507329bafa8f2d",
+      "plaintext": {
+        "utf8": "{\"protocol\":5,\"t\":1795392000,\"data\":{\"dps\":{\"20\":true,\"21\":\"colour\"}}}"
+      },
+      "frame_hex": "000066990000000000040000000d00000071b8a2582146ea094e495d1aa05c11bf173531a669cdb9ad092af0237612d07bf386600b22ecac80bd06d8af5263ddc790f332012009959a964132839414aeb7baf401228d6c69b0031f0e56427f05d8a68dfc3a47f833d79f3f37390860e4ae0d2f0046d6f4541655dc600054a6d70ceee300009966"
+    },
+    {
+      "name": "control_colour_v2",
+      "cmd": 13,
+      "cmd_name": "CONTROL_NEW",
+      "seqno": 5,
+      "key_hex": "e8d74f45f493b0bf3d507329bafa8f2d",
+      "plaintext": {
+        "utf8": "{\"protocol\":5,\"t\":1795392000,\"data\":{\"dps\":{\"24\":\"00f003e801f4\"}}}"
+      },
+      "frame_hex": "000066990000000000050000000d0000006d67216945415eaeb4cfe873429644c005034abbbec070c48b165d87eeaa5344c2977c3401784eb5d29c8183a275e86e7daa17ab9309d3ca0a849cf69ff6662bd5e9ecd12228692fa7de5b2310ff088e0500173bad099e163759e02285e31a3ec6da55dd475865e2a1dd2d2ba42600009966"
+    },
+    {
+      "name": "control_control_data",
+      "cmd": 13,
+      "cmd_name": "CONTROL_NEW",
+      "seqno": 6,
+      "key_hex": "e8d74f45f493b0bf3d507329bafa8f2d",
+      "plaintext": {
+        "utf8": "{\"protocol\":5,\"t\":1795392000,\"data\":{\"dps\":{\"28\":\"100f003e801f400000000\"}}}"
+      },
+      "frame_hex": "000066990000000000060000000d000000765ff6fbc26417f22ca8a26ec2efc7c451bde5da4ffb4a7036f3648a870a30dcd2073224fa62994b59e6ef24a476f0dbe9852df6352d847b38e35519388c7d32dedc161da1888a26257cfa0891dc6b1b719ba464db9fbbfbfc36224a3c78233ad146c93f388a767bc954b0c5930e646949f4368c473d6100009966"
+    },
+    {
+      "name": "heart_beat",
+      "cmd": 9,
+      "cmd_name": "HEART_BEAT",
+      "seqno": 7,
+      "key_hex": "e8d74f45f493b0bf3d507329bafa8f2d",
+      "plaintext": {
+        "utf8": "{\"gwId\":\"openlightfakedevice001\",\"devId\":\"openlightfakedevice001\"}"
+      },
+      "frame_hex": "00006699000000000007000000090000005e4039b10414755fafe847dd893d78c312c9431b3d1c31bec52e3df068d2f1b61b31e549b9d20b6603e2fe43b18222c340e555fcd56747fe21f929fb5e6505ea586e8e9402ff579f772be78e78fb32518cce1837412552bcfcc97c2dbe929f00009966"
+    },
+    {
+      "name": "update_dps",
+      "cmd": 18,
+      "cmd_name": "UPDATEDPS",
+      "seqno": 8,
+      "key_hex": "e8d74f45f493b0bf3d507329bafa8f2d",
+      "plaintext": {
+        "utf8": "{\"dpId\":[18,19,20]}"
+      },
+      "frame_hex": "00006699000000000008000000120000002fdd037da50050c4f62525aec7bae71bdeeffdcee735f9b3ef9d1531a2ca992b59652272b6aef17211da34d76af4b9e500009966"
+    }
+  ],
+  "device_frames": [
+    {
+      "name": "dp_query_response",
+      "direction": "device_to_client",
+      "cmd": 16,
+      "cmd_name": "DP_QUERY_NEW",
+      "seqno": 2,
+      "retcode": 0,
+      "key_hex": "e8d74f45f493b0bf3d507329bafa8f2d",
+      "plaintext": {
+        "utf8": "{\"dps\":{\"20\":true,\"21\":\"colour\",\"22\":1000,\"23\":0,\"24\":\"00f003e803e8\"}}"
+      },
+      "frame_hex": "000066990000000000020000001000000066c0c1c2c3c4c5c6c7c8c9cacb4920ebb85f5ac6d8dd5ab36587a884702c398ed5eca7f85f1af04d8b0bf19aa15d2e744a48c749c35ba43ac4713e59745939c6ba5ccb075518b5bf257679071cf7ba6d9878dc70d940cc6cbccaee51a0dab753ef21344c8752c300009966",
+      "decoded": {
+        "dps": {
+          "20": true,
+          "21": "colour",
+          "22": 1000,
+          "23": 0,
+          "24": "00f003e803e8"
+        }
+      }
+    },
+    {
+      "name": "status_push",
+      "direction": "device_to_client",
+      "cmd": 8,
+      "cmd_name": "STATUS",
+      "seqno": 3,
+      "retcode": 0,
+      "key_hex": "e8d74f45f493b0bf3d507329bafa8f2d",
+      "plaintext": {
+        "utf8": "3.5\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000{\"protocol\":4,\"t\":1795392000,\"data\":{\"dps\":{\"20\":true,\"21\":\"colour\",\"22\":1000,\"23\":0,\"24\":\"00f003e803e8\"}}}"
+      },
+      "frame_hex": "00006699000000000003000000080000009ac0c1c2c3c4c5c6c7c8c9cacb4920ebb8175697a8ae78891ea59ab452164dfcdbabfba8025fbd14c604bcccfa047e224450c44cd854a633c671224b6a487f9dfe11cb0f1a18ebed6664254c0ef6ef77923fcb3d9e1193b8447727ed7e7fd0fafb4a6ef1cb9cfd46851b1f558bb033a654a80c80b6dc228ef16175582388947d4f2a050d12539c06c4f08e9a6619ec8940233bdf376d9b4e39c6d800009966",
+      "decoded": {
+        "protocol": 4,
+        "t": 1795392000,
+        "data": {
+          "dps": {
+            "20": true,
+            "21": "colour",
+            "22": 1000,
+            "23": 0,
+            "24": "00f003e803e8"
+          }
+        },
+        "dps": {
+          "20": true,
+          "21": "colour",
+          "22": 1000,
+          "23": 0,
+          "24": "00f003e803e8"
+        }
+      }
+    },
+    {
+      "name": "heart_beat_response",
+      "direction": "device_to_client",
+      "cmd": 9,
+      "cmd_name": "HEART_BEAT",
+      "seqno": 4,
+      "retcode": 0,
+      "key_hex": "e8d74f45f493b0bf3d507329bafa8f2d",
+      "plaintext": {
+        "utf8": ""
+      },
+      "frame_hex": "000066990000000000040000000900000020c0c1c2c3c4c5c6c7c8c9cacb4920ebb84e429118ebe23ac7b1be53187ded567200009966",
+      "decoded": null
+    }
+  ],
+  "urandom_used_hex": [
+    "35ddbd5f39cb64484f2cbb3add66bcda",
+    "49949e4d69b4c26990d45f3a",
+    "18def02c2bc23adce8d8ded5",
+    "2c561597741a3aa999e67e07",
+    "b8a2582146ea094e495d1aa0",
+    "67216945415eaeb4cfe87342",
+    "5ff6fbc26417f22ca8a26ec2",
+    "4039b10414755fafe847dd89",
+    "dd037da50050c4f62525aec7"
+  ]
+}

@@ -1,0 +1,16 @@
+[package]
+name = "tuya-device"
+description = "Actor async por foco: conexión, sesión, latidos, reconexión y DPs → capacidades."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+
+[dependencies]
+# openlight-types.workspace = true  (descomentar al implementar)
+
+[lints]
+workspace = true

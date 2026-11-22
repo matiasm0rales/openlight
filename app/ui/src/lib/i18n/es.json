@@ -1,0 +1,57 @@
+{
+  "app": { "name": "OpenLight", "tagline": "Tus focos siguen los colores de tu pantalla." },
+  "settings": {
+    "level": { "basic": "Básico", "advanced": "Avanzado", "expert": "Experto" },
+    "restore_default": "Restaurar",
+    "color_mode": {
+      "title": "Modo de color",
+      "help": "Dominante: el color que más se ve en la zona. Promedio: la mezcla de toda la zona.",
+      "option": { "dominant": "Dominante", "average": "Promedio" }
+    },
+    "saturation": { "title": "Realce de colores", "help": "Multiplica la saturación. Más alto, colores más intensos." },
+    "brightness_min": { "title": "Brillo mínimo", "help": "Brillo del foco cuando la pantalla está oscura." },
+    "brightness_max": { "title": "Brillo máximo", "help": "Tope de brillo del foco con la pantalla bien clara." },
+    "smoothing_ms": { "title": "Suavizado", "help": "Más alto, transiciones más lentas y sin parpadeo. Los cortes de escena siempre van más rápido." },
+    "send_channel": {
+      "title": "Canal del foco",
+      "help": "Por dónde se le manda el color. Si los colores se ven entrecortados, probá el canal de control.",
+      "option": { "colour": "Color (normal)", "control_direct": "Control directo", "control_gradual": "Control con transición" }
+    },
+    "capture_fps": { "title": "Capturas por segundo", "help": "Cuántas veces por segundo se mira la pantalla. Más alto, más rápido pero más consumo." },
+    "max_sends_per_s": { "title": "Comandos por segundo", "help": "Máximo de colores que se le mandan al foco por segundo. Bajalo si el foco se traba." },
+    "send_threshold": { "title": "Umbral de envío", "help": "Los cambios más chicos que esto no se mandan, porque no se notan." },
+    "black_bar": { "title": "Bandas negras", "help": "Las filas y columnas más oscuras que esto se toman como bandas negras y no cuentan para el brillo." },
+    "grey_threshold": { "title": "Umbral de gris", "help": "Con menos saturación que esto, la pantalla se considera gris y el foco da luz blanca." },
+    "dark_screen": { "title": "Pantalla oscura", "help": "Por debajo de este brillo se conserva el último color en vez de pasar a blanco." },
+    "hue_stickiness": { "title": "Estabilidad del tono", "help": "Evita que el foco salte entre dos colores que ocupan casi lo mismo de la pantalla." },
+    "no_screen_wait_s": { "title": "Espera sin pantalla", "help": "Si no hay pantalla durante este tiempo, el foco vuelve a como estaba hasta que la pantalla vuelva." },
+    "heartbeat_s": { "title": "Señal de vida", "help": "Cada cuánto se le avisa al foco que la conexión sigue viva." },
+    "dead_after_s": { "title": "Conexión muerta tras", "help": "Sin ninguna respuesta del foco durante este tiempo, se reconecta." },
+    "retry_every_s": { "title": "Reintentar cada", "help": "Tiempo entre intentos de reconexión." }
+  },
+  "profile": { "movies": "Películas", "games": "Juegos", "work": "Trabajo" },
+  "error": {
+    "screen_permission_denied": { "title": "Falta el permiso de Grabación de pantalla", "detail": "Sin ese permiso no se puede ver la pantalla. Activalo en Ajustes y volvé a abrir OpenLight." },
+    "local_network_denied": { "title": "Falta el permiso de Red local", "detail": "Sin ese permiso no se puede hablar con los focos. Activalo en Ajustes del Sistema." },
+    "firewall_blocked": { "title": "El firewall bloquea la búsqueda de focos", "detail": "Permití a OpenLight en el firewall para encontrar los focos en tu red." },
+    "capture_unsupported": { "title": "No se puede capturar la pantalla", "detail": "Tu escritorio no ofrece una forma de compartir la pantalla (portal ScreenCast)." },
+    "no_display": { "title": "No hay monitor", "detail": "No encuentro ninguna pantalla encendida. Cuando aparezca, sigo solo." },
+    "device_not_found": { "title": "No encuentro el foco", "detail": "Revisá que esté prendido y que la compu esté en la misma Wi-Fi." },
+    "device_key_rejected": { "title": "El foco rechazó la clave", "detail": "La clave local cambió (error 914). Renovala con un clic." },
+    "device_timeout": { "title": "El foco no responde", "detail": "Puede estar apagado desde el interruptor o lejos del router." },
+    "device_busy": { "title": "Otra app está usando el foco", "detail": "Cerrá la app Smart Life en el celular: a veces ocupa la conexión local del foco." },
+    "device_no_colour": { "title": "Este dispositivo no muestra colores", "detail": "Solo tiene luz blanca, así que no puede seguir la pantalla." },
+    "cloud_invalid_signature": { "title": "El Access Secret no coincide", "detail": "Seguramente quedó mal copiado. Copialo de nuevo desde iot.tuya.com." },
+    "cloud_invalid_token": { "title": "La sesión con Tuya venció", "detail": "Probá de nuevo; si sigue, revisá el Access ID." },
+    "cloud_permission_denied": { "title": "Tuya no da permiso", "detail": "Revisá que vinculaste la cuenta de Smart Life al proyecto y que el Data Center es el correcto." },
+    "cloud_wrong_region": { "title": "Data Center equivocado", "detail": "Tus credenciales funcionan en {region}. ¿Lo cambio?" },
+    "cloud_service_not_authorized": { "title": "Falta un servicio en el proyecto", "detail": "Agregá el servicio IoT Core al proyecto Cloud." },
+    "cloud_trial_expired": { "title": "Venció la prueba de IoT Core", "detail": "Se puede extender gratis desde iot.tuya.com. Solo hace falta para renovar claves." },
+    "cloud_network": { "title": "Sin conexión con Tuya", "detail": "Revisá tu conexión a internet." },
+    "import_invalid": { "title": "No pude importar esa carpeta", "detail": "No encontré un devices.json válido." },
+    "invalid_setting": { "title": "Valor no válido", "detail": "El ajuste {setting} no acepta ese valor." },
+    "storage": { "title": "No pude guardar la configuración", "detail": "Revisá que haya espacio en el disco." },
+    "not_implemented": { "title": "Todavía no está disponible", "detail": "{command} todavía no está implementado." },
+    "internal": { "title": "Algo salió mal", "detail": "Exportá el diagnóstico y abrí un issue para que lo revisemos." }
+  }
+}

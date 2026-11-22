@@ -1,0 +1,16 @@
+{
+  "name": "openlight-workspace",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.21.0",
+  "scripts": {
+    "tauri": "tauri",
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "test": "pnpm --filter openlight-ui test",
+    "check": "pnpm --filter openlight-ui check"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.12.6"
+  }
+}

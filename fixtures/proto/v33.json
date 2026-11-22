@@ -1,0 +1,140 @@
+{
+  "version": "3.3",
+  "dev_id": "openlightfakedevice001",
+  "local_key": "OpenLightKey0001",
+  "t": 1795392000,
+  "tinytuya_version": "1.20.0",
+  "client_frames": [
+    {
+      "name": "dp_query",
+      "cmd": 10,
+      "cmd_name": "DP_QUERY",
+      "seqno": 1,
+      "key_hex": "4f70656e4c696768744b657930303031",
+      "plaintext": {
+        "utf8": "{\"gwId\":\"openlightfakedevice001\",\"devId\":\"openlightfakedevice001\",\"uid\":\"openlightfakedevice001\",\"t\":\"1795392000\"}"
+      },
+      "frame_hex": "000055aa000000010000000a0000008841094e0595f662865c011f1982e7bbcbb23e86b6afd5297b8a538514a08c5a4436f31f08d9655401d6f2d0964be1dd5a3ba12dd981f3409635ccd55a29f2bca8f62f3e1c0ed634d82239b54d06afd277b23e86b6afd5297b8a538514a08c5a444678f2dc036a88f24032c0b51fe67aa428a7fcdb2522fbefa61734aef1795ed888b64ad10000aa55"
+    },
+    {
+      "name": "control_switch_mode",
+      "cmd": 7,
+      "cmd_name": "CONTROL",
+      "seqno": 2,
+      "key_hex": "4f70656e4c696768744b657930303031",
+      "plaintext": {
+        "utf8": "{\"devId\":\"openlightfakedevice001\",\"uid\":\"openlightfakedevice001\",\"t\":\"1795392000\",\"dps\":{\"20\":true,\"21\":\"colour\"}}"
+      },
+      "frame_hex": "000055aa000000020000000700000097332e3300000000000000000000000026012678dddcd446cb9707f37d80f8e83ba12dd981f3409635ccd55a29f2bca8f62f3e1c0ed634d82239b54d06afd277b23e86b6afd5297b8a538514a08c5a444678f2dc036a88f24032c0b51fe67aa44cd74bb965cee0d257f2c18aa13ce3d2731d34586d5d2b04ee2939f3d80e2006bde888b1cf4c45816625cdb5272e519ead36c2800000aa55"
+    },
+    {
+      "name": "control_colour_v2",
+      "cmd": 7,
+      "cmd_name": "CONTROL",
+      "seqno": 3,
+      "key_hex": "4f70656e4c696768744b657930303031",
+      "plaintext": {
+        "utf8": "{\"devId\":\"openlightfakedevice001\",\"uid\":\"openlightfakedevice001\",\"t\":\"1795392000\",\"dps\":{\"24\":\"00f003e801f4\"}}"
+      },
+      "frame_hex": "000055aa000000030000000700000087332e3300000000000000000000000026012678dddcd446cb9707f37d80f8e83ba12dd981f3409635ccd55a29f2bca8f62f3e1c0ed634d82239b54d06afd277b23e86b6afd5297b8a538514a08c5a444678f2dc036a88f24032c0b51fe67aa4985d65fbc98eb5e4dacb8fa541440afe0089f9791ed23b290f7ce20b68b89cbb8dde67520000aa55"
+    },
+    {
+      "name": "control_control_data",
+      "cmd": 7,
+      "cmd_name": "CONTROL",
+      "seqno": 4,
+      "key_hex": "4f70656e4c696768744b657930303031",
+      "plaintext": {
+        "utf8": "{\"devId\":\"openlightfakedevice001\",\"uid\":\"openlightfakedevice001\",\"t\":\"1795392000\",\"dps\":{\"28\":\"100f003e801f400000000\"}}"
+      },
+      "frame_hex": "000055aa000000040000000700000097332e3300000000000000000000000026012678dddcd446cb9707f37d80f8e83ba12dd981f3409635ccd55a29f2bca8f62f3e1c0ed634d82239b54d06afd277b23e86b6afd5297b8a538514a08c5a444678f2dc036a88f24032c0b51fe67aa49ca82082f39579c3580e0b4b0bd7a39b97dac5b2457ed17a591d2850e82dfcf835cd486e1f7fa1541d17f77687b014a44f2f32040000aa55"
+    },
+    {
+      "name": "heart_beat",
+      "cmd": 9,
+      "cmd_name": "HEART_BEAT",
+      "seqno": 5,
+      "key_hex": "4f70656e4c696768744b657930303031",
+      "plaintext": {
+        "utf8": "{\"gwId\":\"openlightfakedevice001\",\"devId\":\"openlightfakedevice001\"}"
+      },
+      "frame_hex": "000055aa00000005000000090000005841094e0595f662865c011f1982e7bbcbb23e86b6afd5297b8a538514a08c5a4436f31f08d9655401d6f2d0964be1dd5a3ba12dd981f3409635ccd55a29f2bca828a7fcdb2522fbefa61734aef1795ed89df410c00000aa55"
+    },
+    {
+      "name": "update_dps",
+      "cmd": 18,
+      "cmd_name": "UPDATEDPS",
+      "seqno": 6,
+      "key_hex": "4f70656e4c696768744b657930303031",
+      "plaintext": {
+        "utf8": "{\"dpId\":[18,19,20]}"
+      },
+      "frame_hex": "000055aa00000006000000120000002891e8944f66ee55185c60c216b0f6f449a3ac21260f971f5473eac221b45e9fd9918975600000aa55"
+    }
+  ],
+  "device_frames": [
+    {
+      "name": "dp_query_response",
+      "direction": "device_to_client",
+      "cmd": 10,
+      "cmd_name": "DP_QUERY",
+      "seqno": 2,
+      "retcode": 0,
+      "key_hex": "4f70656e4c696768744b657930303031",
+      "plaintext": {
+        "utf8": "{\"devId\":\"openlightfakedevice001\",\"dps\":{\"20\":true,\"21\":\"colour\",\"22\":1000,\"23\":0,\"24\":\"00f003e803e8\"},\"t\":1795392000}"
+      },
+      "frame_hex": "000055aa000000020000000a0000008c0000000026012678dddcd446cb9707f37d80f8e83ba12dd981f3409635ccd55a29f2bca84cd74bb965cee0d257f2c18aa13ce3d2731d34586d5d2b04ee2939f3d80e2006f60b87ea2e20099aaade60a12f9552f778f2f34823328a6aa30f866d17251977f0ec950aeecbdc54df2c815c68ed9a660aa097bff0c395265b7f61bfbde2f03c2309c0bc0000aa55",
+      "decoded": {
+        "devId": "openlightfakedevice001",
+        "dps": {
+          "20": true,
+          "21": "colour",
+          "22": 1000,
+          "23": 0,
+          "24": "00f003e803e8"
+        },
+        "t": 1795392000
+      }
+    },
+    {
+      "name": "status_push",
+      "direction": "device_to_client",
+      "cmd": 8,
+      "cmd_name": "STATUS",
+      "seqno": 3,
+      "retcode": 0,
+      "key_hex": "4f70656e4c696768744b657930303031",
+      "plaintext": {
+        "utf8": "3.3\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000{\"devId\":\"openlightfakedevice001\",\"dps\":{\"20\":true,\"21\":\"colour\",\"22\":1000,\"23\":0,\"24\":\"00f003e803e8\"},\"t\":1795392000}"
+      },
+      "frame_hex": "000055aa00000003000000080000009b00000000332e3300000000000000000000000026012678dddcd446cb9707f37d80f8e83ba12dd981f3409635ccd55a29f2bca84cd74bb965cee0d257f2c18aa13ce3d2731d34586d5d2b04ee2939f3d80e2006f60b87ea2e20099aaade60a12f9552f778f2f34823328a6aa30f866d17251977f0ec950aeecbdc54df2c815c68ed9a660aa097bff0c395265b7f61bfbde2f03c0872747b0000aa55",
+      "decoded": {
+        "devId": "openlightfakedevice001",
+        "dps": {
+          "20": true,
+          "21": "colour",
+          "22": 1000,
+          "23": 0,
+          "24": "00f003e803e8"
+        },
+        "t": 1795392000
+      }
+    },
+    {
+      "name": "heart_beat_response",
+      "direction": "device_to_client",
+      "cmd": 9,
+      "cmd_name": "HEART_BEAT",
+      "seqno": 4,
+      "retcode": 0,
+      "key_hex": "4f70656e4c696768744b657930303031",
+      "plaintext": {
+        "utf8": ""
+      },
+      "frame_hex": "000055aa00000004000000090000000c0000000070e8c1950000aa55",
+      "decoded": null
+    }
+  ],
+  "urandom_used_hex": []
+}

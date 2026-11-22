@@ -1,0 +1,16 @@
+[package]
+name = "tuya-sim"
+description = "Foco Tuya simulado (TCP 6668 + broadcasts UDP) para pruebas y para desarrollar la UI."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+
+[dependencies]
+# openlight-types.workspace = true  (descomentar al implementar)
+
+[lints]
+workspace = true

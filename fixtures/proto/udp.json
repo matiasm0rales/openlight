@@ -1,0 +1,61 @@
+{
+  "udpkey_hex": "6c1ec8e2bb9bb59ab50b0daf649b410a",
+  "udpkey_source": "md5(b'yGAdlopoPVldABfn')",
+  "tinytuya_version": "1.20.0",
+  "cases": [
+    {
+      "name": "broadcast_6666_v31",
+      "port": 6666,
+      "frame_hex": "000055aa00000000000000130000009b000000007b226970223a223139322e302e322e3130222c2267774964223a226f70656e6c6967687466616b65646576696365303031222c22616374697665223a322c2261626c696c697479436f6465223a302c22656e6372797074223a66616c73652c2270726f647563744b6579223a2266616b6570726f647563746b65793030222c2276657273696f6e223a22332e31227d7489dad80000aa55",
+      "decoded": {
+        "ip": "192.0.2.10",
+        "gwId": "openlightfakedevice001",
+        "active": 2,
+        "ablilityCode": 0,
+        "encrypt": false,
+        "productKey": "fakeproductkey00",
+        "version": "3.1"
+      }
+    },
+    {
+      "name": "broadcast_6667_v33",
+      "port": 6667,
+      "frame_hex": "000055aa00000000000000130000009c00000000cddda4297c2b7461ec80733893dbcd0d939a1f6406b42bfeb92a423f3cb80f6b8ca6e97f8fba3a5b3a26457d34764fc1bbadc06c25bf6933f127c9c9ca0ac516827614da16d4d39ba3e62ec86b1b06dc4dc7fe823e307927fb0a44b0dfae2c8dcc24015ee9e432300398c44e09362f7c925292bde9dd90a6f8150310150036f8eedd5c953bb9377560ae90dfbc45dbe2f77a29720000aa55",
+      "decoded": {
+        "ip": "192.0.2.10",
+        "gwId": "openlightfakedevice001",
+        "active": 2,
+        "ablilityCode": 0,
+        "encrypt": true,
+        "productKey": "fakeproductkey00",
+        "version": "3.3"
+      }
+    },
+    {
+      "name": "broadcast_7000_v35",
+      "port": 7000,
+      "frame_hex": "0000669900000000000000000023000000aac0c1c2c3c4c5c6c7c8c9cacbeecf282f6edfea528bbf0b18538468ea7a4840bbe2bc5bd0b3f3dde20c80b98763ec7e8d9fee0bbc1ecfbabec4bf35944107573ba8bd750f45e2c209bf3ea825af494ec82276131dc599f2d68c6252831262b31c06eeeec0528575aabf5709210cf84ae685c246faba776dc7311e6b9c072dbf18db17068d5686713812cf02538d83ffa6e0b5362b144b4bce1e7a9c42df413c0014adc5a0e63e11719ab200009966",
+      "decoded": {
+        "ip": "192.0.2.10",
+        "gwId": "openlightfakedevice001",
+        "active": 2,
+        "ablilityCode": 0,
+        "encrypt": true,
+        "productKey": "fakeproductkey00",
+        "version": "3.5"
+      }
+    },
+    {
+      "name": "req_devinfo_7000",
+      "port": 7000,
+      "direction": "client_to_broadcast",
+      "plaintext": {
+        "utf8": "{\"from\": \"app\", \"ip\": \"192.0.2.20\"}"
+      },
+      "frame_hex": "00006699000000000000000000250000003f46c601b08473785b9b624159be92e71353b93c3d385354abe6de8cf04b4eb00d7a2bab988e4baeab509613b9db8b0613a256546fb24a4f85d8e7759e4f0e5600009966"
+    }
+  ],
+  "urandom_used_hex": [
+    "46c601b08473785b9b624159"
+  ]
+}

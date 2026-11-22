@@ -1,0 +1,266 @@
+{
+ "source": "ambilight.py (~/Documents/Open RGB)",
+ "seed": 20261122,
+ "valor_color": [
+  {
+   "envio": "24",
+   "h": 0,
+   "s": 0,
+   "v": 0.01,
+   "dp": "24",
+   "value": "00000000000a"
+  },
+  {
+   "envio": "24",
+   "h": 1,
+   "s": 1,
+   "v": 1,
+   "dp": "24",
+   "value": "016803e803e8"
+  },
+  {
+   "envio": "24",
+   "h": 0.5,
+   "s": 0.5,
+   "v": 0.5,
+   "dp": "24",
+   "value": "00b401f401f4"
+  },
+  {
+   "envio": "24",
+   "h": 0.6667,
+   "s": 1.0,
+   "v": 0.5,
+   "dp": "24",
+   "value": "00f003e801f4"
+  },
+  {
+   "envio": "24",
+   "h": 0.123,
+   "s": 0.456,
+   "v": 0.789,
+   "dp": "24",
+   "value": "002c01c80315"
+  },
+  {
+   "envio": "directo",
+   "h": 0,
+   "s": 0,
+   "v": 0.01,
+   "dp": "28",
+   "value": "000000000000a00000000"
+  },
+  {
+   "envio": "directo",
+   "h": 1,
+   "s": 1,
+   "v": 1,
+   "dp": "28",
+   "value": "0016803e803e800000000"
+  },
+  {
+   "envio": "directo",
+   "h": 0.5,
+   "s": 0.5,
+   "v": 0.5,
+   "dp": "28",
+   "value": "000b401f401f400000000"
+  },
+  {
+   "envio": "directo",
+   "h": 0.6667,
+   "s": 1.0,
+   "v": 0.5,
+   "dp": "28",
+   "value": "000f003e801f400000000"
+  },
+  {
+   "envio": "directo",
+   "h": 0.123,
+   "s": 0.456,
+   "v": 0.789,
+   "dp": "28",
+   "value": "0002c01c8031500000000"
+  },
+  {
+   "envio": "gradual",
+   "h": 0,
+   "s": 0,
+   "v": 0.01,
+   "dp": "28",
+   "value": "100000000000a00000000"
+  },
+  {
+   "envio": "gradual",
+   "h": 1,
+   "s": 1,
+   "v": 1,
+   "dp": "28",
+   "value": "1016803e803e800000000"
+  },
+  {
+   "envio": "gradual",
+   "h": 0.5,
+   "s": 0.5,
+   "v": 0.5,
+   "dp": "28",
+   "value": "100b401f401f400000000"
+  },
+  {
+   "envio": "gradual",
+   "h": 0.6667,
+   "s": 1.0,
+   "v": 0.5,
+   "dp": "28",
+   "value": "100f003e801f400000000"
+  },
+  {
+   "envio": "gradual",
+   "h": 0.123,
+   "s": 0.456,
+   "v": 0.789,
+   "dp": "28",
+   "value": "1002c01c8031500000000"
+  }
+ ],
+ "elegir_monitor": [
+  {
+   "pedido": null,
+   "integrados": [],
+   "result": null
+  },
+  {
+   "pedido": null,
+   "integrados": [
+    true
+   ],
+   "result": 1
+  },
+  {
+   "pedido": null,
+   "integrados": [
+    true,
+    false
+   ],
+   "result": 2
+  },
+  {
+   "pedido": null,
+   "integrados": [
+    false,
+    true
+   ],
+   "result": 1
+  },
+  {
+   "pedido": 2,
+   "integrados": [
+    true,
+    false
+   ],
+   "result": 2
+  },
+  {
+   "pedido": 3,
+   "integrados": [
+    true,
+    false
+   ],
+   "result": null
+  },
+  {
+   "pedido": 1,
+   "integrados": [
+    true,
+    false
+   ],
+   "result": 1
+  },
+  {
+   "pedido": null,
+   "integrados": [
+    true,
+    true
+   ],
+   "result": 1
+  }
+ ],
+ "elegir_original": [
+  {
+   "dps": {
+    "20": true,
+    "21": "white",
+    "24": "00df03e8000a",
+    "22": 1000,
+    "23": 396
+   },
+   "guardado": null,
+   "result": {
+    "20": true,
+    "21": "white",
+    "24": "00df03e8000a",
+    "22": 1000,
+    "23": 396
+   }
+  },
+  {
+   "dps": {
+    "20": true,
+    "21": "colour",
+    "22": 1000,
+    "23": 1000,
+    "24": "007c013c02d8",
+    "26": 0
+   },
+   "guardado": {
+    "20": false,
+    "21": "white",
+    "22": 500
+   },
+   "result": {
+    "20": false,
+    "21": "white",
+    "22": 500
+   }
+  },
+  {
+   "dps": {
+    "20": true,
+    "21": "white",
+    "24": "00df03e8000a",
+    "22": 1000,
+    "23": 396
+   },
+   "guardado": {
+    "20": false,
+    "21": "white",
+    "22": 500
+   },
+   "result": {
+    "20": true,
+    "21": "white",
+    "24": "00df03e8000a",
+    "22": 1000,
+    "23": 396
+   }
+  },
+  {
+   "dps": {
+    "20": true,
+    "21": "colour",
+    "22": 1000,
+    "23": 1000,
+    "24": "007c013c02d8",
+    "26": 0
+   },
+   "guardado": null,
+   "result": {
+    "20": true,
+    "21": "colour",
+    "24": "007c013c02d8",
+    "22": 1000,
+    "23": 1000
+   }
+  }
+ ]
+}

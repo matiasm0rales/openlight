@@ -1,0 +1,57 @@
+{
+  "app": { "name": "OpenLight", "tagline": "Your lights follow the colors on your screen." },
+  "settings": {
+    "level": { "basic": "Basic", "advanced": "Advanced", "expert": "Expert" },
+    "restore_default": "Restore",
+    "color_mode": {
+      "title": "Color mode",
+      "help": "Dominant: the color you see the most in the zone. Average: the mix of the whole zone.",
+      "option": { "dominant": "Dominant", "average": "Average" }
+    },
+    "saturation": { "title": "Color boost", "help": "Multiplies saturation. Higher means more intense colors." },
+    "brightness_min": { "title": "Minimum brightness", "help": "Light brightness when the screen is dark." },
+    "brightness_max": { "title": "Maximum brightness", "help": "Brightness cap when the screen is very bright." },
+    "smoothing_ms": { "title": "Smoothing", "help": "Higher means slower, flicker-free transitions. Scene cuts are always faster." },
+    "send_channel": {
+      "title": "Light channel",
+      "help": "How colors are sent to the light. If colors look choppy, try the control channel.",
+      "option": { "colour": "Color (standard)", "control_direct": "Direct control", "control_gradual": "Control with transition" }
+    },
+    "capture_fps": { "title": "Captures per second", "help": "How many times per second the screen is read. Higher is faster but uses more power." },
+    "max_sends_per_s": { "title": "Commands per second", "help": "Maximum colors sent to the light per second. Lower it if the light stutters." },
+    "send_threshold": { "title": "Send threshold", "help": "Changes smaller than this are not sent, since you can't see them." },
+    "black_bar": { "title": "Black bars", "help": "Rows and columns darker than this count as black bars and don't affect brightness." },
+    "grey_threshold": { "title": "Grey threshold", "help": "Below this saturation the screen counts as grey and the light turns white." },
+    "dark_screen": { "title": "Dark screen", "help": "Below this brightness the last color is kept instead of turning white." },
+    "hue_stickiness": { "title": "Hue stability", "help": "Keeps the light from jumping between two colors that cover almost the same area." },
+    "no_screen_wait_s": { "title": "Wait without screen", "help": "With no screen for this long, the light goes back to how it was until the screen returns." },
+    "heartbeat_s": { "title": "Heartbeat", "help": "How often the light is told the connection is still alive." },
+    "dead_after_s": { "title": "Connection dead after", "help": "With no reply from the light for this long, it reconnects." },
+    "retry_every_s": { "title": "Retry every", "help": "Time between reconnection attempts." }
+  },
+  "profile": { "movies": "Movies", "games": "Games", "work": "Work" },
+  "error": {
+    "screen_permission_denied": { "title": "Screen Recording permission missing", "detail": "Without it the screen can't be read. Turn it on in Settings and reopen OpenLight." },
+    "local_network_denied": { "title": "Local Network permission missing", "detail": "Without it the lights can't be reached. Turn it on in System Settings." },
+    "firewall_blocked": { "title": "The firewall blocks light discovery", "detail": "Allow OpenLight in the firewall to find the lights on your network." },
+    "capture_unsupported": { "title": "Screen capture isn't available", "detail": "Your desktop doesn't offer a way to share the screen (ScreenCast portal)." },
+    "no_display": { "title": "No display", "detail": "No screen is on right now. OpenLight will resume when one shows up." },
+    "device_not_found": { "title": "Can't find the light", "detail": "Make sure it's on and the computer is on the same Wi-Fi." },
+    "device_key_rejected": { "title": "The light rejected the key", "detail": "The local key changed (error 914). Renew it with one click." },
+    "device_timeout": { "title": "The light isn't responding", "detail": "It may be switched off at the wall or too far from the router." },
+    "device_busy": { "title": "Another app is using the light", "detail": "Close the Smart Life app on your phone: it sometimes holds the light's local connection." },
+    "device_no_colour": { "title": "This device can't show colors", "detail": "It only has white light, so it can't follow the screen." },
+    "cloud_invalid_signature": { "title": "The Access Secret doesn't match", "detail": "It was probably copied wrong. Copy it again from iot.tuya.com." },
+    "cloud_invalid_token": { "title": "The Tuya session expired", "detail": "Try again; if it persists, check the Access ID." },
+    "cloud_permission_denied": { "title": "Tuya denied access", "detail": "Check that you linked your Smart Life account to the project and picked the right Data Center." },
+    "cloud_wrong_region": { "title": "Wrong Data Center", "detail": "Your credentials work in {region}. Switch to it?" },
+    "cloud_service_not_authorized": { "title": "A service is missing from the project", "detail": "Add the IoT Core service to your Cloud project." },
+    "cloud_trial_expired": { "title": "The IoT Core trial expired", "detail": "You can extend it for free at iot.tuya.com. It's only needed to renew keys." },
+    "cloud_network": { "title": "Can't reach Tuya", "detail": "Check your internet connection." },
+    "import_invalid": { "title": "Couldn't import that folder", "detail": "No valid devices.json was found." },
+    "invalid_setting": { "title": "Invalid value", "detail": "The {setting} setting doesn't accept that value." },
+    "storage": { "title": "Couldn't save the settings", "detail": "Check that there's free disk space." },
+    "not_implemented": { "title": "Not available yet", "detail": "{command} isn't implemented yet." },
+    "internal": { "title": "Something went wrong", "detail": "Export the diagnostics and open an issue so we can look into it." }
+  }
+}

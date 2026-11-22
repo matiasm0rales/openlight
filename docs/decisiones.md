@@ -1,0 +1,30 @@
+# Registro de decisiones
+
+## 2026-11-22 — Nombre "OpenLight" (T0.1)
+
+Revisión antes de crear el repo:
+
+- **crates.io:** `openlight`, `openlight-types` y `openlight-core` libres.
+- **GitHub:** `matiasm0rales/openlight` libre. Hay varios repos llamados *openlight*; el más
+  cercano es `antoniobertob/openlight` ("Open source ambilight project", 2 estrellas).
+- **Marcas:** `OPENLIGHT` está registrada en EE. UU. por OpenLight Photonics, Inc.
+  (USPTO 7469402, clases 9 y 42) para componentes fotónicos de silicio, otro rubro.
+- **Tiendas:** no se encontró ninguna app llamada OpenLight.
+
+Decisión del usuario: **seguir con OpenLight**. Riesgo bajo por ser otro rubro; si hiciera falta
+renombrar, los identificadores están concentrados en `Cargo.toml`, `package.json` y
+`app/src-tauri/tauri.conf.json`.
+
+El repo de GitHub se crea **privado** y se hace público más adelante.
+
+## 2026-11-22 — Ajustes de wave 0 respecto del plan
+
+- `Region` suma **Singapur** (`openapi-sg.iotbing.com`), que tinytuya soporta.
+- `UserFacingError.title` y `.detail` son **claves i18n** (más `params` para interpolar), así el
+  backend no tiene textos y la UI traduce.
+- `ScreenSource` suma `stop()` con implementación vacía por defecto.
+- CI: `macos-13` ya no existe en GitHub Actions; la build de macOS x64 corre en `macos-15-intel`.
+- Los DTOs del IPC viven en `openlight_types::ipc` (para que `openlight-core` los use) y los
+  comandos en `app/src-tauri/src/ipc.rs`. Los nombres de eventos se exportan a TS como constantes
+  (`EVENT_SESSION_STATE`, ...).
+- `specta`/`tauri-specta` siguen en release candidate (`2.0.0-rc.28/29`): versiones fijadas con `=`.

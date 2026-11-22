@@ -1,0 +1,15 @@
+/target
+node_modules/
+dist/
+.DS_Store
+*.log
+.venv/
+__pycache__/
+# Nunca commitear claves ni datos reales de Tuya
+devices.json
+devices.json.bak
+tuya-raw.json
+snapshot.json
+tinytuya.json
+.env
+app/src-tauri/gen/schemas/

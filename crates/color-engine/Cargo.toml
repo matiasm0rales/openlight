@@ -1,0 +1,16 @@
+[package]
+name = "color-engine"
+description = "Port 1:1 de la matemática de color de ambilight.py (funciones puras)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+
+[dependencies]
+# openlight-types.workspace = true  (descomentar al implementar)
+
+[lints]
+workspace = true

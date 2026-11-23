@@ -160,9 +160,23 @@ jobs:
           releaseDraft: true
           prerelease: ${{ contains(github.ref_name, '-') }}
 
+      - name: Listar instaladores
+        id: rutas
+        shell: bash
+        env:
+          RUTAS_JSON: ${{ steps.tauri.outputs.artifactPaths }}
+        # `artifactPaths` es un array JSON; upload-artifact quiere una ruta por línea.
+        run: |
+          {
+            echo "lista<<__FIN_RUTAS__"
+            echo "$RUTAS_JSON" | jq -r '.[]'
+            echo "__FIN_RUTAS__"
+          } >> "$GITHUB_OUTPUT"
+          echo "$RUTAS_JSON" | jq -r '.[]'
+
       - name: Subir instaladores como artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          path: ${{ join(fromJSON(steps.tauri.outputs.artifactPaths), '\n') }}
+          path: ${{ steps.rutas.outputs.lista }}
           if-no-files-found: error

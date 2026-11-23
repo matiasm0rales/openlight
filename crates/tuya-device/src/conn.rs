@@ -77,6 +77,8 @@ pub(crate) struct Conn {
     dev_id: String,
     io_timeout: Duration,
     counters: Arc<Counters>,
+    /// Cuándo llegaron bytes por última vez, los haya pedido alguien o no (`_t_respuesta`).
+    last_rx: Instant,
 }
 
 /// Un IO que falló, como motivo de corte o error.
@@ -135,6 +137,7 @@ impl Conn {
                 dev_id: params.dev_id.clone(),
                 io_timeout: params.io_timeout,
                 counters,
+                last_rx: Instant::now(),
             };
             if conn.session.needs_negotiation() {
                 conn.negotiate().await?;
@@ -144,6 +147,12 @@ impl Conn {
         timeout(params.connect_timeout, attempt)
             .await
             .unwrap_or(Err(DeviceError::Timeout))
+    }
+
+    /// Cuándo llegaron bytes por última vez. Cuenta todo lo que se lee: respuestas a un pedido,
+    /// pushes y acks, no solo lo que lee el bucle del actor.
+    pub fn last_rx(&self) -> Instant {
+        self.last_rx
     }
 
     /// Negociación de la clave de sesión: cmd 3 → 4 → 5.
@@ -234,6 +243,7 @@ impl Conn {
             return Err(DeviceError::Disconnected(DisconnectReason::PeerClosed));
         }
         self.counters.add_rx(n);
+        self.last_rx = Instant::now();
         self.decoder.push(&self.chunk[..n]);
         Ok(n)
     }
@@ -465,6 +475,19 @@ mod tests {
             }
         };
         assert_eq!(eof, DeviceError::Disconnected(DisconnectReason::PeerClosed));
+    }
+
+    #[tokio::test]
+    async fn las_respuestas_a_un_pedido_cuentan_como_actividad() {
+        // `status()` y `set_dps(wait = true)` leen sus respuestas dentro de `request`, no en el
+        // bucle del actor: la conexión tiene que anotar igual que llegaron bytes.
+        let sim = sim(ProtocolVersion::V33).await;
+        let mut conn = open(&sim).await.unwrap();
+        let abierta = conn.last_rx();
+        tokio::time::sleep(Duration::from_millis(30)).await;
+        assert_eq!(conn.last_rx(), abierta, "sin tráfico no cambia");
+        conn.request(cmd::DP_QUERY, None, |_| {}).await.unwrap();
+        assert!(conn.last_rx() > abierta + Duration::from_millis(25));
     }
 
     #[tokio::test]

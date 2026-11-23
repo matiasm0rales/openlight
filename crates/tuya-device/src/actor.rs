@@ -58,8 +58,6 @@ pub(crate) struct Actor {
     active: bool,
     state: DeviceSessionState,
 
-    /// Cuándo llegaron bytes por última vez (`_t_respuesta`).
-    last_rx: Instant,
     /// Cuándo salió el último latido (`_t_latido`).
     last_heartbeat: Instant,
     /// Cuándo empezó el último intento de conectar (`_t_intento`).
@@ -129,7 +127,6 @@ impl Actor {
             started: false,
             active: false,
             state: DeviceSessionState::Idle,
-            last_rx: Instant::now(),
             last_heartbeat: Instant::now(),
             last_attempt: Instant::now(),
             failures: 0,
@@ -174,7 +171,9 @@ impl Actor {
             let connected = self.conn.is_some();
             let retrying = self.started && !connected;
             let timings = &self.cfg.timings;
-            let dead_at = self.last_rx + timings.dead_after;
+            // Cuenta cualquier byte recibido, también los que lee un `status()` o un `set_dps`.
+            let last_rx = self.conn.as_ref().map_or_else(Instant::now, Conn::last_rx);
+            let dead_at = last_rx + timings.dead_after;
             let heartbeat_at = self.last_heartbeat + timings.heartbeat;
             let retry_at = self.last_attempt + timings.backoff(self.failures);
             tokio::select! {
@@ -436,7 +435,6 @@ impl Actor {
     /// Llegaron bytes: se descartan los frames que nadie pidió, como `_leer_respuestas`.
     fn on_data(&mut self) {
         let now = Instant::now();
-        self.last_rx = now;
         if let Some(conn) = self.conn.as_mut() {
             for incoming in conn.drain() {
                 on_incoming(&mut self.health, &incoming, now);
@@ -486,7 +484,6 @@ impl Actor {
 
     fn reset_timers(&mut self) {
         let now = Instant::now();
-        self.last_rx = now;
         self.last_heartbeat = now;
         self.last_attempt = now;
     }

@@ -8,6 +8,8 @@
 //! [`openlight_types::ScreenSource`] y el foco un `LightDriver`.
 
 pub mod error;
+pub mod pipeline;
 pub mod store;
 
 pub use error::{CoreError, Result};
+pub use pipeline::{ColorPipeline, Frames, Processed};

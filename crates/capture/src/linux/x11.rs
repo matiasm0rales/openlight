@@ -532,11 +532,21 @@ mod tests {
                 return None;
             }
             // Un número de display por proceso y por prueba, para no chocar en paralelo.
+            // `-noreset`: si no, Xvfb se reinicia cuando se va el último cliente (el sondeo de
+            // abajo) y la conexión siguiente recibe "connection reset by peer".
             static NEXT: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
             let n = 90 + (std::process::id() % 400) * 8 + NEXT.fetch_add(1, Ordering::Relaxed);
             let name = format!(":{n}");
             let child = Command::new("Xvfb")
-                .args([&name, "-screen", "0", "200x100x24", "-nolisten", "tcp"])
+                .args([
+                    &name,
+                    "-screen",
+                    "0",
+                    "200x100x24",
+                    "-nolisten",
+                    "tcp",
+                    "-noreset",
+                ])
                 .stdout(Stdio::null())
                 .stderr(Stdio::null())
                 .spawn()

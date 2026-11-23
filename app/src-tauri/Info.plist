@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Claves extra que Tauri fusiona con el Info.plist de la app de macOS (tanto en `tauri dev`
+  como en el .app/.dmg). Sin estas descripciones macOS no muestra el pedido de permiso, o lo
+  deniega sin avisar.
+-->
+<plist version="1.0">
+<dict>
+  <key>NSLocalNetworkUsageDescription</key>
+  <string>OpenLight necesita la red local para encontrar tus focos Tuya y mandarles los colores.</string>
+  <key>NSScreenCaptureUsageDescription</key>
+  <string>OpenLight necesita grabar la pantalla para calcular los colores de tus focos.</string>
+</dict>
+</plist>

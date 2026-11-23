@@ -9,9 +9,10 @@
 //! llama en bucle para el re-chequeo automático. Lo único que pide algo es
 //! [`request_screen_recording`] (macOS), que usa `open_system_settings`.
 
-use openlight_types::PermissionState;
-use openlight_types::SystemPane;
 use openlight_types::ipc::{PermissionKind, PermissionStatus};
+use openlight_types::{
+    ErrorCode, FixAction, HelpTopic, PermissionState, SystemPane, UserFacingError,
+};
 
 /// Estado de cada permiso que importa en este sistema, sin mostrar diálogos.
 ///
@@ -33,6 +34,114 @@ pub async fn check_blocking() -> Vec<PermissionStatus> {
 /// resultante. En los demás sistemas no hace nada.
 pub fn request_screen_recording() -> PermissionState {
     platform::request_screen_recording()
+}
+
+/// Sistema operativo para el que se arma el destino de un panel de ajustes. Es un parámetro (y no
+/// un `cfg`) para poder probar los tres mapeos desde cualquier máquina.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Os {
+    /// macOS.
+    MacOs,
+    /// Windows.
+    Windows,
+    /// Linux.
+    Linux,
+}
+
+impl Os {
+    /// El sistema en el que corre la app.
+    pub const fn current() -> Option<Self> {
+        if cfg!(target_os = "macos") {
+            Some(Self::MacOs)
+        } else if cfg!(target_os = "windows") {
+            Some(Self::Windows)
+        } else if cfg!(target_os = "linux") {
+            Some(Self::Linux)
+        } else {
+            None
+        }
+    }
+}
+
+/// Cómo abrir un panel de ajustes: una URL del sistema o un programa.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Target {
+    /// URL que abre el panel (`x-apple.systempreferences:`, `ms-settings:`...).
+    Url(&'static str),
+    /// Programa con sus argumentos (Linux: cada escritorio tiene el suyo).
+    Command(&'static str, &'static [&'static str]),
+}
+
+/// Destinos para abrir `pane` en `os`, del más exacto al más general: se prueba en orden hasta
+/// que uno abre. Vacío si ese panel no existe en ese sistema.
+pub fn pane_targets(os: Os, pane: SystemPane) -> &'static [Target] {
+    match (os, pane) {
+        (Os::MacOs, SystemPane::ScreenRecording) => &[Target::Url(
+            "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture",
+        )],
+        (Os::MacOs, SystemPane::LocalNetwork) => &[Target::Url(
+            "x-apple.systempreferences:com.apple.preference.security?Privacy_LocalNetwork",
+        )],
+        // Seguridad de Windows → Firewall y protección de red; si ese protocolo no está
+        // registrado, la página general de Seguridad de Windows.
+        (Os::Windows, SystemPane::Firewall) => &[
+            Target::Url("windowsdefender://network"),
+            Target::Url("ms-settings:windowsdefender"),
+        ],
+        // Linux no tiene un panel de permisos del portal: lo más cerca es Privacidad de GNOME o
+        // la configuración de KDE.
+        (Os::Linux, SystemPane::ScreenCastPortal) => &[
+            Target::Command("gnome-control-center", &["privacy"]),
+            Target::Command("systemsettings", &[]),
+        ],
+        _ => &[],
+    }
+}
+
+/// Abre el panel de ajustes de `pane` en este sistema.
+///
+/// En macOS, Grabación de pantalla primero se pide (si falta): macOS solo agrega la app a esa
+/// lista después de que la pidió al menos una vez.
+pub fn open_settings(pane: SystemPane) -> Result<(), UserFacingError> {
+    if pane == SystemPane::ScreenRecording && Os::current() == Some(Os::MacOs) {
+        let ya_concedido = check().iter().any(|s| {
+            s.kind == PermissionKind::ScreenRecording && s.state == PermissionState::Granted
+        });
+        if !ya_concedido {
+            request_screen_recording();
+        }
+    }
+    let targets = Os::current().map_or(&[][..], |os| pane_targets(os, pane));
+    for target in targets {
+        if open_target(*target).is_ok() {
+            return Ok(());
+        }
+    }
+    Err(UserFacingError::new(ErrorCode::Internal)
+        .with_param("detail", format!("no se pudo abrir el panel {pane:?}"))
+        .with_action(FixAction::ShowHelp(HelpTopic::Permissions)))
+}
+
+/// [`open_settings`] fuera del hilo del runtime async.
+pub async fn open_settings_blocking(pane: SystemPane) -> Result<(), UserFacingError> {
+    tauri::async_runtime::spawn_blocking(move || open_settings(pane))
+        .await
+        .map_err(|e| {
+            UserFacingError::new(ErrorCode::Internal).with_param("detail", e.to_string())
+        })?
+}
+
+fn open_target(target: Target) -> Result<(), String> {
+    match target {
+        Target::Url(url) => {
+            tauri_plugin_opener::open_url(url, None::<&str>).map_err(|e| e.to_string())
+        }
+        Target::Command(program, args) => std::process::Command::new(program)
+            .args(args)
+            .spawn()
+            .map(drop)
+            .map_err(|e| e.to_string()),
+    }
 }
 
 /// Un permiso con su panel de ajustes (si lo tiene).
@@ -428,5 +537,82 @@ mod otros {
 
     pub(super) fn request_screen_recording() -> PermissionState {
         PermissionState::NotApplicable
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const TODOS_LOS_PANELES: [SystemPane; 4] = [
+        SystemPane::ScreenRecording,
+        SystemPane::LocalNetwork,
+        SystemPane::Firewall,
+        SystemPane::ScreenCastPortal,
+    ];
+
+    #[test]
+    fn macos_abre_los_paneles_de_privacidad() {
+        assert_eq!(
+            pane_targets(Os::MacOs, SystemPane::ScreenRecording),
+            [Target::Url(
+                "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"
+            )]
+        );
+        assert_eq!(
+            pane_targets(Os::MacOs, SystemPane::LocalNetwork),
+            [Target::Url(
+                "x-apple.systempreferences:com.apple.preference.security?Privacy_LocalNetwork"
+            )]
+        );
+    }
+
+    #[test]
+    fn windows_abre_el_firewall_con_alternativa() {
+        let t = pane_targets(Os::Windows, SystemPane::Firewall);
+        assert_eq!(t.first(), Some(&Target::Url("windowsdefender://network")));
+        assert!(t.contains(&Target::Url("ms-settings:windowsdefender")));
+    }
+
+    #[test]
+    fn linux_abre_lo_que_haya_para_el_portal() {
+        let t = pane_targets(Os::Linux, SystemPane::ScreenCastPortal);
+        assert!(matches!(
+            t.first(),
+            Some(Target::Command("gnome-control-center", _))
+        ));
+    }
+
+    #[test]
+    fn cada_panel_existe_en_su_sistema_y_en_ningun_otro() {
+        let dueno = |p| match p {
+            SystemPane::ScreenRecording | SystemPane::LocalNetwork => Os::MacOs,
+            SystemPane::Firewall => Os::Windows,
+            SystemPane::ScreenCastPortal => Os::Linux,
+        };
+        for pane in TODOS_LOS_PANELES {
+            for os in [Os::MacOs, Os::Windows, Os::Linux] {
+                let hay = !pane_targets(os, pane).is_empty();
+                assert_eq!(hay, os == dueno(pane), "{os:?} / {pane:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn las_urls_de_windows_y_macos_son_esquemas_conocidos() {
+        for os in [Os::MacOs, Os::Windows] {
+            for pane in TODOS_LOS_PANELES {
+                for t in pane_targets(os, pane) {
+                    if let Target::Url(u) = t {
+                        assert!(
+                            u.starts_with("x-apple.systempreferences:")
+                                || u.starts_with("ms-settings:")
+                                || u.starts_with("windowsdefender:"),
+                            "esquema raro: {u}"
+                        );
+                    }
+                }
+            }
+        }
     }
 }

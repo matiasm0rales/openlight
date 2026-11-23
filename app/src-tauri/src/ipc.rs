@@ -56,15 +56,14 @@ pub async fn onboarding_save(
 #[tauri::command]
 #[specta::specta]
 pub async fn check_permissions() -> CmdResult<Vec<PermissionStatus>> {
-    todo("check_permissions")
+    Ok(crate::permissions::check_blocking().await)
 }
 
 /// Abre el panel exacto de los ajustes del sistema.
 #[tauri::command]
 #[specta::specta]
 pub async fn open_system_settings(pane: SystemPane) -> CmdResult<()> {
-    let _ = pane;
-    todo("open_system_settings")
+    crate::permissions::open_settings_blocking(pane).await
 }
 
 // ---------- Nube y red local ----------

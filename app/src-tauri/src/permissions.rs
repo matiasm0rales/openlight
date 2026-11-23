@@ -345,11 +345,80 @@ mod win {
     }
 }
 
-// Sistemas todavía sin implementación: sin permisos (los agrega el commit siguiente).
-#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+#[cfg(target_os = "linux")]
+use linux as platform;
+
+/// Linux: en X11 no hay permisos que pedir. En Wayland, la captura pasa por el portal
+/// ScreenCast: el sistema muestra su propio selector de pantalla la primera vez y, si el
+/// escritorio lo permite, recuerda la elección.
+#[cfg(any(target_os = "linux", test))]
+mod linux_session {
+    /// Si la sesión gráfica es Wayland, según `XDG_SESSION_TYPE` y `WAYLAND_DISPLAY`.
+    ///
+    /// `XDG_SESSION_TYPE` manda; sin él, hay Wayland si existe el socket `WAYLAND_DISPLAY`.
+    pub(super) fn is_wayland(session_type: Option<&str>, wayland_display: Option<&str>) -> bool {
+        match session_type {
+            Some(t) if t.eq_ignore_ascii_case("wayland") => true,
+            Some(t) if !t.is_empty() && !t.eq_ignore_ascii_case("tty") => false,
+            _ => wayland_display.is_some_and(|d| !d.is_empty()),
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn xdg_session_type_manda() {
+            assert!(is_wayland(Some("wayland"), None));
+            assert!(is_wayland(Some("Wayland"), Some("wayland-0")));
+            assert!(!is_wayland(Some("x11"), Some("wayland-0")));
+        }
+
+        #[test]
+        fn sin_tipo_de_sesion_mira_wayland_display() {
+            assert!(is_wayland(None, Some("wayland-0")));
+            assert!(is_wayland(Some("tty"), Some("wayland-1")));
+            assert!(!is_wayland(None, None));
+            assert!(!is_wayland(None, Some("")));
+        }
+    }
+}
+
+#[cfg(target_os = "linux")]
+mod linux {
+    use super::linux_session::is_wayland;
+    use super::*;
+
+    pub(super) fn check() -> Vec<PermissionStatus> {
+        let wayland = is_wayland(
+            std::env::var("XDG_SESSION_TYPE").ok().as_deref(),
+            std::env::var("WAYLAND_DISPLAY").ok().as_deref(),
+        );
+        if !wayland {
+            return Vec::new();
+        }
+        // El portal no tiene una consulta de "¿ya me dieron permiso?": el selector aparece al
+        // empezar a capturar. Se informa como "todavía no se pidió" y el aviso explica qué va
+        // a pasar. Cuando la captura ya corrió con éxito, el estado real lo da `capture`.
+        vec![status(
+            PermissionKind::ScreenCastPortal,
+            PermissionState::NotDetermined,
+            Some(SystemPane::ScreenCastPortal),
+            false,
+        )]
+    }
+
+    pub(super) fn request_screen_recording() -> PermissionState {
+        PermissionState::NotApplicable
+    }
+}
+
+// Otros sistemas (BSD, etc.): sin permisos que informar.
+#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
 use otros as platform;
 
-#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
 mod otros {
     use super::*;
 

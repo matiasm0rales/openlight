@@ -1,0 +1,182 @@
+name: Release
+
+# Arma los instaladores de los 3 SO.
+#  - Con un tag `v*` además crea (o completa) un *borrador* de Release con los instaladores:
+#    publicarlo es decisión de quien mantiene el repo.
+#  - Con `workflow_dispatch` solo deja los instaladores como artifacts del run.
+#  - En los PR que tocan el empaquetado hace lo mismo (sin Release) para que un cambio en el
+#    bundle no rompa el release recién el día del tag.
+on:
+  push:
+    tags: ["v*"]
+  pull_request:
+    paths:
+      - ".github/workflows/release.yml"
+      - "app/src-tauri/tauri.conf.json"
+      - "app/src-tauri/Info.plist"
+      - "app/src-tauri/icons/**"
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS universal (.dmg)
+            os: macos-15
+            args: --target universal-apple-darwin
+            rust_targets: aarch64-apple-darwin,x86_64-apple-darwin
+            artifact: instalador-macos
+          - name: Windows (MSI + NSIS)
+            os: windows-latest
+            args: ""
+            rust_targets: ""
+            artifact: instalador-windows
+          - name: Linux (AppImage + deb + rpm)
+            os: ubuntu-22.04
+            args: ""
+            rust_targets: ""
+            artifact: instalador-linux
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Xcode 26 (macOS)
+        if: runner.os == 'macOS'
+        # Igual que en ci.yml: `capture` compila un puente en Swift con APIs del SDK de macOS 26.
+        run: |
+          xcode=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -z "$xcode" ]; then
+            echo "::error::el runner no tiene Xcode 26"
+            ls -d /Applications/Xcode*.app
+            exit 1
+          fi
+          sudo xcode-select -s "$xcode"
+          xcodebuild -version
+          xcrun --sdk macosx --show-sdk-version
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_targets }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: release-${{ matrix.os }}
+
+      - name: Dependencias de Tauri (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev patchelf libpipewire-0.3-dev libclang-dev xvfb rpm
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Firma y notarización de macOS (opcional)
+        if: runner.os == 'macOS'
+        shell: bash
+        # Solo si están cargados los secrets. Sin ellos se arma el .dmg sin firmar y el job sigue.
+        # Firmar necesita certificado + contraseña + identidad; notarizar suma Apple ID,
+        # contraseña de aplicación y Team ID. Tauri se entera por las variables APPLE_*.
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [ -n "$APPLE_CERTIFICATE" ] && [ -n "$APPLE_CERTIFICATE_PASSWORD" ] && [ -n "$APPLE_SIGNING_IDENTITY" ]; then
+            {
+              echo "APPLE_CERTIFICATE=$APPLE_CERTIFICATE"
+              echo "APPLE_CERTIFICATE_PASSWORD=$APPLE_CERTIFICATE_PASSWORD"
+              echo "APPLE_SIGNING_IDENTITY=$APPLE_SIGNING_IDENTITY"
+            } >> "$GITHUB_ENV"
+            echo "Se firma con la identidad Developer ID configurada."
+            if [ -n "$APPLE_ID" ] && [ -n "$APPLE_PASSWORD" ] && [ -n "$APPLE_TEAM_ID" ]; then
+              {
+                echo "APPLE_ID=$APPLE_ID"
+                echo "APPLE_PASSWORD=$APPLE_PASSWORD"
+                echo "APPLE_TEAM_ID=$APPLE_TEAM_ID"
+              } >> "$GITHUB_ENV"
+              echo "Se notariza con la cuenta de Apple configurada."
+            else
+              echo "::warning::Faltan APPLE_ID, APPLE_PASSWORD o APPLE_TEAM_ID: el .dmg se firma pero no se notariza."
+            fi
+          else
+            echo "::warning::Sin secrets de Apple: el .dmg queda sin firmar ni notarizar (ver docs/release.md)."
+          fi
+
+      - name: Firma del updater (opcional)
+        shell: bash
+        # Con TAURI_SIGNING_PRIVATE_KEY se generan los paquetes del updater (.sig + latest.json).
+        # Sin la clave el release sale igual, solo que sin actualizaciones automáticas.
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          if [ -z "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            echo "::warning::Sin TAURI_SIGNING_PRIVATE_KEY: no se generan los paquetes del updater (ver docs/release.md)."
+            exit 0
+          fi
+          if grep -q "REEMPLAZAR_POR" app/src-tauri/tauri.conf.json; then
+            echo "::error::Hay clave privada del updater pero falta la clave pública en plugins.updater.pubkey de tauri.conf.json."
+            exit 1
+          fi
+          {
+            echo "UPDATER_ARGS=--config app/src-tauri/tauri.updater.conf.json"
+            echo "TAURI_SIGNING_PRIVATE_KEY<<__FIN_CLAVE__"
+            echo "$TAURI_SIGNING_PRIVATE_KEY"
+            echo "__FIN_CLAVE__"
+            echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=$TAURI_SIGNING_PRIVATE_KEY_PASSWORD"
+          } >> "$GITHUB_ENV"
+
+      - name: Compilar y empaquetar
+        id: tauri
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tauriScript: pnpm tauri
+          args: ${{ matrix.args }} ${{ env.UPDATER_ARGS }}
+          # Solo con tag: sube los instaladores a un borrador de Release.
+          tagName: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
+          releaseName: OpenLight ${{ github.ref_name }}
+          releaseDraft: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
+
+      - name: Listar instaladores
+        id: rutas
+        shell: bash
+        env:
+          RUTAS_JSON: ${{ steps.tauri.outputs.artifactPaths }}
+        # `artifactPaths` es un array JSON; upload-artifact quiere una ruta por línea.
+        run: |
+          {
+            echo "lista<<__FIN_RUTAS__"
+            echo "$RUTAS_JSON" | jq -r '.[]'
+            echo "__FIN_RUTAS__"
+          } >> "$GITHUB_OUTPUT"
+          echo "$RUTAS_JSON" | jq -r '.[]'
+
+      - name: Subir instaladores como artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ steps.rutas.outputs.lista }}
+          if-no-files-found: error

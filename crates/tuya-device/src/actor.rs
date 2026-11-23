@@ -7,6 +7,9 @@
 //! | `__init__` + `_esperar_foco` | [`Actor::start`] |
 //! | `preparar` | [`Actor::prepare`] |
 //! | `enviar_hsv` | [`Actor::send_colour`] |
+//! | `mantener` (latido, conexión muerta, reconectar) | las ramas de [`Actor::run`], [`Actor::reconnect`] |
+//! | `_leer_respuestas` | [`Actor::on_data`] |
+//! | `_perdida` / `_al_reconectar` | [`Actor::lost`] / [`Actor::reconnect`] |
 //!
 //! El actor no comparte estado con nadie: recibe órdenes por un canal `mpsc` ([`Cmd`]) y los
 //! colores por un `watch` (que se queda con el último: la coalescencia), y publica su estado en
@@ -16,11 +19,12 @@ use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 
 use openlight_types::{
-    Capabilities, DeviceError, DeviceSessionState, Dps, ErrorCode, Hsv, LinkHealth,
+    Capabilities, DeviceError, DeviceSessionState, DisconnectReason, Dps, ErrorCode, Hsv,
+    LinkHealth,
 };
 use serde_json::{Value, json};
 use tokio::sync::{mpsc, watch};
-use tokio::time::{Instant, sleep};
+use tokio::time::{Instant, sleep, sleep_until};
 use tuya_proto::{Key, PayloadData, cmd, key_from_str};
 
 use crate::CapabilitiesExt;
@@ -51,6 +55,15 @@ pub(crate) struct Actor {
     /// El foco sigue los colores de la pantalla (`_en_color`).
     active: bool,
     state: DeviceSessionState,
+
+    /// Cuándo llegaron bytes por última vez (`_t_respuesta`).
+    last_rx: Instant,
+    /// Cuándo salió el último latido (`_t_latido`).
+    last_heartbeat: Instant,
+    /// Cuándo empezó el último intento de conectar (`_t_intento`).
+    last_attempt: Instant,
+    /// Intentos fallidos seguidos desde la última conexión: cuánto crece el backoff.
+    failures: u32,
 }
 
 /// El código visible que corresponde a un error que frena el arranque.
@@ -111,6 +124,10 @@ impl Actor {
             started: false,
             active: false,
             state: DeviceSessionState::Idle,
+            last_rx: Instant::now(),
+            last_heartbeat: Instant::now(),
+            last_attempt: Instant::now(),
+            failures: 0,
         }
     }
 
@@ -142,12 +159,24 @@ impl Actor {
     pub async fn run(mut self) {
         loop {
             let connected = self.conn.is_some();
+            let retrying = self.started && !connected;
+            let timings = &self.cfg.timings;
+            let dead_at = self.last_rx + timings.dead_after;
+            let heartbeat_at = self.last_heartbeat + timings.heartbeat;
+            let retry_at = self.last_attempt + timings.backoff(self.failures);
             tokio::select! {
                 biased;
                 read = read_conn(&mut self.conn), if connected => match read {
                     Ok(_) => self.on_data(),
                     Err(e) => self.lost(&e),
                 },
+                // Sin recibir nada durante `dead_after`: se da la conexión por muerta.
+                () = sleep_until(dead_at), if connected => {
+                    self.lost(&DeviceError::Disconnected(DisconnectReason::NoResponse));
+                }
+                // Señal de vida, para que el foco conteste aunque la pantalla esté quieta.
+                () = sleep_until(heartbeat_at), if connected => self.send_heartbeat().await,
+                () = sleep_until(retry_at), if retrying => self.reconnect().await,
                 command = self.cmds.recv() => match command {
                     Some(command) => self.handle(command).await,
                     // Se soltaron todos los handles.
@@ -289,6 +318,8 @@ impl Actor {
         match self.wait_for_device().await {
             Ok(info) => {
                 self.started = true;
+                self.failures = 0;
+                self.reset_timers();
                 self.health.connected();
                 self.set_state(DeviceSessionState::Idle);
                 Ok(info)
@@ -386,11 +417,14 @@ impl Actor {
     /// Llegaron bytes: se descartan los frames que nadie pidió, como `_leer_respuestas`.
     fn on_data(&mut self) {
         let now = Instant::now();
+        self.last_rx = now;
         if let Some(conn) = self.conn.as_mut() {
             for incoming in conn.drain() {
                 on_incoming(&mut self.health, &incoming, now);
             }
         }
+        // La latencia del último latido pudo cambiar (no hace nada si no cambió nada).
+        self.publish();
     }
 
     /// Manda un comando y espera la respuesta. Si falla la conexión, se da por perdida.
@@ -431,6 +465,71 @@ impl Actor {
         result
     }
 
+    fn reset_timers(&mut self) {
+        let now = Instant::now();
+        self.last_rx = now;
+        self.last_heartbeat = now;
+        self.last_attempt = now;
+    }
+
+    /// Guarda la IP que funcionó, sin pisar lo demás (`guardar_estado(ip=...)`).
+    fn save_ip(&self) {
+        if let Some(ip) = self.ip {
+            let mut saved = self.store.load(&self.cfg.creds.id);
+            if saved.ip != Some(ip) {
+                saved.ip = Some(ip);
+                self.store.save(&self.cfg.creds.id, &saved);
+            }
+        }
+    }
+
+    /// Una señal de vida sin esperar respuesta (`heartbeat(nowait=True)`).
+    async fn send_heartbeat(&mut self) {
+        let now = Instant::now();
+        self.last_heartbeat = now;
+        self.health.heartbeat_sent(now);
+        let _ = self.write(cmd::HEART_BEAT, None).await;
+    }
+
+    /// `_reconectar` + `_al_reconectar`: un intento de volver a hablar con el foco.
+    ///
+    /// Los intentos se espacian con backoff (`retry_every`, el doble, el doble…). Un intento
+    /// fallido no cuenta como reconexión. Con la sesión activa, el foco puede haber arrancado
+    /// en otro modo si se cortó la luz: se vuelve a ponerlo en `colour`.
+    async fn reconnect(&mut self) {
+        self.last_attempt = Instant::now();
+        match self.connect_and_query().await {
+            Ok(_) => {
+                tracing::info!("reconectado con el foco");
+                self.failures = 0;
+                self.reset_timers();
+                self.health.connected();
+                self.save_ip();
+                let state = if self.active {
+                    DeviceSessionState::Active
+                } else {
+                    DeviceSessionState::Idle
+                };
+                self.state = state;
+                self.prepare_if_active().await;
+                self.publish();
+            }
+            Err(e) => {
+                self.failures = self.failures.saturating_add(1);
+                tracing::debug!(error = %e, failures = self.failures, "no se pudo reconectar");
+                self.state = match e {
+                    DeviceError::KeyRejected => {
+                        DeviceSessionState::Error(ErrorCode::DeviceKeyRejected)
+                    }
+                    _ => DeviceSessionState::Reconnecting,
+                };
+                // La IP pudo cambiar mientras no había conexión.
+                self.refresh_ip().await;
+                self.publish();
+            }
+        }
+    }
+
     // ---- seguir la pantalla ----
 
     /// `preparar`: enciende el foco y lo pone en modo color. Sin conexión no hace nada; se
@@ -452,6 +551,12 @@ impl Actor {
         let _ = self
             .write(cmd::CONTROL, Some(PayloadData::from(&dps)))
             .await;
+    }
+
+    async fn prepare_if_active(&mut self) {
+        if self.active {
+            self.prepare().await;
+        }
     }
 
     async fn activate(&mut self) {

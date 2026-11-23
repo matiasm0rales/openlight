@@ -56,9 +56,18 @@ pub async fn settle() {
 
 /// Deja pasar `total` de tiempo simulado, de a [`STEP`], dejando trabajar a los demás.
 pub async fn pump(total: Duration) {
+    pump_by(total, STEP).await;
+}
+
+/// Como [`pump`] pero de a [`DRIVE_STEP`]: para esperas largas donde no importa la precisión.
+pub async fn pump_slow(total: Duration) {
+    pump_by(total, DRIVE_STEP).await;
+}
+
+async fn pump_by(total: Duration, step: Duration) {
     let mut left = total;
     while !left.is_zero() {
-        let step = left.min(STEP);
+        let step = left.min(step);
         settle().await;
         tokio::time::advance(step).await;
         left -= step;

@@ -27,6 +27,7 @@ tauri.workspace = true
 tauri-specta.workspace = true
 tauri-plugin-opener.workspace = true
 tauri-plugin-updater = "2.14.1"
+tauri-plugin-autostart = "2.7.0"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 # Estado de Grabación de pantalla (CGPreflight/CGRequestScreenCaptureAccess): API segura, sin `unsafe`.

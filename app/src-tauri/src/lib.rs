@@ -3,6 +3,8 @@
 //! En wave 0 los comandos son stubs (ver [`ipc`]); la tarea I1 (wave 3) los conecta con
 //! `openlight-core`.
 
+use std::sync::Arc;
+
 pub mod autostart;
 pub mod ipc;
 pub mod permissions;
@@ -29,6 +31,13 @@ pub fn run() {
         .invoke_handler(specta.invoke_handler())
         .setup(move |app| {
             specta.mount_events(app);
+            // TODO(I-0): reemplazar el backend falso por uno sobre el estado real de la app
+            // (`tray::TrayBackend`) y llamar a `tray::refresh` cuando cambie la sesión.
+            tray::install(app.handle(), Arc::new(tray::FakeTrayBackend::demo()))?;
+            // Arrancó solo al iniciar sesión: queda en el tray, sin abrir la ventana.
+            if autostart::started_by_autostart() {
+                windows::hide_main(app.handle())?;
+            }
             Ok(())
         })
         .run(tauri::generate_context!())

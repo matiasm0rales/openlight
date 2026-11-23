@@ -83,12 +83,14 @@
   function change(device: string, zone: Zone) {
     const d = app.devices.find((x) => x.id === device);
     if (!d) return;
-    d.zones = [zone];
+    // Solo se reemplaza la zona de este monitor: las de los otros monitores se conservan.
+    d.zones = [...d.zones.filter((z) => z.display !== zone.display), zone];
     clearTimeout(pending.get(device));
     pending.set(
       device,
       setTimeout(async () => {
-        const r = await attempt(() => commands.zonesSet(device, [zone]));
+        const zones = $state.snapshot(d.zones);
+        const r = await attempt(() => commands.zonesSet(device, zones));
         if (!r.ok) error = r.error;
       }, 200),
     );

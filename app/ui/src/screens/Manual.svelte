@@ -34,18 +34,19 @@
   });
 
   // Un envío por vez y el último gana (como la coalescencia del actor).
+  // Cada comando en cola lleva su foco: cambiar el selector no lo manda a otro.
   let busy = false;
-  let queued: ManualSet | null = null;
+  let queued: { device: string; set: ManualSet } | null = null;
   async function send(set: ManualSet) {
     if (!device) return;
     last = set;
-    queued = set;
+    queued = { device: device.id, set };
     if (busy) return;
     busy = true;
     while (queued) {
       const job = queued;
       queued = null;
-      const r = await attempt(() => commands.deviceManual(device.id, job));
+      const r = await attempt(() => commands.deviceManual(job.device, job.set));
       error = r.ok ? null : r.error;
     }
     busy = false;

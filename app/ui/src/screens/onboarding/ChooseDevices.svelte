@@ -74,7 +74,9 @@
     }
     // Los que se destildaron se quitan.
     for (const d of app.devices) {
-      if (!selected.includes(d.id)) await attempt(() => commands.deviceRemove(d.id));
+      if (selected.includes(d.id)) continue;
+      const r = await attempt(() => commands.deviceRemove(d.id));
+      if (!r.ok) addErrors.push(r.error);
     }
     await refreshDevices();
     return addErrors.length === 0;

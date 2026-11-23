@@ -28,3 +28,15 @@ El repo de GitHub se crea **privado** y se hace público más adelante.
   comandos en `app/src-tauri/src/ipc.rs`. Los nombres de eventos se exportan a TS como constantes
   (`EVENT_SESSION_STATE`, ...).
 - `specta`/`tauri-specta` siguen en release candidate (`2.0.0-rc.28/29`): versiones fijadas con `=`.
+
+## 2026-11-23 — Desvíos de wave 1
+
+- **macOS:** `capture` usa `screencapturekit` 12, que compila un puente en Swift contra el SDK de
+  macOS 26. Para compilar hace falta **Xcode 26**; el CI lo elige en los runners de macOS (#6).
+- **Linux X11:** se usa **XRender** (el servidor reduce la imagen) en vez de XShm: viajan ~330 KB
+  por cuadro, nunca se copia la pantalla entera y no hace falta `unsafe` (#9).
+- **Linux Wayland:** PipeWire por FFI con `pipewire-sys`/`libspa-sys`, porque los crates seguros
+  no compilan a la vez contra PipeWire 0.3.48 (Ubuntu 22.04) y 1.x (#9).
+- **Windows:** reducción con mipmaps en la GPU usando el crate `windows` (el mismo de Tauri), no
+  `windows-capture` (#2).
+- **Ejemplo `color_promedio`:** uno solo para los tres sistemas, sobre `capture::PlatformCapture`.

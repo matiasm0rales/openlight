@@ -29,6 +29,7 @@ tauri-plugin-opener.workspace = true
 tauri-plugin-updater = "2.14.1"
 tauri-plugin-autostart = "2.7.0"
 sys-locale = "0.3.2"
+tauri-plugin-single-instance = "2.5.5"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 # Grabación de pantalla (CGPreflight/CGRequestScreenCaptureAccess) y posición de cada monitor

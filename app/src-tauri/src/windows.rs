@@ -4,7 +4,7 @@
 use openlight_types::DisplayId;
 use tauri::{
     AppHandle, Manager, Monitor, PhysicalPosition, PhysicalSize, Position, Runtime, Size,
-    WebviewUrl, WebviewWindowBuilder,
+    WebviewUrl, WebviewWindowBuilder, Window, WindowEvent,
 };
 
 /// Etiqueta de la ventana principal (la de `tauri.conf.json`).
@@ -33,6 +33,23 @@ pub fn hide_main<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
         window.hide()?;
     }
     Ok(())
+}
+
+/// Cerrar la ventana principal la esconde en vez de salir: la app sigue en el tray y los focos
+/// siguen andando. Para salir de verdad está "Salir" del tray. Se engancha con
+/// `Builder::on_window_event`.
+pub fn on_window_event<R: Runtime>(window: &Window<R>, event: &WindowEvent) {
+    if let WindowEvent::CloseRequested { api, .. } = event
+        && hides_on_close(window.label())
+    {
+        api.prevent_close();
+        let _ = window.hide();
+    }
+}
+
+/// Si cerrar esa ventana la esconde (la principal) o la cierra de verdad (la calibración).
+fn hides_on_close(label: &str) -> bool {
+    label == MAIN
 }
 
 // ---------- Calibración a pantalla completa ----------
@@ -269,6 +286,12 @@ mod tests {
             None
         );
         assert_eq!(find_monitor(&id("x"), None, &[]), None);
+    }
+
+    #[test]
+    fn solo_la_principal_se_esconde_al_cerrar() {
+        assert!(hides_on_close(MAIN));
+        assert!(!hides_on_close(CALIBRATION));
     }
 
     #[test]

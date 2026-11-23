@@ -62,6 +62,21 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      - name: Xcode 26 (macOS)
+        if: runner.os == 'macOS'
+        # `capture` usa screencapturekit, que depende de apple-metal: los dos compilan un puente
+        # en Swift que usa APIs del SDK de macOS 26. El Xcode por defecto de estos runners trae un
+        # SDK anterior, así que se elige el Xcode 26 más nuevo que haya instalado.
+        run: |
+          xcode=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -z "$xcode" ]; then
+            echo "::error::el runner no tiene Xcode 26"
+            ls -d /Applications/Xcode*.app
+            exit 1
+          fi
+          sudo xcode-select -s "$xcode"
+          xcodebuild -version
+          xcrun --sdk macosx --show-sdk-version
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy

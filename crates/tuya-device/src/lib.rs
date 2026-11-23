@@ -6,6 +6,8 @@ pub mod caps;
 pub mod colour;
 pub mod config;
 #[allow(dead_code)] // temporal: lo usa el actor (commit siguiente)
+mod conn;
+#[allow(dead_code)] // temporal: lo usa el actor (commit siguiente)
 mod health;
 pub mod original;
 

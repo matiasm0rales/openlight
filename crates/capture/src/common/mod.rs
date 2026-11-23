@@ -13,7 +13,11 @@ use openlight_types::{DisplayId, DisplayInfo};
 /// monitor externo, y si no hay ninguno, el primero de la lista.
 pub fn choose_monitor(requested: Option<usize>, builtin: &[bool]) -> Option<usize> {
     if let Some(requested) = requested {
-        return (requested <= builtin.len()).then_some(requested);
+        // El script aceptaba 0 (en mss es "todos los monitores juntos"); acá la numeración es
+        // desde 1 y el 0 no es ningún monitor.
+        return (1..=builtin.len())
+            .contains(&requested)
+            .then_some(requested);
     }
     if builtin.is_empty() {
         return None;
@@ -159,6 +163,12 @@ mod tests {
         for &(pedido, integrados, esperado, caso) in casos {
             assert_eq!(choose_monitor(pedido, integrados), esperado, "{caso}");
         }
+    }
+
+    #[test]
+    fn el_monitor_cero_no_existe() {
+        assert_eq!(choose_monitor(Some(0), &[true, false]), None);
+        assert_eq!(choose_monitor(Some(0), &[]), None);
     }
 
     #[test]

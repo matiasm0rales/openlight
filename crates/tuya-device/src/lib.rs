@@ -1,4 +1,7 @@
 //! Actor async por foco: conexión, sesión, latidos, reconexión y DPs → capacidades.
 //!
-//! Esqueleto creado en wave 0. Lo implementa la tarea **F (wave 2)** de `docs/PLAN.md`;
-//! esa tarea es dueña de esta carpeta (ver `docs/AGENTS.md`).
+//! Tarea **F (wave 2)** de `docs/PLAN.md`, sección 3.3. Port de `Foco` de `ambilight.py`.
+
+pub mod caps;
+
+pub use caps::CapabilitiesExt;

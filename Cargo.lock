@@ -5407,6 +5407,10 @@ dependencies = [
 [[package]]
 name = "tuya-device"
 version = "0.1.0"
+dependencies = [
+ "openlight-types",
+ "serde_json",
+]
 
 [[package]]
 name = "tuya-discovery"

@@ -3354,6 +3354,18 @@ dependencies = [
 [[package]]
 name = "openlight-core"
 version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "color-engine",
+ "openlight-types",
+ "secrets",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tokio",
+ "tracing",
+]
 
 [[package]]
 name = "openlight-types"

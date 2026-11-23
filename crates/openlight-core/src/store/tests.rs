@@ -1,0 +1,226 @@
+use openlight_types::{DisplayId, SettingId, SettingValue, ZonePreset};
+
+use super::*;
+
+fn store() -> (tempfile::TempDir, Store) {
+    let dir = tempfile::tempdir().unwrap();
+    let store = Store::open(dir.path().join("datos")).unwrap();
+    (dir, store)
+}
+
+fn dev(id: &str) -> DeviceId {
+    DeviceId(id.to_owned())
+}
+
+fn record(id: &str) -> DeviceRecord {
+    DeviceRecord {
+        id: dev(id),
+        name: format!("Foco {id}"),
+        ip: Some("192.0.2.10".into()),
+        auto_ip: false,
+        version: ProtocolVersion::V35,
+        mapping: None,
+        capabilities: None,
+        zones: vec![Zone::from_preset(DisplayId("1".into()), ZonePreset::Left)],
+        overrides: SettingsOverride::default(),
+    }
+}
+
+fn number(value: f64) -> SettingValue {
+    SettingValue::Number(value)
+}
+
+#[test]
+fn sin_archivos_todo_es_por_defecto() {
+    let (_tmp, store) = store();
+    assert_eq!(store.load_config().unwrap(), Config::default());
+    assert!(store.load_devices().unwrap().is_empty());
+    assert_eq!(store.load_calibration(&dev("fake1")).unwrap(), None);
+    assert_eq!(store.load_state().unwrap(), State::default());
+}
+
+#[test]
+fn la_config_ida_y_vuelta_lleva_version() {
+    let (_tmp, store) = store();
+    let mut config = Config::default();
+    config.global.0.insert(SettingId::Saturation, number(1.8));
+    config.cloud_region = Some(Region::Eu);
+    store.save_config(&config).unwrap();
+
+    let text = fs::read_to_string(store.dir().join("config.json")).unwrap();
+    let json: Value = serde_json::from_str(&text).unwrap();
+    assert_eq!(json["version"], CONFIG_VERSION);
+    assert_eq!(store.load_config().unwrap(), config);
+}
+
+#[test]
+fn no_guarda_ajustes_fuera_de_rango() {
+    let (_tmp, store) = store();
+    let mut config = Config::default();
+    config.global.0.insert(SettingId::Saturation, number(99.0));
+    assert!(matches!(
+        store.save_config(&config),
+        Err(CoreError::Invalid(_))
+    ));
+    assert!(!store.dir().join("config.json").exists());
+}
+
+#[test]
+fn migra_la_config_v0() {
+    let (_tmp, store) = store();
+    fs::write(
+        store.dir().join("config.json"),
+        r#"{"settings": {"saturation": 2.0}}"#,
+    )
+    .unwrap();
+    let config = store.load_config().unwrap();
+    assert_eq!(
+        config.global.0.get(&SettingId::Saturation),
+        Some(&number(2.0))
+    );
+    // Al guardar queda en la versión actual y con el nombre nuevo
+    store.save_config(&config).unwrap();
+    let json: Value =
+        serde_json::from_str(&fs::read_to_string(store.dir().join("config.json")).unwrap())
+            .unwrap();
+    assert_eq!(json["version"], CONFIG_VERSION);
+    assert!(json.get("settings").is_none());
+}
+
+#[test]
+fn rechaza_un_archivo_de_una_version_futura() {
+    let (_tmp, store) = store();
+    fs::write(store.dir().join("config.json"), r#"{"version": 99}"#).unwrap();
+    assert!(matches!(
+        store.load_config(),
+        Err(CoreError::UnsupportedVersion { found: 99, .. })
+    ));
+}
+
+#[test]
+fn un_json_roto_da_un_error_con_el_archivo() {
+    let (_tmp, store) = store();
+    fs::write(store.dir().join("state.json"), "{no es json").unwrap();
+    let error = store.load_state().unwrap_err();
+    assert!(matches!(&error, CoreError::Json { path, .. } if path.ends_with("state.json")));
+}
+
+#[test]
+fn los_focos_se_guardan_sin_claves() {
+    let (_tmp, store) = store();
+    let devices = vec![record("fake1"), record("fake2")];
+    store.save_devices(&devices).unwrap();
+    assert_eq!(store.load_devices().unwrap(), devices);
+    let text = fs::read_to_string(store.dir().join("devices.json")).unwrap();
+    assert!(
+        !text.contains("key"),
+        "devices.json no puede tener claves: {text}"
+    );
+}
+
+#[test]
+fn la_calibracion_es_por_foco() {
+    let (_tmp, store) = store();
+    let points = vec![
+        CalibrationPoint {
+            screen_hue_deg: 0.0,
+            tono_deg: 0.0,
+            sat: 1.0,
+        },
+        CalibrationPoint {
+            screen_hue_deg: 120.0,
+            tono_deg: 100.0,
+            sat: 1.25,
+        },
+    ];
+    store.save_calibration(&dev("fake1"), &points).unwrap();
+    assert_eq!(store.load_calibration(&dev("fake1")).unwrap(), Some(points));
+    assert_eq!(store.load_calibration(&dev("fake2")).unwrap(), None);
+    store.delete_calibration(&dev("fake1")).unwrap();
+    store.delete_calibration(&dev("fake1")).unwrap();
+    assert_eq!(store.load_calibration(&dev("fake1")).unwrap(), None);
+}
+
+#[test]
+fn un_id_raro_no_puede_salir_de_la_carpeta() {
+    let (_tmp, store) = store();
+    for id in ["../config", "a/b", "", "a b", "ñu"] {
+        assert!(
+            matches!(
+                store.save_calibration(&dev(id), &[]),
+                Err(CoreError::Invalid(_))
+            ),
+            "{id:?}"
+        );
+    }
+}
+
+#[test]
+fn el_estado_recuerda_ip_y_original() {
+    let (_tmp, store) = store();
+    let mut original = Dps::new();
+    original.insert("20".into(), Value::Bool(true));
+    original.insert("21".into(), Value::String("white".into()));
+
+    store.set_last_ip(&dev("fake1"), "192.0.2.20").unwrap();
+    store.set_original(&dev("fake1"), original.clone()).unwrap();
+    store.set_last_ip(&dev("fake2"), "192.0.2.21").unwrap();
+
+    let state = store.load_state().unwrap();
+    assert_eq!(
+        state.devices[&dev("fake1")].last_ip.as_deref(),
+        Some("192.0.2.20")
+    );
+    assert_eq!(state.devices[&dev("fake1")].original, Some(original));
+
+    store.clear_original(&dev("fake1")).unwrap();
+    let state = store.load_state().unwrap();
+    assert_eq!(state.devices[&dev("fake1")].original, None);
+    // lo del otro foco no se tocó
+    assert_eq!(
+        state.devices[&dev("fake2")].last_ip.as_deref(),
+        Some("192.0.2.21")
+    );
+}
+
+#[test]
+fn escribir_no_deja_temporales() {
+    let (_tmp, store) = store();
+    store.save_devices(&[record("fake1")]).unwrap();
+    store.set_last_ip(&dev("fake1"), "192.0.2.20").unwrap();
+    let names: Vec<_> = fs::read_dir(store.dir())
+        .unwrap()
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    assert!(names.iter().all(|n| !n.ends_with(".tmp")), "{names:?}");
+}
+
+#[test]
+fn ajustes_efectivos_apilan_globales_perfil_y_foco() {
+    let mut config = Config::default();
+    config.global.0.insert(SettingId::Saturation, number(1.5));
+    config
+        .global
+        .0
+        .insert(SettingId::BrightnessMax, number(0.9));
+    let mut profile_values = SettingsOverride::default();
+    profile_values
+        .0
+        .insert(SettingId::BrightnessMax, number(0.6));
+    config.profiles.push(Profile {
+        id: ProfileId("movies".into()),
+        name: "profile.movies".into(),
+        values: profile_values,
+        shortcut: None,
+        builtin: true,
+    });
+    config.active_profile = Some(ProfileId("movies".into()));
+    let mut device = SettingsOverride::default();
+    device.0.insert(SettingId::MaxSendsPerS, number(3.0));
+
+    let s = config.effective_settings(Some(&device)).unwrap();
+    assert_eq!(s.saturation, 1.5, "global");
+    assert_eq!(s.brightness_max, 0.6, "el perfil pisa el global");
+    assert_eq!(s.max_sends_per_s, 3.0, "el foco pisa todo");
+    assert_eq!(s.capture_fps, Settings::default().capture_fps);
+}

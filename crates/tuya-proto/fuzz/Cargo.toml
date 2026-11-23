@@ -1,0 +1,23 @@
+[package]
+name = "tuya-proto-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+tuya-proto = { path = ".." }
+
+# Fuera del workspace de la raíz: se compila con nightly solo para el fuzz.
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "decoder"
+path = "fuzz_targets/decoder.rs"
+test = false
+doc = false
+bench = false

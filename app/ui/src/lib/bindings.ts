@@ -484,6 +484,10 @@ export type ErrorCode =
 "cloud_trial_expired" | 
 /**  Sin conexión a internet o la API no responde. */
 "cloud_network" | 
+/**  Falta guardar el Access ID y el Access Secret (paso 6 del asistente). */
+"cloud_no_credentials" | 
+/**  Ningún foco tiene zonas: no hay qué seguir en la pantalla. */
+"no_zones" | 
 /**  La carpeta a importar no tiene un setup válido. */
 "import_invalid" | 
 /**  Ajuste fuera de rango o desconocido. */

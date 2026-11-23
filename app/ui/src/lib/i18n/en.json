@@ -203,6 +203,14 @@
       "title": "Can't reach Tuya",
       "detail": "Check your internet connection."
     },
+    "cloud_no_credentials": {
+      "title": "Tuya credentials are missing",
+      "detail": "You haven't saved the Access ID and Access Secret yet. Paste them in the credentials step and try again."
+    },
+    "no_zones": {
+      "title": "No bulb has a zone",
+      "detail": "Choose which part of the screen each bulb follows before starting."
+    },
     "import_invalid": {
       "title": "Couldn't import that folder",
       "detail": "No valid devices.json was found."

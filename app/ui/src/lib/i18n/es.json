@@ -203,6 +203,14 @@
       "title": "Sin conexión con Tuya",
       "detail": "Revisá tu conexión a internet."
     },
+    "cloud_no_credentials": {
+      "title": "Faltan las credenciales de Tuya",
+      "detail": "Todavía no guardaste el Access ID y el Access Secret. Pegalos en el paso de credenciales y probá de nuevo."
+    },
+    "no_zones": {
+      "title": "Ningún foco tiene zona",
+      "detail": "Elegí qué parte de la pantalla sigue cada foco antes de arrancar."
+    },
     "import_invalid": {
       "title": "No pude importar esa carpeta",
       "detail": "No encontré un devices.json válido."

@@ -1,0 +1,35 @@
+{
+  "result": {
+    "devices": [
+      {
+        "active_time": 1690000200,
+        "biz_type": 0,
+        "category": "dj",
+        "create_time": 1690000200,
+        "icon": "smart/icon/bay1/raw3.png",
+        "id": "35b61f591f03bea452ac2",
+        "ip": "192.0.2.90",
+        "lat": "ba9227",
+        "local_key": "",
+        "lon": "eb3d81",
+        "model": "A60 BAW",
+        "name": "  Luz derecha ",
+        "online": true,
+        "owner_id": "e65f60be61",
+        "product_id": "rawproductcolor02",
+        "product_name": "A60",
+        "status": [],
+        "sub": false,
+        "time_zone": "fb3051",
+        "uid": "6745f0ea21bfdc1fe",
+        "update_time": 1700000000,
+        "uuid": "b251f9477cba6ede0"
+      }
+    ],
+    "has_more": false,
+    "last_row_key": "RAWROWKEY0002"
+  },
+  "success": true,
+  "t": 1700000000300,
+  "tid": "rawtid0004"
+}

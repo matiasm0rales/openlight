@@ -87,6 +87,41 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
 
+      - name: Firma y notarización de macOS (opcional)
+        if: runner.os == 'macOS'
+        shell: bash
+        # Solo si están cargados los secrets. Sin ellos se arma el .dmg sin firmar y el job sigue.
+        # Firmar necesita certificado + contraseña + identidad; notarizar suma Apple ID,
+        # contraseña de aplicación y Team ID. Tauri se entera por las variables APPLE_*.
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [ -n "$APPLE_CERTIFICATE" ] && [ -n "$APPLE_CERTIFICATE_PASSWORD" ] && [ -n "$APPLE_SIGNING_IDENTITY" ]; then
+            {
+              echo "APPLE_CERTIFICATE=$APPLE_CERTIFICATE"
+              echo "APPLE_CERTIFICATE_PASSWORD=$APPLE_CERTIFICATE_PASSWORD"
+              echo "APPLE_SIGNING_IDENTITY=$APPLE_SIGNING_IDENTITY"
+            } >> "$GITHUB_ENV"
+            echo "Se firma con la identidad Developer ID configurada."
+            if [ -n "$APPLE_ID" ] && [ -n "$APPLE_PASSWORD" ] && [ -n "$APPLE_TEAM_ID" ]; then
+              {
+                echo "APPLE_ID=$APPLE_ID"
+                echo "APPLE_PASSWORD=$APPLE_PASSWORD"
+                echo "APPLE_TEAM_ID=$APPLE_TEAM_ID"
+              } >> "$GITHUB_ENV"
+              echo "Se notariza con la cuenta de Apple configurada."
+            else
+              echo "::warning::Faltan APPLE_ID, APPLE_PASSWORD o APPLE_TEAM_ID: el .dmg se firma pero no se notariza."
+            fi
+          else
+            echo "::warning::Sin secrets de Apple: el .dmg queda sin firmar ni notarizar (ver docs/release.md)."
+          fi
+
       - name: Compilar y empaquetar
         id: tauri
         uses: tauri-apps/tauri-action@v0

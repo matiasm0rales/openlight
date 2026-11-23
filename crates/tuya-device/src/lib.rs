@@ -4,5 +4,7 @@
 
 pub mod caps;
 pub mod colour;
+pub mod original;
 
 pub use caps::CapabilitiesExt;
+pub use original::{MemoryStore, SavedState, StateStore, choose_original};

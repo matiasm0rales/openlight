@@ -309,7 +309,7 @@ async fn errores_de_credenciales_y_de_plan() {
     let casos = [
         ("error_1004.json", true, CloudError::InvalidSignature),
         ("error_1001.json", true, CloudError::InvalidSignature),
-        ("error_1005.json", true, CloudError::InvalidToken),
+        ("error_1005.json", true, CloudError::InvalidSignature),
         (
             "error_28841105.json",
             false,

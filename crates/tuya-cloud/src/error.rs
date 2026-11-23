@@ -10,7 +10,7 @@
 //! |---|---|---|
 //! | 1001 | `secret invalid` | [`CloudError::InvalidSignature`] |
 //! | 1004 | `sign invalid` | [`CloudError::InvalidSignature`] |
-//! | 1005 | `clientId invalid` | [`CloudError::InvalidToken`] (el texto de la UI pide revisar el Access ID) |
+//! | 1005 | `clientId invalid` | [`CloudError::InvalidSignature`] (credenciales mal copiadas: el Access ID; ver nota abajo) |
 //! | 1002 | `access_token is null` | [`CloudError::InvalidToken`] |
 //! | 1010 | `token is expired` | [`CloudError::InvalidToken`] (antes se renueva el token una vez) |
 //! | 1011, 1400 | `token invalid` | [`CloudError::InvalidToken`] (ídem; tinytuya busca `"token invalid"` en la respuesta) |
@@ -32,6 +32,10 @@
 //! arreglo es el mismo: renovar o extender el plan en iot.tuya.com (el caso típico es la prueba de
 //! IoT Core). `wizard.py` da la misma pista ("your Tuya IoT subscription has expired") cuando el
 //! error menciona `permission` o `1010`.
+//!
+//! 1005 no es un token vencido: reintentar no lo arregla. Va con los errores de credenciales, cuya
+//! acción principal es volver a copiarlas desde iot.tuya.com. Un código propio para el Access ID
+//! necesita un cambio de contrato (`ErrorCode` y textos de la UI).
 //!
 //! Las fixtures `fixtures/cloud/error_*.json` reproducen estas respuestas. Cuando haya respuestas
 //! reales saneadas que contradigan la tabla, manda la respuesta real.
@@ -56,8 +60,8 @@ pub fn is_token_error(code: i64, msg: &str) -> bool {
 /// Traduce el `code`/`msg` de una respuesta con `success: false`.
 pub fn classify(code: i64, msg: &str) -> CloudError {
     match code {
-        1001 | 1004 => CloudError::InvalidSignature,
-        1002 | 1005 | 1010 | 1011 | 1400 => CloudError::InvalidToken,
+        1001 | 1004 | 1005 => CloudError::InvalidSignature,
+        1002 | 1010 | 1011 | 1400 => CloudError::InvalidToken,
         1106 => CloudError::PermissionDenied {
             suggested_region: None,
         },
@@ -130,6 +134,11 @@ mod tests {
         assert_eq!(classify(1004, "sign invalid"), CloudError::InvalidSignature);
         assert_eq!(
             classify(1001, "secret invalid"),
+            CloudError::InvalidSignature
+        );
+        // 1005 es un Access ID mal copiado, no un token vencido.
+        assert_eq!(
+            classify(1005, "clientId invalid"),
             CloudError::InvalidSignature
         );
         assert_eq!(classify(1010, "token is expired"), CloudError::InvalidToken);

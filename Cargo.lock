@@ -410,6 +410,11 @@ dependencies = [
 [[package]]
 name = "capture"
 version = "0.1.0"
+dependencies = [
+ "openlight-types",
+ "tokio",
+ "windows",
+]
 
 [[package]]
 name = "cargo-platform"

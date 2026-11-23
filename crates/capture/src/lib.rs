@@ -10,5 +10,9 @@
 pub mod linux;
 #[cfg(target_os = "macos")]
 pub mod macos;
-#[cfg(target_os = "windows")]
+// El módulo de Windows también se compila en las pruebas de los otros sistemas: así sus
+// conversiones puras (HDR → SDR, reducción) se prueban en cualquier máquina.
+#[cfg(any(target_os = "windows", test))]
 pub mod windows;
+#[cfg(target_os = "windows")]
+pub use windows::WindowsCapture as PlatformCapture;

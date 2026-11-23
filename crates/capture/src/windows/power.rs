@@ -114,7 +114,12 @@ impl Drop for DisplayPower {
     }
 }
 
-unsafe extern "system" fn window_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
+unsafe extern "system" fn window_proc(
+    hwnd: HWND,
+    msg: u32,
+    wparam: WPARAM,
+    lparam: LPARAM,
+) -> LRESULT {
     if msg == WM_POWERBROADCAST && wparam.0 as u32 == PBT_POWERSETTINGCHANGE && lparam.0 != 0 {
         // SAFETY: con PBT_POWERSETTINGCHANGE, `lparam` apunta a un POWERBROADCAST_SETTING cuyo
         // `Data` tiene `DataLength` bytes; para GUID_CONSOLE_DISPLAY_STATE es un DWORD.

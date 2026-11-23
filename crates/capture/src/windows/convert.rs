@@ -11,7 +11,12 @@
 pub(crate) fn mip_level_for(src: (u32, u32), target: (u32, u32)) -> u32 {
     let (tw, th) = (target.0.max(1), target.1.max(1));
     let mut level = 0;
-    while level < 31 && mip_size(src, level + 1).0 >= tw && mip_size(src, level + 1).1 >= th {
+    // El último nivel de la cadena es el que queda en 1×1: más allá no hay niveles.
+    while level < 31
+        && (src.0 >> (level + 1) > 0 || src.1 >> (level + 1) > 0)
+        && mip_size(src, level + 1).0 >= tw
+        && mip_size(src, level + 1).1 >= th
+    {
         level += 1;
     }
     level
@@ -67,7 +72,15 @@ pub(crate) fn scrgb_to_srgb8(rgb: [f32; 3], white_scale: f32) -> [u8; 3] {
     let max = c[0].max(c[1]).max(c[2]);
     if max > 1.0 {
         // Un canal infinito deja a los demás en 0 y a ese en 1: sigue siendo el tono correcto.
-        c = c.map(|v| if max.is_finite() { v / max } else if v.is_infinite() { 1.0 } else { 0.0 });
+        c = c.map(|v| {
+            if max.is_finite() {
+                v / max
+            } else if v.is_infinite() {
+                1.0
+            } else {
+                0.0
+            }
+        });
     }
     c.map(|v| (srgb_encode(v.clamp(0.0, 1.0)) * 255.0).round() as u8)
 }
@@ -85,7 +98,7 @@ pub(crate) fn rgba16f_to_bgra8(
     let mut out = Vec::with_capacity(w * h * 4);
     for y in 0..h {
         let row = &src[y * pitch..y * pitch + w * 8];
-        for px in row.chunks_exact(8) {
+        for px in row.as_chunks::<8>().0 {
             let ch = |i: usize| f16_to_f32(u16::from_le_bytes([px[i * 2], px[i * 2 + 1]]));
             let [r, g, b] = scrgb_to_srgb8([ch(0), ch(1), ch(2)], white_scale);
             out.extend_from_slice(&[b, g, r, 255]);
@@ -157,6 +170,8 @@ mod tests {
         assert_eq!(mip_level_for((5120, 1440), (96, 54)), 4);
         // Objetivo 0 no cuelga: se trata como 1×1.
         assert_eq!(mip_level_for((8, 8), (0, 0)), 3);
+        // Nunca pasa del último nivel real (1×1), aunque el objetivo sea 1×1.
+        assert_eq!(mip_level_for((3840, 2160), (1, 1)), 11);
     }
 
     #[test]
@@ -248,7 +263,12 @@ mod tests {
         let src = [10, 20, 30, 0, 99, 99, 99, 99];
         let out = box_resample_bgra8(&src, (1, 1), 8, (3, 2));
         assert_eq!(out.len(), 3 * 2 * 4);
-        assert!(out.chunks_exact(4).all(|p| p == [10, 20, 30, 255]));
+        assert!(
+            out.as_chunks::<4>()
+                .0
+                .iter()
+                .all(|p| p == &[10, 20, 30, 255])
+        );
     }
 
     #[test]
@@ -256,6 +276,11 @@ mod tests {
         let src = vec![128u8; 120 * 67 * 4];
         let out = box_resample_bgra8(&src, (120, 67), 120 * 4, (96, 54));
         assert_eq!(out.len(), 96 * 54 * 4);
-        assert!(out.chunks_exact(4).all(|p| p == [128, 128, 128, 255]));
+        assert!(
+            out.as_chunks::<4>()
+                .0
+                .iter()
+                .all(|p| p == &[128, 128, 128, 255])
+        );
     }
 }

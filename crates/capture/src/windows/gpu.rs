@@ -14,8 +14,8 @@ use ::windows::Win32::Graphics::Direct3D11::{
     D3D11_BIND_RENDER_TARGET, D3D11_BIND_SHADER_RESOURCE, D3D11_BOX, D3D11_CPU_ACCESS_READ,
     D3D11_CREATE_DEVICE_BGRA_SUPPORT, D3D11_MAP_READ, D3D11_MAPPED_SUBRESOURCE,
     D3D11_RESOURCE_MISC_GENERATE_MIPS, D3D11_SDK_VERSION, D3D11_TEXTURE2D_DESC,
-    D3D11_USAGE_DEFAULT, D3D11_USAGE_STAGING, D3D11CreateDevice, ID3D11Device,
-    ID3D11DeviceContext, ID3D11ShaderResourceView, ID3D11Texture2D,
+    D3D11_USAGE_DEFAULT, D3D11_USAGE_STAGING, D3D11CreateDevice, ID3D11Device, ID3D11DeviceContext,
+    ID3D11ShaderResourceView, ID3D11Texture2D,
 };
 use ::windows::Win32::Graphics::Dxgi::Common::{
     DXGI_FORMAT, DXGI_FORMAT_B8G8R8A8_UNORM, DXGI_FORMAT_R16G16B16A16_FLOAT, DXGI_SAMPLE_DESC,
@@ -37,8 +37,8 @@ impl Gpu {
     /// Crea el dispositivo en la GPU por defecto; si no hay (máquinas virtuales, runners de CI),
     /// usa WARP, el rasterizador por software de Windows.
     pub fn new() -> Result<Self> {
-        let (device, context) =
-            create_device(D3D_DRIVER_TYPE_HARDWARE).or_else(|_| create_device(D3D_DRIVER_TYPE_WARP))?;
+        let (device, context) = create_device(D3D_DRIVER_TYPE_HARDWARE)
+            .or_else(|_| create_device(D3D_DRIVER_TYPE_WARP))?;
         let dxgi: IDXGIDevice = device.cast()?;
         // SAFETY: `dxgi` es un IDXGIDevice válido recién obtenido del dispositivo.
         let winrt_device: IDirect3DDevice =
@@ -115,7 +115,12 @@ pub(crate) struct Downscaler {
 }
 
 impl Downscaler {
-    pub fn new(gpu: &Gpu, format: PixelFormat, src: (u32, u32), target: (u32, u32)) -> Result<Self> {
+    pub fn new(
+        gpu: &Gpu,
+        format: PixelFormat,
+        src: (u32, u32),
+        target: (u32, u32),
+    ) -> Result<Self> {
         let level = mip_level_for(src, target);
         let level_size = mip_size(src, level);
         let mips_desc = D3D11_TEXTURE2D_DESC {
@@ -149,14 +154,19 @@ impl Downscaler {
         // SAFETY: descripciones válidas armadas arriba; los punteros de salida son `Option`s
         // locales.
         unsafe {
-            gpu.device.CreateTexture2D(&mips_desc, None, Some(&mut mips))?;
-            gpu.device.CreateTexture2D(&staging_desc, None, Some(&mut staging))?;
+            gpu.device
+                .CreateTexture2D(&mips_desc, None, Some(&mut mips))?;
+            gpu.device
+                .CreateTexture2D(&staging_desc, None, Some(&mut staging))?;
         }
         let mips = mips.ok_or_else(fail)?;
         let staging = staging.ok_or_else(fail)?;
         // SAFETY: `mips` es una textura con SHADER_RESOURCE; sin descripción, la vista cubre
         // todos los niveles.
-        unsafe { gpu.device.CreateShaderResourceView(&mips, None, Some(&mut srv))? };
+        unsafe {
+            gpu.device
+                .CreateShaderResourceView(&mips, None, Some(&mut srv))?
+        };
         Ok(Self {
             format,
             src,

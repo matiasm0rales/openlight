@@ -71,7 +71,7 @@ mod real {
         let fps: f32 = args.next().and_then(|a| a.parse().ok()).unwrap_or(20.0);
 
         let mut fuente = PlatformCapture::new()?;
-        token::cargar(&mut fuente);
+        super::token::cargar(&mut fuente);
         match fuente.permission() {
             PermissionState::Granted | PermissionState::NotApplicable => {}
             _ => {
@@ -107,7 +107,7 @@ mod real {
                     if let Some(id) = &elegido {
                         match fuente.start(id.clone(), TARGET, fps) {
                             Ok(r) => {
-                                token::guardar(&fuente);
+                                super::token::guardar(&fuente);
                                 println!("\nsiguiendo el monitor {id} a {fps} fps");
                                 rx = Some(r);
                             }

@@ -42,7 +42,9 @@
 
   $effect(() => {
     void load();
-    const off = on(EVENT_DISCOVERY_FOUND, (d) => (found[d.id] = d));
+    const off = on(EVENT_DISCOVERY_FOUND, (d) => {
+      found[d.id] = d;
+    });
     return () => void off.then((f) => f());
   });
 

@@ -60,6 +60,32 @@ test("calibración: mismas teclas que calibrar.py, modo rápido y guardar", asyn
   await expect(page).toHaveURL(/#\/dashboard/);
 });
 
+test("prueba A/B: lo que se prueba es temporal hasta que se elige", async ({ page }) => {
+  const modeOf = () => page.evaluate(() => (window as any).__openlightMock.state.deviceOverrides["bf3a9c1e7d2b4f6a8c0e1d"]?.color_mode ?? null);
+  await open(page, "configured", "dashboard");
+  await page.getByRole("switch", { name: "Arrancar" }).click();
+  await page.getByRole("article", { name: "Foco living" }).getByRole("button", { name: "Calibrar" }).click();
+  await page.getByRole("button", { name: "Prueba A/B" }).click();
+  await page.getByRole("button", { name: "Empezar" }).click();
+  await expect(page.getByText("A", { exact: true }).locator("..")).toContainText("Dominante");
+  await expect.poll(modeOf).toBe("dominant");
+
+  // Salir sin elegir: el foco vuelve a heredar el valor global (no tenía uno propio).
+  await page.getByRole("button", { name: "Volver a la calibración" }).click();
+  await expect.poll(modeOf).toBeNull();
+
+  // Elegir sí lo guarda.
+  await page.getByRole("button", { name: "Prueba A/B" }).click();
+  await page.getByRole("button", { name: "Empezar" }).click();
+  await expect(page.getByRole("button", { name: "Me quedo con B" })).toBeVisible({ timeout: 15_000 });
+  await page.getByRole("button", { name: "Me quedo con B" }).click();
+  await expect.poll(modeOf).toBe("average");
+  await page.getByRole("button", { name: "Volver a la calibración" }).click();
+  await expect.poll(modeOf).toBe("average");
+  await page.getByRole("button", { name: "Guardar y salir" }).click();
+  await expect(page).toHaveURL(/#\/dashboard/);
+});
+
 test("control manual", async ({ page }) => {
   await open(page, "configured", "manual");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Control manual");

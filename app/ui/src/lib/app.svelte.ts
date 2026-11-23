@@ -60,7 +60,12 @@ export function dismissCode(code: UserFacingError["code"], device?: string): voi
   app.errors = app.errors.filter((e) => !(e.code === code && (!device || e.params.device === device)));
 }
 
-/** Ejecuta la acción sugerida de un error. Devuelve `true` si el error quedó resuelto. */
+/**
+ * Ejecuta la acción sugerida de un error. Devuelve `true` solo si la acción lo resolvió seguro
+ * (hoy, renovar la clave). Un reintento nunca se da por resuelto: el error se saca de la pila
+ * para que, si el reintento vuelve a fallar, aparezca de nuevo con su botón (y no quede
+ * descartado por estar repetido).
+ */
 export async function runFix(action: FixAction, err: UserFacingError, retry?: () => unknown): Promise<boolean> {
   switch (action.kind) {
     case "open_settings": {
@@ -82,9 +87,18 @@ export async function runFix(action: FixAction, err: UserFacingError, retry?: ()
       await refreshDevices();
       return true;
     }
-    case "retry":
-      if (retry) await retry();
-      return true;
+    case "retry": {
+      // Sin nada que reintentar (un aviso que mandó el backend), el botón lo descarta: si el
+      // problema sigue, el backend lo vuelve a avisar.
+      if (!retry) return true;
+      if ("uid" in err) dismiss((err as RaisedError).uid);
+      try {
+        await retry();
+      } catch (e) {
+        raise(e, retry);
+      }
+      return false;
+    }
     case "open_url":
       openExternal(action.value);
       return false;
@@ -139,9 +153,15 @@ export async function init(): Promise<void> {
   if (started) return;
   started = true;
   await Promise.all([
-    on(EVENT_SESSION_STATE, (e) => (app.session = e.state)),
-    on(EVENT_DEVICE_HEALTH, (e) => (app.health[e.device] = e)),
-    on(EVENT_COLOR_LIVE, (e) => (app.live[e.device] = e)),
+    on(EVENT_SESSION_STATE, (e) => {
+      app.session = e.state;
+    }),
+    on(EVENT_DEVICE_HEALTH, (e) => {
+      app.health[e.device] = e;
+    }),
+    on(EVENT_COLOR_LIVE, (e) => {
+      app.live[e.device] = e;
+    }),
     on(EVENT_ERROR_RAISED, (e) => raise(e)),
     on(EVENT_PIPELINE_STATS, (e: PipelineStatsEvent) => {
       const sample: StatsSample = {

@@ -9,7 +9,8 @@
   const shown = $derived(app.errors.filter((e) => !(route.name === "dashboard" && e.params.device && app.devices.some((d) => d.id === e.params.device))));
 </script>
 
-<section class="stack" aria-label={t("common.notifications")}>
+<!-- En la calibración el panel está abajo: los avisos van arriba para no taparlo. -->
+<section class="stack" class:top={route.name === "calibrate"} aria-label={t("common.notifications")}>
   {#each shown as e (e.uid)}
     <div class="rise">
       <ErrorCard error={e} retry={e.retry} ondismiss={() => dismiss(e.uid)} onresolved={() => dismiss(e.uid)} />
@@ -28,6 +29,10 @@
     width: min(420px, calc(100vw - 2.5rem));
     max-height: calc(100vh - 2.5rem);
     overflow: auto;
+  }
+  .stack.top {
+    bottom: auto;
+    top: 1.25rem;
   }
   .stack:empty {
     display: none;

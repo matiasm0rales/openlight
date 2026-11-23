@@ -1,9 +1,10 @@
 <script lang="ts">
+  import { onDestroy } from "svelte";
   // Prueba A/B guiada ("¿cuál se parece más?") para elegir `send_channel` y `color_mode` de un foco.
   // Las preguntas y sus opciones salen del catálogo (ajustes de tipo opción); `send_channel` solo
   // aparece si el foco tiene DP de control. Cada variante se aplica al foco mientras corre un
   // video de prueba en esta ventana, y la elegida queda guardada en los ajustes del foco.
-  import type { ConfiguredDevice_Serialize, SettingDef, SettingId } from "../bindings";
+  import type { ConfiguredDevice_Serialize, SettingDef, SettingId, SettingValue } from "../bindings";
   import { app, raise, refreshSettings, toggleSession } from "../app.svelte";
   import { attempt, commands } from "../ipc";
   import { t } from "../i18n/index.svelte";
@@ -36,10 +37,31 @@
     return [current, other];
   });
 
+  // Lo que tenía el foco antes de probar A y B. Las variantes son temporales: si la persona se
+  // va sin elegir, se vuelve a este valor (o a heredar el global, si no tenía uno propio).
+  let original: { id: SettingId; value: SettingValue | undefined } | null = null;
+
+  async function restore() {
+    clearInterval(timer);
+    const o = original;
+    original = null;
+    if (!o) return;
+    const scope = { kind: "device", id: device.id } as const;
+    const r = await attempt(() => (o.value === undefined ? commands.settingsReset(scope, o.id) : commands.settingsSet(scope, o.id, o.value)));
+    if (r.ok) app.settings = r.value;
+    else raise(r.error);
+  }
+
+  async function close() {
+    await restore();
+    onclose();
+  }
+
   $effect(() => {
     if (!app.settings) void refreshSettings();
-    return () => clearInterval(timer);
   });
+  // Al salir de la pantalla por cualquier camino, también se deshace la prueba sin elegir.
+  onDestroy(() => void restore());
 
   async function apply(value: string) {
     if (!def) return;
@@ -49,6 +71,7 @@
   }
 
   async function play(which: "a" | "b") {
+    if (!original && def) original = { id: def.id, value: device.overrides[def.id] };
     phase = which;
     left = SECONDS;
     await apply(which === "a" ? pair[0] : pair[1]);
@@ -64,7 +87,9 @@
 
   async function pick(value: string) {
     chosen[def!.id] = value;
+    clearInterval(timer);
     await apply(value);
+    original = null;
     if (q + 1 < defs.length) {
       q += 1;
       phase = "intro";
@@ -84,7 +109,7 @@
         {#each Object.entries(chosen) as [id, v] (id)}<li><span class="muted">{t(`settings.${id}.title`)}</span> <strong>{label(id, v)}</strong></li>{/each}
       </ul>
       {#if !defs.length}<p class="muted">{t("ab.nothing")}</p>{/if}
-      <button type="button" class="btn primary" onclick={onclose}>{t("ab.back")}</button>
+      <button type="button" class="btn primary" onclick={close}>{t("ab.back")}</button>
     {:else}
       <h1 id="ab-title">{t("ab.question", { n: q + 1, total: defs.length, setting: t(def.title_key) })}</h1>
       <p class="muted">{t(def.help_key)}</p>
@@ -115,7 +140,7 @@
           <button type="button" class="btn ghost" onclick={() => play("a")}><Icon name="refresh" size={15} />{t("ab.repeat")}</button>
         </div>
       {/if}
-      <button type="button" class="btn ghost small close" onclick={onclose}>{t("ab.back")}</button>
+      <button type="button" class="btn ghost small close" onclick={close}>{t("ab.back")}</button>
     {/if}
   </section>
 </div>

@@ -10,9 +10,9 @@
 
 use openlight_types::ipc::{
     CalibrationState, CloudCredentialsInput, CloudDeviceInfo, ConfiguredDevice, DeviceAddRequest,
-    DeviceHealthEvent, DiscoveredDevice, ImportReport, LiveColorEvent, ManualSet, OnboardingState,
-    OnboardingStep, PermissionStatus, PreviewImage, SessionStateEvent, SettingScope,
-    SettingsSnapshot, TestPattern, events,
+    DeviceHealthEvent, DiscoveredDevice, ImportReport, LiveColorEvent, LogLine, ManualSet,
+    OnboardingState, OnboardingStep, PermissionStatus, PipelineStatsEvent, PreviewImage,
+    SessionStateEvent, SettingScope, SettingsSnapshot, TestPattern, events,
 };
 use openlight_types::{
     CloudAccount, DeviceId, DisplayId, DisplayInfo, ErrorCode, Profile, ProfileId, SessionState,
@@ -39,6 +39,17 @@ pub async fn onboarding_state() -> CmdResult<OnboardingState> {
         has_credentials: false,
         devices: Vec::new(),
     })
+}
+
+/// Guarda el progreso del asistente (para pausar y retomar).
+#[tauri::command]
+#[specta::specta]
+pub async fn onboarding_save(
+    step: OnboardingStep,
+    completed: Vec<OnboardingStep>,
+) -> CmdResult<OnboardingState> {
+    let _ = (step, completed);
+    todo("onboarding_save")
 }
 
 /// Estado de los permisos del sistema que necesita la app en este SO.
@@ -83,12 +94,27 @@ pub async fn discover_lan(timeout_s: f32) -> CmdResult<Vec<DiscoveredDevice>> {
 
 // ---------- Dispositivos ----------
 
+/// Focos configurados.
+#[tauri::command]
+#[specta::specta]
+pub async fn devices_list() -> CmdResult<Vec<ConfiguredDevice>> {
+    Ok(Vec::new())
+}
+
 /// Agrega un foco.
 #[tauri::command]
 #[specta::specta]
 pub async fn device_add(request: DeviceAddRequest) -> CmdResult<ConfiguredDevice> {
     let _ = request;
     todo("device_add")
+}
+
+/// Cambia el nombre o la IP de un foco (`ip = None` = buscarla automáticamente).
+#[tauri::command]
+#[specta::specta]
+pub async fn device_update(request: DeviceAddRequest) -> CmdResult<ConfiguredDevice> {
+    let _ = request;
+    todo("device_update")
 }
 
 /// Quita un foco (y su clave del llavero).
@@ -232,6 +258,13 @@ pub async fn profiles_activate(id: Option<ProfileId>) -> CmdResult<()> {
 
 // ---------- Sesión ----------
 
+/// Estado actual de la sesión (después llegan los cambios por `session://state`).
+#[tauri::command]
+#[specta::specta]
+pub async fn session_state() -> CmdResult<SessionState> {
+    Ok(SessionState::Idle)
+}
+
 /// Arranca el efecto.
 #[tauri::command]
 #[specta::specta]
@@ -292,6 +325,14 @@ pub async fn import_legacy(folder: String) -> CmdResult<ImportReport> {
     todo("import_legacy")
 }
 
+/// Últimas líneas del log (las más nuevas al final), para el visor del diagnóstico.
+#[tauri::command]
+#[specta::specta]
+pub async fn diagnostics_log(limit: Option<u32>) -> CmdResult<Vec<LogLine>> {
+    let _ = limit;
+    Ok(Vec::new())
+}
+
 /// Exporta un zip de diagnóstico sin secretos y devuelve su ruta.
 #[tauri::command]
 #[specta::specta]
@@ -307,12 +348,15 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
     Builder::<tauri::Wry>::new()
         .commands(collect_commands![
             onboarding_state,
+            onboarding_save,
             check_permissions,
             open_system_settings,
             cloud_validate,
             cloud_list_devices,
             discover_lan,
+            devices_list,
             device_add,
+            device_update,
             device_remove,
             device_test,
             device_manual,
@@ -328,6 +372,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             profiles_update,
             profiles_delete,
             profiles_activate,
+            session_state,
             session_start,
             session_stop,
             calibration_start,
@@ -335,6 +380,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             calibration_save,
             calibration_cancel,
             import_legacy,
+            diagnostics_log,
             diagnostics_export,
         ])
         .typ::<SessionStateEvent>()
@@ -343,11 +389,13 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         .typ::<UserFacingError>()
         .typ::<DiscoveredDevice>()
         .typ::<ErrorCode>()
+        .typ::<PipelineStatsEvent>()
         .constant("EVENT_SESSION_STATE", events::SESSION_STATE)
         .constant("EVENT_DEVICE_HEALTH", events::DEVICE_HEALTH)
         .constant("EVENT_COLOR_LIVE", events::COLOR_LIVE)
         .constant("EVENT_ERROR_RAISED", events::ERROR_RAISED)
         .constant("EVENT_DISCOVERY_FOUND", events::DISCOVERY_FOUND)
+        .constant("EVENT_PIPELINE_STATS", events::PIPELINE_STATS)
 }
 
 /// Ruta de los bindings generados.

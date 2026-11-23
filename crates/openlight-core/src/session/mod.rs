@@ -295,9 +295,10 @@ impl Session {
                 waiting.push((device.id.clone(), rx));
             }
         }
-        let timeout = self.options.stop_timeout;
+        // Un solo plazo para todos los focos: `stop_timeout` acota la parada completa
+        let deadline = Instant::now() + self.options.stop_timeout;
         for (id, rx) in waiting {
-            if tokio::time::timeout(timeout, rx).await.is_err() {
+            if tokio::time::timeout_at(deadline, rx).await.is_err() {
                 tracing::warn!(device = %id, "el foco no terminó de restaurarse a tiempo");
             }
         }

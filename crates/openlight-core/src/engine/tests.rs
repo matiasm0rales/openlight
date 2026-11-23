@@ -321,3 +321,25 @@ fn una_preparacion_fallida_se_repite_con_el_proximo_cuadro() {
         [Action::Prepare, Action::Send(_)]
     ));
 }
+
+#[test]
+fn una_restauracion_fallida_queda_pendiente() {
+    let mut e = engine(fast());
+    e.start(CONNECTED);
+    assert_eq!(e.stop(), vec![Action::Restore]);
+    e.restore_failed();
+    assert!(!e.is_restored());
+    assert_eq!(e.stop(), vec![Action::Restore], "se vuelve a pedir");
+    assert!(e.stop().is_empty(), "y una vez lograda no se repite");
+}
+
+#[test]
+fn si_falla_la_restauracion_sin_pantalla_se_reintenta_en_el_paso_siguiente() {
+    let mut e = engine(fast());
+    e.start(CONNECTED);
+    let none = Frames::new();
+    assert_eq!(e.tick(0.0, &none, CONNECTED).actions, vec![Action::Restore]);
+    e.restore_failed();
+    assert_eq!(e.tick(1.0, &none, CONNECTED).actions, vec![Action::Restore]);
+    assert!(e.tick(2.0, &none, CONNECTED).actions.is_empty());
+}

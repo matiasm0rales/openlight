@@ -34,6 +34,10 @@ struct LightState {
     reconnects: u32,
     fail_sends: bool,
     fail_prepare: Option<DeviceError>,
+    /// Cuántos `restore` van a fallar antes de que salga bien.
+    fail_restores: u32,
+    /// `restore` no vuelve nunca.
+    hang_restore: bool,
 }
 
 /// Lo que ve la prueba de un foco falso; el mismo estado lo comparte el `LightDriver`.
@@ -98,7 +102,18 @@ impl LightDriver for FakeDriver {
     }
 
     async fn restore(&mut self) -> std::result::Result<bool, DeviceError> {
-        self.0.0.lock().unwrap().log.push(Ev::Restore);
+        let hang = {
+            let mut s = self.0.0.lock().unwrap();
+            s.log.push(Ev::Restore);
+            if s.fail_restores > 0 {
+                s.fail_restores -= 1;
+                return Err(DeviceError::Timeout);
+            }
+            s.hang_restore
+        };
+        if hang {
+            std::future::pending::<()>().await;
+        }
         Ok(true)
     }
 
@@ -706,5 +721,65 @@ async fn publica_estado_color_en_vivo_y_estadisticas() {
     assert!(
         states.ends_with(&[SessionState::Restoring, SessionState::Idle]),
         "{states:?}"
+    );
+}
+
+#[tokio::test(start_paused = true)]
+async fn si_la_restauracion_falla_al_detener_se_reintenta() {
+    let screens = FakeScreens::default();
+    let light = FakeLight::new();
+    screens.publish("1", Some(solid(ROJO)));
+    let session = start(vec![spec("a", ZonePreset::Full, &light)], &screens).await;
+    sleep(Duration::from_secs(1)).await;
+    light.with(|s| s.fail_restores = 2);
+    session.stop().await;
+    // Falló dos veces y a la tercera volvió a su estado
+    assert_eq!(light.count(Ev::Restore), 3);
+}
+
+#[tokio::test(start_paused = true)]
+async fn una_restauracion_fallida_sin_pantalla_se_reintenta_cada_retry_every_s() {
+    let screens = FakeScreens::default();
+    let light = FakeLight::new();
+    screens.publish("1", Some(solid(ROJO)));
+    let session = start(vec![spec("a", ZonePreset::Full, &light)], &screens).await;
+    sleep(Duration::from_secs(1)).await;
+    light.with(|s| s.fail_restores = 1);
+    screens.publish("1", None);
+    sleep(Duration::from_secs(21)).await; // no_screen_wait_s = 20: primer intento, falla
+    assert_eq!(light.count(Ev::Restore), 1);
+    sleep(Duration::from_secs(4)).await; // retry_every_s = 3: segundo intento, sale bien
+    assert_eq!(light.count(Ev::Restore), 2);
+    sleep(Duration::from_secs(20)).await;
+    assert_eq!(light.count(Ev::Restore), 2, "ya no se repite");
+    session.stop().await;
+    assert_eq!(light.count(Ev::Restore), 2, "ya estaba restaurado");
+}
+
+#[tokio::test(start_paused = true)]
+async fn detener_acota_toda_la_parada_con_un_solo_plazo() {
+    let screens = FakeScreens::default();
+    let lights = [FakeLight::new(), FakeLight::new(), FakeLight::new()];
+    screens.publish("1", Some(solid(ROJO)));
+    let session = start(
+        vec![
+            spec("a", ZonePreset::Left, &lights[0]),
+            spec("b", ZonePreset::Right, &lights[1]),
+            spec("c", ZonePreset::Full, &lights[2]),
+        ],
+        &screens,
+    )
+    .await;
+    sleep(Duration::from_secs(1)).await;
+    for light in &lights {
+        light.with(|s| s.hang_restore = true);
+    }
+    let started = tokio::time::Instant::now();
+    session.stop().await;
+    let took = started.elapsed();
+    let limit = SessionOptions::default().stop_timeout;
+    assert!(
+        took >= limit && took < limit + Duration::from_secs(1),
+        "{took:?}"
     );
 }

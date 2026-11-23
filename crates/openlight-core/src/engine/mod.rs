@@ -135,6 +135,12 @@ impl DeviceEngine {
         self.restored = true;
     }
 
+    /// `Action::Restore` falló: el foco sigue sin volver a su estado, así que la restauración
+    /// queda pendiente y se reintenta (con el próximo paso sin pantalla o al detener).
+    pub fn restore_failed(&mut self) {
+        self.restored = false;
+    }
+
     /// `Action::Send` falló: el color sigue pendiente y se reintenta en el próximo envío.
     pub fn send_failed(&mut self) {
         self.sent = None;

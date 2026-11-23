@@ -25,6 +25,11 @@ const LIVE_EVERY: Duration = Duration::from_millis(100);
 /// Cada cuánto se publica la salud del enlace aunque no haya cambios de estado.
 const HEALTH_EVERY: Duration = Duration::from_secs(1);
 
+/// Intentos de devolver el foco a su estado al detener.
+const RESTORE_ATTEMPTS: u32 = 3;
+/// Espera entre esos intentos.
+const RESTORE_RETRY_EVERY: Duration = Duration::from_millis(500);
+
 /// Órdenes que recibe la tarea de un foco.
 #[derive(Debug)]
 pub(crate) enum Command {
@@ -170,8 +175,21 @@ impl DeviceRunner {
 
     async fn finish(&mut self) {
         self.set_state(DeviceSessionState::Restoring);
-        let actions = self.engine.stop();
-        self.execute(actions).await;
+        // Si la restauración falla se reintenta unas veces antes de rendirse: es lo que deja
+        // al foco con el color del ambiente en vez de su estado original
+        for attempt in 0..RESTORE_ATTEMPTS {
+            let actions = self.engine.stop();
+            if actions.is_empty() {
+                break;
+            }
+            self.execute(actions).await;
+            if self.engine.is_restored() {
+                break;
+            }
+            if attempt + 1 < RESTORE_ATTEMPTS {
+                tokio::time::sleep(RESTORE_RETRY_EVERY).await;
+            }
+        }
         self.set_state(DeviceSessionState::Idle);
     }
 
@@ -192,6 +210,9 @@ impl DeviceRunner {
                 Action::Restore => {
                     if let Err(error) = self.driver.restore().await {
                         tracing::warn!(device = %self.id, %error, "no se pudo devolver el foco a su estado");
+                        // Sigue pendiente: se reintenta pasado `retry_every` o al detener
+                        self.engine.restore_failed();
+                        self.retry_at = Some(Instant::now() + self.retry_every);
                     }
                     if self.state != DeviceSessionState::Restoring {
                         self.set_state(DeviceSessionState::Paused);

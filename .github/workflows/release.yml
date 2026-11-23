@@ -4,9 +4,17 @@ name: Release
 #  - Con un tag `v*` además crea (o completa) un *borrador* de Release con los instaladores:
 #    publicarlo es decisión de quien mantiene el repo.
 #  - Con `workflow_dispatch` solo deja los instaladores como artifacts del run.
+#  - En los PR que tocan el empaquetado hace lo mismo (sin Release) para que un cambio en el
+#    bundle no rompa el release recién el día del tag.
 on:
   push:
     tags: ["v*"]
+  pull_request:
+    paths:
+      - ".github/workflows/release.yml"
+      - "app/src-tauri/tauri.conf.json"
+      - "app/src-tauri/Info.plist"
+      - "app/src-tauri/icons/**"
   workflow_dispatch:
 
 concurrency:

@@ -6,6 +6,7 @@
 pub mod autostart;
 pub mod ipc;
 pub mod permissions;
+pub mod windows;
 
 /// Arranca la app.
 pub fn run() {

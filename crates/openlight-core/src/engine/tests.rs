@@ -147,3 +147,149 @@ fn los_pasos_informan_el_color_de_pantalla() {
     assert_eq!(processed.screen.h, None);
     assert_eq!(processed.screen.luz, 0.0);
 }
+
+fn steps_with(e: &mut DeviceEngine, screens: &[Option<Frames>]) -> Vec<Step> {
+    screens
+        .iter()
+        .enumerate()
+        .map(|(i, f)| e.tick(i as f64, f.as_ref().unwrap_or(&Frames::new()), CONNECTED))
+        .collect()
+}
+
+fn actions(e: &mut DeviceEngine, screens: &[Option<Frames>]) -> Vec<Action> {
+    let mut all = e.start(CONNECTED);
+    all.extend(steps_with(e, screens).into_iter().flat_map(|s| s.actions));
+    all
+}
+
+fn red() -> Option<Frames> {
+    Some(frames("1", solid(ROJO)))
+}
+
+#[test]
+fn sin_pantalla_devuelve_el_estado_y_al_volver_retoma() {
+    // port: test_ambilight.py::Bucle::test_sin_pantalla_devuelve_el_estado_y_al_volver_retoma
+    let mut e = engine(fast());
+    let all = actions(&mut e, &[None, None, red()]);
+    assert_eq!(
+        all[..3],
+        [Action::Prepare, Action::Restore, Action::Prepare]
+    );
+    assert_eq!(
+        all.iter().filter(|a| matches!(a, Action::Send(_))).count(),
+        1
+    );
+}
+
+#[test]
+fn sin_pantalla_devuelve_el_estado_una_sola_vez() {
+    // port: test_ambilight.py::Bucle::test_sin_pantalla_devuelve_el_estado_una_sola_vez
+    let mut e = engine(fast());
+    let all = actions(&mut e, &[None, None, None, red()]);
+    assert_eq!(all.iter().filter(|a| **a == Action::Restore).count(), 1);
+}
+
+#[test]
+fn espera_no_screen_wait_antes_de_devolver_el_foco() {
+    let mut e = engine(Timing {
+        no_screen_wait_s: 20.0,
+        ..fast()
+    });
+    e.start(CONNECTED);
+    let none = Frames::new();
+    assert!(e.tick(100.0, &none, CONNECTED).actions.is_empty());
+    assert!(
+        e.tick(119.9, &none, CONNECTED).actions.is_empty(),
+        "todavía no pasaron 20 s"
+    );
+    assert_eq!(
+        e.tick(120.0, &none, CONNECTED).actions,
+        vec![Action::Restore]
+    );
+    assert!(e.is_restored());
+}
+
+#[test]
+fn si_la_pantalla_vuelve_antes_el_temporizador_se_reinicia() {
+    let mut e = engine(Timing {
+        no_screen_wait_s: 20.0,
+        ..fast()
+    });
+    e.start(CONNECTED);
+    let none = Frames::new();
+    e.tick(0.0, &none, CONNECTED);
+    e.tick(15.0, &frames("1", solid(ROJO)), CONNECTED);
+    // Otra falta de pantalla cuenta desde cero
+    assert!(e.tick(16.0, &none, CONNECTED).actions.is_empty());
+    assert!(e.tick(35.0, &none, CONNECTED).actions.is_empty());
+    assert_eq!(
+        e.tick(36.0, &none, CONNECTED).actions,
+        vec![Action::Restore]
+    );
+}
+
+#[test]
+fn al_retomar_se_reenvia_el_color_aunque_sea_el_mismo() {
+    let mut e = engine(fast());
+    let all = actions(&mut e, &[red(), None, red()]);
+    assert_eq!(
+        all,
+        [
+            Action::Prepare,
+            all[1], // primer color
+            Action::Restore,
+            Action::Prepare,
+            all[4], // el mismo color, reenviado
+        ]
+    );
+    assert!(matches!(all[1], Action::Send(_)) && all[1] == all[4]);
+}
+
+#[test]
+fn suspender_restaura_y_congela_hasta_despertar() {
+    let mut e = engine(fast());
+    e.start(CONNECTED);
+    e.tick(0.0, &frames("1", solid(ROJO)), CONNECTED);
+
+    assert_eq!(e.suspend(), vec![Action::Restore]);
+    // Dormido: aunque haya pantalla no manda nada
+    let step = e.tick(1.0, &frames("1", solid(AZUL)), CONNECTED);
+    assert!(step.actions.is_empty() && step.processed.is_none());
+    // Suspender dos veces no restaura dos veces
+    assert!(e.suspend().is_empty());
+
+    e.resume();
+    let step = e.tick(2.0, &frames("1", solid(AZUL)), CONNECTED);
+    assert!(matches!(
+        step.actions[..],
+        [Action::Prepare, Action::Send(_)]
+    ));
+}
+
+#[test]
+fn despertar_sin_pantalla_espera_antes_de_prepararse() {
+    let mut e = engine(Timing {
+        no_screen_wait_s: 20.0,
+        ..fast()
+    });
+    e.start(CONNECTED);
+    e.suspend();
+    e.resume();
+    // Sin monitor todavía: no hace nada (ya está restaurado)
+    assert!(e.tick(5.0, &Frames::new(), CONNECTED).actions.is_empty());
+    assert!(e.tick(60.0, &Frames::new(), CONNECTED).actions.is_empty());
+}
+
+#[test]
+fn detener_restaura_solo_si_hace_falta() {
+    let mut e = engine(fast());
+    e.start(CONNECTED);
+    assert_eq!(e.stop(), vec![Action::Restore]);
+    assert!(e.stop().is_empty());
+
+    // Ya devuelto por falta de pantalla: no se restaura otra vez
+    let mut e = engine(fast());
+    e.start(CONNECTED);
+    e.tick(0.0, &Frames::new(), CONNECTED);
+    assert!(e.stop().is_empty());
+}

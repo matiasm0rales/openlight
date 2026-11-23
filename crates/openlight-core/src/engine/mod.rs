@@ -83,6 +83,14 @@ pub struct DeviceEngine {
     last_send_s: Option<f64>,
     /// Reconexiones que se vieron en el paso anterior.
     reconnects: u32,
+    /// Desde cuándo no hay pantalla (`t_sin_pantalla`).
+    no_screen_since_s: Option<f64>,
+    /// Si el foco ya volvió a su estado original (`en_pausa` en el script): por falta de
+    /// pantalla, porque el sistema se va a dormir o porque la sesión terminó. Al volver a tener
+    /// pantalla hay que prepararlo de nuevo.
+    restored: bool,
+    /// Si el sistema está suspendido: no se hace nada hasta [`DeviceEngine::resume`].
+    suspended: bool,
 }
 
 impl DeviceEngine {
@@ -94,6 +102,9 @@ impl DeviceEngine {
             sent: None,
             last_send_s: None,
             reconnects: 0,
+            no_screen_since_s: None,
+            restored: false,
+            suspended: false,
         }
     }
 
@@ -110,17 +121,64 @@ impl DeviceEngine {
     /// Arranque: hay que preparar el foco antes del primer color.
     pub fn start(&mut self, link: Link) -> Vec<Action> {
         self.reconnects = link.reconnects;
+        self.restored = false;
         vec![Action::Prepare]
+    }
+
+    /// Si el foco está devuelto a su estado original (sin pantalla, suspendido o detenido).
+    pub fn is_restored(&self) -> bool {
+        self.restored
+    }
+
+    /// El sistema se va a dormir: hay que dejar el foco como estaba antes de que se corte la red.
+    /// Hasta [`DeviceEngine::resume`] los pasos no hacen nada.
+    pub fn suspend(&mut self) -> Vec<Action> {
+        self.suspended = true;
+        self.restore()
+    }
+
+    /// El sistema despertó. El foco se vuelve a preparar apenas haya pantalla.
+    pub fn resume(&mut self) {
+        self.suspended = false;
+        self.no_screen_since_s = None;
+    }
+
+    /// Fin de la sesión: devuelve el foco a su estado si todavía no lo está.
+    pub fn stop(&mut self) -> Vec<Action> {
+        self.restore()
+    }
+
+    fn restore(&mut self) -> Vec<Action> {
+        if self.restored {
+            return Vec::new();
+        }
+        self.restored = true;
+        vec![Action::Restore]
     }
 
     /// Un paso del bucle: `now_s` en segundos de un reloj monótono.
     pub fn tick(&mut self, now_s: f64, frames: &Frames, link: Link) -> Step {
         let mut step = Step::default();
+        if self.suspended {
+            return step;
+        }
         let Some(processed) = self.pipeline.process(now_s, frames) else {
+            // Sin pantalla: pasado `no_screen_wait_s`, el foco vuelve a su estado (una sola vez)
+            let since = *self.no_screen_since_s.get_or_insert(now_s);
+            if now_s - since >= self.timing.no_screen_wait_s {
+                step.actions.extend(self.restore());
+            }
             return step;
         };
+        self.no_screen_since_s = None;
         step.processed = Some(processed);
         let color = processed.color;
+        if self.restored {
+            // Volvió la pantalla: se retoma desde cero
+            step.actions.push(Action::Prepare);
+            self.restored = false;
+            self.sent = None;
+        }
 
         // Si el foco se reconectó pudo haber perdido su color: se vuelve a mandar
         if link.reconnects != self.reconnects {

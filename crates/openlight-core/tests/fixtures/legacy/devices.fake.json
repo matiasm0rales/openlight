@@ -1,0 +1,212 @@
+[
+  {
+    "name": "Foco de prueba A",
+    "id": "bf00000000000000aaaa01",
+    "key": "FakeLocalKeyAAA1",
+    "mac": "00:00:5e:00:53:01",
+    "uuid": "00000000-0000-4000-8000-00000000aa01",
+    "category": "dj",
+    "product_name": "Lámpara de prueba",
+    "product_id": "fakeproductaaaa01",
+    "biz_type": 18,
+    "model": "MODELO-A",
+    "sub": false,
+    "icon": "smart/icon/fake_a.png",
+    "mapping": {
+      "20": {
+        "code": "switch_led",
+        "type": "Boolean",
+        "values": {}
+      },
+      "21": {
+        "code": "work_mode",
+        "type": "Enum",
+        "values": {
+          "range": [
+            "white",
+            "colour",
+            "scene",
+            "music"
+          ]
+        }
+      },
+      "22": {
+        "code": "bright_value_v2",
+        "type": "Integer",
+        "values": {
+          "min": 10,
+          "max": 1000,
+          "scale": 0,
+          "step": 1
+        }
+      },
+      "23": {
+        "code": "temp_value_v2",
+        "type": "Integer",
+        "values": {
+          "min": 0,
+          "max": 1000,
+          "scale": 0,
+          "step": 1
+        }
+      },
+      "24": {
+        "code": "colour_data_v2",
+        "type": "Json",
+        "raw_values": "{\"h\":{\"min\":0,\"scale\":0,\"unit\":\"\",\"max\":360,\"step\":1},\"s\":{\"min\":0,\"scale\":0,\"unit\":\"\",\"max\":1000,\"step\":1},\"v\":{\"min\":0,\"scale\":0,\"unit\":\"\",\"max\":1000,\"step\":1}}",
+        "values": {
+          "h": {
+            "min": 0,
+            "scale": 0,
+            "unit": "",
+            "max": 360,
+            "step": 1
+          },
+          "s": {
+            "min": 0,
+            "scale": 0,
+            "unit": "",
+            "max": 1000,
+            "step": 1
+          },
+          "v": {
+            "min": 0,
+            "scale": 0,
+            "unit": "",
+            "max": 1000,
+            "step": 1
+          }
+        }
+      },
+      "28": {
+        "code": "control_data",
+        "type": "Json",
+        "raw_values": "{}",
+        "values": {}
+      },
+      "34": {
+        "code": "do_not_disturb",
+        "type": "Boolean",
+        "values": {}
+      }
+    }
+  },
+  {
+    "name": "Foco de prueba B",
+    "id": "bf00000000000000bbbb02",
+    "key": "FakeLocalKeyBBB2",
+    "mac": "00:00:5e:00:53:02",
+    "uuid": "00000000-0000-4000-8000-00000000bb02",
+    "category": "dj",
+    "product_name": "Lámpara de prueba",
+    "product_id": "fakeproductbbbb02",
+    "biz_type": 18,
+    "model": "MODELO-B",
+    "sub": false,
+    "icon": "smart/icon/fake_b.png",
+    "mapping": {
+      "20": {
+        "code": "switch_led",
+        "type": "Boolean",
+        "values": {}
+      },
+      "21": {
+        "code": "work_mode",
+        "type": "Enum",
+        "values": {
+          "range": [
+            "white",
+            "colour",
+            "scene",
+            "music"
+          ]
+        }
+      },
+      "22": {
+        "code": "bright_value_v2",
+        "type": "Integer",
+        "values": {
+          "min": 10,
+          "max": 1000,
+          "scale": 0,
+          "step": 1
+        }
+      },
+      "23": {
+        "code": "temp_value_v2",
+        "type": "Integer",
+        "values": {
+          "min": 0,
+          "max": 1000,
+          "scale": 0,
+          "step": 1
+        }
+      },
+      "24": {
+        "code": "colour_data_v2",
+        "type": "Json",
+        "raw_values": "{\"h\":{\"min\":0,\"scale\":0,\"unit\":\"\",\"max\":360,\"step\":1},\"s\":{\"min\":0,\"scale\":0,\"unit\":\"\",\"max\":1000,\"step\":1},\"v\":{\"min\":0,\"scale\":0,\"unit\":\"\",\"max\":1000,\"step\":1}}",
+        "values": {
+          "h": {
+            "min": 0,
+            "scale": 0,
+            "unit": "",
+            "max": 360,
+            "step": 1
+          },
+          "s": {
+            "min": 0,
+            "scale": 0,
+            "unit": "",
+            "max": 1000,
+            "step": 1
+          },
+          "v": {
+            "min": 0,
+            "scale": 0,
+            "unit": "",
+            "max": 1000,
+            "step": 1
+          }
+        }
+      },
+      "28": {
+        "code": "control_data",
+        "type": "Json",
+        "raw_values": "{}",
+        "values": {}
+      },
+      "34": {
+        "code": "do_not_disturb",
+        "type": "Boolean",
+        "values": {}
+      },
+      "41": {
+        "code": "remote_switch",
+        "type": "Boolean",
+        "values": {}
+      }
+    }
+  },
+  {
+    "name": "Enchufe de prueba",
+    "id": "bf00000000000000cccc03",
+    "key": "FakeLocalKeyCCC3",
+    "mac": "00:00:5e:00:53:03",
+    "uuid": "00000000-0000-4000-8000-00000000cc03",
+    "category": "cz",
+    "product_name": "Enchufe de prueba",
+    "product_id": "fakeproductcccc03",
+    "biz_type": 18,
+    "model": "MODELO-C",
+    "sub": false,
+    "icon": "smart/icon/fake_c.png",
+    "mapping": {
+      "1": {
+        "code": "switch_1",
+        "type": "Boolean",
+        "values": {}
+      }
+    }
+  }
+]

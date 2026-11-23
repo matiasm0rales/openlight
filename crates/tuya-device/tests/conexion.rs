@@ -177,13 +177,17 @@ fn un_color_pedido_durante_el_corte_sale_despues_del_modo_color() {
         rig.device.send_colour(Hsv::new(0.5, 1.0, 1.0));
         pump(SECS(4)).await;
         assert_eq!(rig.device.health().reconnects, 1);
+        // Si el color se mandó justo al socket que se cortaba, pudo llegar dos veces: lo que
+        // importa es el orden final.
+        let writes = rig.writes();
         assert_eq!(
-            rig.writes(),
-            vec![
+            writes[writes.len() - 2..],
+            [
                 dps(json!({"20": true, "21": "colour"})),
                 dps(json!({"24": "00b403e803e8"})),
             ]
         );
+        assert_eq!(rig.sim.dp("24"), Some(json!("00b403e803e8")));
     });
 }
 
@@ -253,6 +257,35 @@ fn recuerda_la_ip_nueva_cuando_la_vieja_deja_de_servir() {
         assert_eq!(info.ip, LOCALHOST);
         assert!(rig.locator.calls() >= 1, "buscó la IP nueva");
         assert_eq!(rig.store.load(&rig.id).ip, Some(LOCALHOST));
+    });
+}
+
+// port: test_ambilight.py::FocoConexion::test_recordar_ip_nueva_al_reconectar
+#[test]
+fn al_reconectar_guarda_la_ip_sin_pisar_el_original() {
+    run(async {
+        let rig = Rig::new(ProtocolVersion::V35).await;
+        rig.start().await;
+        let original = rig.store.load(&rig.id).original;
+        assert!(original.is_some());
+        // Lo guardado quedó viejo (por ejemplo, de otra sesión).
+        rig.store.save(
+            &rig.id,
+            &tuya_device::SavedState {
+                ip: Some("192.0.2.9".parse().unwrap()),
+                original: original.clone(),
+            },
+        );
+        rig.sim.disconnect_all();
+        pump_slow(SECS(5)).await;
+        assert_eq!(rig.device.health().reconnects, 1);
+        let saved = rig.store.load(&rig.id);
+        assert_eq!(
+            saved.ip,
+            Some(LOCALHOST),
+            "recuerda la IP con la que reconectó"
+        );
+        assert_eq!(saved.original, original, "y no toca lo demás");
     });
 }
 

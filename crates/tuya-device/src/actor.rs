@@ -66,6 +66,9 @@ pub(crate) struct Actor {
     last_attempt: Instant,
     /// Intentos fallidos seguidos desde la última conexión: cuánto crece el backoff.
     failures: u32,
+    /// Último color pedido desde que se activó el foco. Un envío que cae en un socket a punto
+    /// de cortarse se pierde sin avisar: al reconectar se vuelve a mandar.
+    last_colour: Option<Hsv>,
 }
 
 /// El código visible que corresponde a un error que frena el arranque.
@@ -130,6 +133,7 @@ impl Actor {
             last_heartbeat: Instant::now(),
             last_attempt: Instant::now(),
             failures: 0,
+            last_colour: None,
         }
     }
 
@@ -570,12 +574,16 @@ impl Actor {
     async fn prepare_if_active(&mut self) {
         if self.active {
             self.prepare().await;
+            if self.conn.is_some() {
+                self.resend_colour().await;
+            }
         }
     }
 
     async fn activate(&mut self) {
         // Un color que quedó de antes de pausar no vale.
         self.colour.borrow_and_update();
+        self.last_colour = None;
         self.prepare().await;
         if self.conn.is_some() {
             self.set_state(DeviceSessionState::Active);
@@ -587,6 +595,7 @@ impl Actor {
         self.active = false;
         // Un color pedido antes de pausar no vale al retomar.
         self.colour.borrow_and_update();
+        self.last_colour = None;
         let Some(original) = self.original.clone() else {
             return Ok(());
         };
@@ -641,6 +650,11 @@ impl Actor {
         let Some(hsv) = *self.colour.borrow_and_update() else {
             return;
         };
+        self.send_hsv(hsv).await;
+    }
+
+    async fn send_hsv(&mut self, hsv: Hsv) {
+        self.last_colour = Some(hsv);
         let Some(caps) = self.caps.clone() else {
             return;
         };
@@ -653,6 +667,19 @@ impl Actor {
                     .await;
             }
             Err(e) => tracing::warn!(error = %e, "el foco no puede mostrar este color"),
+        }
+    }
+
+    /// Después de reconectar y volver a poner el modo color: el color pendiente, o el último
+    /// que se había mandado (pudo perderse en el socket que se cortó).
+    async fn resend_colour(&mut self) {
+        let pending = if self.colour.has_changed().unwrap_or(false) {
+            *self.colour.borrow_and_update()
+        } else {
+            None
+        };
+        if let Some(hsv) = pending.or(self.last_colour) {
+            self.send_hsv(hsv).await;
         }
     }
 }

@@ -1,0 +1,64 @@
+{
+  "result": {
+    "devices": [
+      {
+        "active_time": 1690000000,
+        "biz_type": 0,
+        "category": "dj",
+        "create_time": 1690000000,
+        "icon": "smart/icon/bay1/raw.png",
+        "id": "b84db68e75409bd39b65812",
+        "ip": "192.0.2.90",
+        "lat": "ba9227",
+        "local_key": "9874dd808cad7df2",
+        "lon": "eb3d81",
+        "model": "W509Z2",
+        "name": "Luz izquierda",
+        "online": true,
+        "owner_id": "e65f60be61",
+        "product_id": "rawproductcolor01",
+        "product_name": "Smart Bulb",
+        "status": [
+          {
+            "code": "switch_led",
+            "value": true
+          }
+        ],
+        "sub": false,
+        "time_zone": "fb3051",
+        "uid": "6745f0ea21bfdc1fe",
+        "update_time": 1700000000,
+        "uuid": "c7ac65c9f00c9c228"
+      },
+      {
+        "active_time": 1690000100,
+        "biz_type": 0,
+        "category": "cz",
+        "create_time": 1690000100,
+        "icon": "smart/icon/bay1/raw2.png",
+        "id": "350e0d45f6eb4b708",
+        "ip": "192.0.2.90",
+        "lat": "ba9227",
+        "local_key": "983a53b59ce62bad",
+        "lon": "eb3d81",
+        "model": "",
+        "name": "Enchufe",
+        "online": false,
+        "owner_id": "e65f60be61",
+        "product_id": "rawproductplug01",
+        "product_name": "Smart Plug",
+        "status": [],
+        "sub": false,
+        "time_zone": "fb3051",
+        "uid": "6745f0ea21bfdc1fe",
+        "update_time": 1700000000,
+        "uuid": "5df7f82abf16d5cfc"
+      }
+    ],
+    "has_more": true,
+    "last_row_key": "RAWROWKEY0001"
+  },
+  "success": true,
+  "t": 1700000000200,
+  "tid": "rawtid0003"
+}

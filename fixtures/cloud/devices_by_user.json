@@ -1,0 +1,25 @@
+{
+  "result": {
+    "list": [
+      {
+        "id": "35b61f591f03bea452ac2",
+        "name": "Luz derecha",
+        "local_key": "4da0bb1eafb101ee",
+        "category": "dj",
+        "product_id": "rawproductcolor02",
+        "product_name": "A60",
+        "uuid": "b251f9477cba6ede0",
+        "is_online": true,
+        "ip": "192.0.2.90",
+        "sub": false,
+        "gateway_id": ""
+      }
+    ],
+    "has_more": false,
+    "last_row_key": "",
+    "total": 1
+  },
+  "success": true,
+  "t": 1700000000400,
+  "tid": "rawtid0005"
+}

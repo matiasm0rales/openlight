@@ -133,4 +133,4 @@ fn merge_zones(colors: &[ScreenColor]) -> ScreenColor {
 }
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;

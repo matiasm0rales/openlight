@@ -174,7 +174,7 @@ impl Actor {
             // Cuenta cualquier byte recibido, también los que lee un `status()` o un `set_dps`.
             let last_rx = self.conn.as_ref().map_or_else(Instant::now, Conn::last_rx);
             let dead_at = last_rx + timings.dead_after;
-            let heartbeat_at = self.last_heartbeat + timings.heartbeat;
+            let heartbeat_at = self.last_heartbeat + timings.heartbeat_interval();
             let retry_at = self.last_attempt + timings.backoff(self.failures);
             tokio::select! {
                 biased;

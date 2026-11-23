@@ -396,3 +396,25 @@ fn los_suscriptores_se_enteran_de_los_cambios_pero_no_de_cada_byte() {
         );
     });
 }
+
+#[test]
+fn el_latido_sale_antes_de_dar_la_conexion_por_muerta() {
+    run(async {
+        // `heartbeat_s` (30) mayor que `dead_after_s` (5) está permitido por los ajustes: el
+        // latido se adelanta para sondear el foco antes de que venza `dead_after`.
+        let rig = Rig::with(sim(ProtocolVersion::V35).await, |c| {
+            c.timings(tuya_device::Timings {
+                heartbeat: SECS(30),
+                dead_after: SECS(5),
+                ..tuya_device::Timings::default()
+            })
+        });
+        rig.start().await;
+        rig.sim.reset_stats();
+        pump_slow(SECS(30)).await;
+        let health = rig.device.health();
+        assert!(health.connected, "{health:?}");
+        assert_eq!(health.disconnects_last_hour, 0);
+        assert!(rig.sim.stats().heartbeats() >= 10, "{:?}", rig.sim.stats());
+    });
+}

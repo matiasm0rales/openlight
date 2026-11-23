@@ -60,6 +60,13 @@ impl Timings {
         }
     }
 
+    /// Cada cuánto sale un latido de verdad: `heartbeat`, pero nunca más de la mitad de
+    /// `dead_after`. Los ajustes permiten un latido más largo que `dead_after`; en ese caso la
+    /// conexión se daría por muerta antes de poder sondearla.
+    pub fn heartbeat_interval(&self) -> Duration {
+        self.heartbeat.min(self.dead_after / 2)
+    }
+
     /// Espera antes del próximo intento tras `failures` intentos fallidos seguidos (0 = el
     /// último intento salió bien o es el primero): `retry_every`, ×2, ×4… hasta el tope.
     pub fn backoff(&self, failures: u32) -> Duration {
@@ -191,6 +198,32 @@ mod tests {
         assert_eq!(t.heartbeat, Duration::from_secs(5));
         assert_eq!(t.dead_after, Duration::from_millis(12_500));
         assert_eq!(t.retry_every, Duration::from_secs(1));
+    }
+
+    #[test]
+    fn el_latido_siempre_sale_antes_de_dar_la_conexion_por_muerta() {
+        let t = Timings::default();
+        assert_eq!(
+            t.heartbeat_interval(),
+            t.heartbeat,
+            "10 s con dead_after de 30 s"
+        );
+        let t = Timings {
+            heartbeat: Duration::from_secs(30),
+            dead_after: Duration::from_secs(5),
+            ..Timings::default()
+        };
+        assert_eq!(t.heartbeat_interval(), Duration::from_millis(2500));
+        let t = Timings {
+            heartbeat: Duration::from_secs(10),
+            dead_after: Duration::from_secs(10),
+            ..Timings::default()
+        };
+        assert_eq!(
+            t.heartbeat_interval(),
+            Duration::from_secs(5),
+            "también si son iguales"
+        );
     }
 
     #[test]

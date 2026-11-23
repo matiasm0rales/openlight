@@ -49,7 +49,12 @@ pub fn run<F: Future>(test: F) -> F::Output {
 
 /// Cede el turno varias veces para que los demás terminen lo que tienen pendiente.
 pub async fn settle() {
-    for _ in 0..32 {
+    settle_n(32).await;
+}
+
+/// Como [`settle`] con otra cantidad de vueltas (menos es más rápido, pero más justo).
+pub async fn settle_n(turns: u32) {
+    for _ in 0..turns {
         tokio::task::yield_now().await;
     }
 }

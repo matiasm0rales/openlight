@@ -141,7 +141,9 @@ pub async fn start_with(config: SimConfig, suite: Arc<dyn Suite>) -> io::Result<
                 addr.ip()
             }
         });
-        tasks.extend(crate::udp::spawn(shared.clone(), b.clone(), ip, config.product_key.clone()).await?);
+        tasks.extend(
+            crate::udp::spawn(shared.clone(), b.clone(), ip, config.product_key.clone()).await?,
+        );
     }
     tracing::info!(%addr, version = %config.version, "foco simulado escuchando");
     Ok(SimHandle {
@@ -225,6 +227,11 @@ impl SimHandle {
     /// `STATUS` a las conexiones abiertas. Devuelve los DPs aceptados.
     pub fn set_dps(&self, dps: Dps) -> Dps {
         self.shared.apply(&dps, false)
+    }
+
+    /// Avisa cada cambio de DPs (por la red o con [`Self::set_dps`]).
+    pub fn subscribe(&self) -> broadcast::Receiver<Dps> {
+        self.shared.changes.subscribe()
     }
 
     /// Escrituras recibidas por la red, en orden (solo los DPs aceptados).

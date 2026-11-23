@@ -10,6 +10,7 @@
 mod config;
 mod conn;
 mod profile;
+mod proto;
 mod server;
 mod udp;
 pub mod wire;
@@ -18,6 +19,15 @@ pub use config::{
     BroadcastConfig, DEFAULT_DEV_ID, DEFAULT_LOCAL_KEY, Faults, SimConfig, SimStats, TCP_PORT,
 };
 pub use profile::{Profile, accepts};
+pub use proto::ProtoSuite;
 pub use server::{SimHandle, start_with};
 pub use udp::default_port;
 pub use wire::{Msg, Role, Suite, Wire, WireError, cmd};
+
+/// Arranca un foco simulado con la [`Suite`] real ([`ProtoSuite`]).
+///
+/// # Errors
+/// Si no puede escuchar en `config.bind` (o en los puertos UDP pedidos).
+pub async fn start(config: SimConfig) -> std::io::Result<SimHandle> {
+    start_with(config, std::sync::Arc::new(ProtoSuite)).await
+}

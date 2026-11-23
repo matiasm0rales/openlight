@@ -33,10 +33,7 @@ enum Phase {
     /// 3.4/3.5 esperando el cmd 3.
     AwaitStart,
     /// 3.4/3.5 esperando el cmd 5.
-    AwaitFinish {
-        client: [u8; 16],
-        device: [u8; 16],
-    },
+    AwaitFinish { client: [u8; 16], device: [u8; 16] },
     /// Listo para consultas y control.
     Ready,
 }

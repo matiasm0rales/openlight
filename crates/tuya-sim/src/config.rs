@@ -117,7 +117,7 @@ impl SimConfig {
 pub struct BroadcastConfig {
     /// A dónde se mandan los anuncios (por defecto `255.255.255.255`).
     pub target: IpAddr,
-    /// Puerto de los anuncios. `None` = el de la versión: 6666 (3.1) o 6667 (3.3 a 3.5).
+    /// Puerto de los anuncios. `None` = el de la versión: 6666 (3.1), 6667 (3.3 y 3.4) o 7000 (3.5).
     pub port: Option<u16>,
     /// Cada cuánto se anuncia.
     pub interval: Duration,

@@ -1,4 +1,4 @@
-//! Cliente mínimo para probar el simulador y la `Suite` que usan las pruebas.
+//! Cliente mínimo para probar el simulador (frames y cripto de `tuya-proto`).
 #![allow(dead_code, missing_docs)]
 
 use std::io;
@@ -12,11 +12,9 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tuya_sim::{Msg, Role, SimConfig, SimHandle, Suite, Wire, WireError, cmd};
 
-pub mod plain;
-
 /// La `Suite` de las pruebas.
 pub fn suite() -> Arc<dyn Suite> {
-    Arc::new(plain::PlainSuite)
+    Arc::new(tuya_sim::ProtoSuite)
 }
 
 pub async fn start(config: SimConfig) -> SimHandle {

@@ -61,11 +61,7 @@ fn neutral(schema: &DpSchema) -> Option<Value> {
             .and_then(|r| r.get(0))
             .cloned()
             .unwrap_or(Value::String(String::new())),
-        "Integer" => schema
-            .values
-            .get("min")
-            .cloned()
-            .unwrap_or(Value::from(0)),
+        "Integer" => schema.values.get("min").cloned().unwrap_or(Value::from(0)),
         "Json" | "String" => Value::String(String::new()),
         _ => return None,
     })

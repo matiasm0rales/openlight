@@ -3,8 +3,9 @@
 //! Como los focos reales (`tinytuya/scanner.py`, `core/udp_helper.py`):
 //! - 3.1 anuncia en el puerto 6666 en JSON plano.
 //! - 3.3 y 3.4 anuncian en el 6667, cifrado con `md5("yGAdlopoPVldABfn")`.
-//! - 3.5 anuncia en el 6667 con frames `0x6699` (GCM con la misma clave) y contesta los
-//!   `REQ_DEVINFO` que la app manda al puerto 7000, a la IP que dice el pedido.
+//! - 3.5 anuncia en el 7000 con frames `0x6699` (GCM con la misma clave), como
+//!   `fixtures/proto/udp.json`, y contesta los `REQ_DEVINFO` que la app manda al 7000, a la IP
+//!   que dice el pedido.
 
 use std::io;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
@@ -23,7 +24,8 @@ use crate::wire::cmd;
 pub fn default_port(version: ProtocolVersion) -> u16 {
     match version {
         ProtocolVersion::V31 => 6666,
-        _ => 6667,
+        ProtocolVersion::V33 | ProtocolVersion::V34 => 6667,
+        ProtocolVersion::V35 => 7000,
     }
 }
 

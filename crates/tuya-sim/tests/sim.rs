@@ -24,7 +24,10 @@ async fn status_control_y_latido_en_las_cuatro_versiones() {
         let estado = c.status().await.expect("status");
         assert_eq!(estado, Profile::V2.default_dps(), "{v}");
 
-        let push = c.set(json!({"20": false, "21": "white"})).await.expect("push");
+        let push = c
+            .set(json!({"20": false, "21": "white"}))
+            .await
+            .expect("push");
         assert_eq!(push, dps(json!({"20": false, "21": "white"})), "{v}");
         assert_eq!(sim.dp("20"), Some(json!(false)));
         assert_eq!(sim.writes(), vec![dps(json!({"20": false, "21": "white"}))]);
@@ -37,7 +40,11 @@ async fn status_control_y_latido_en_las_cuatro_versiones() {
             other => panic!("{v}: latido sin respuesta: {other:?}"),
         }
         let s = sim.stats();
-        assert_eq!((s.queries(), s.controls(), s.heartbeats()), (1, 1, 1), "{v}");
+        assert_eq!(
+            (s.queries(), s.controls(), s.heartbeats()),
+            (1, 1, 1),
+            "{v}"
+        );
         assert_eq!(s.negotiations, u32::from(v.uses_session_key()), "{v}");
         sim.shutdown().await;
     }
@@ -48,7 +55,10 @@ async fn perfil_v1_con_dps_1_a_5() {
     let sim = start(cfg(V33).profile(Profile::V1)).await;
     let mut c = Client::connect(&sim).await.unwrap();
     assert_eq!(c.status().await.unwrap()["2"], json!("white"));
-    let push = c.set(json!({"2": "colour", "5": "ff00000000ffff"})).await.unwrap();
+    let push = c
+        .set(json!({"2": "colour", "5": "ff00000000ffff"}))
+        .await
+        .unwrap();
     assert_eq!(push["2"], json!("colour"));
 }
 
@@ -56,8 +66,13 @@ async fn perfil_v1_con_dps_1_a_5() {
 async fn valores_invalidos_se_ignoran_como_en_un_foco_real() {
     let sim = start(cfg(V35)).await;
     let mut c = Client::connect(&sim).await.unwrap();
-    c.set_nowait(json!({"22": 0, "99": true, "21": "disco"})).await.unwrap();
-    assert_eq!(c.recv_payload(Duration::from_millis(300)).await, Read::Timeout);
+    c.set_nowait(json!({"22": 0, "99": true, "21": "disco"}))
+        .await
+        .unwrap();
+    assert_eq!(
+        c.recv_payload(Duration::from_millis(300)).await,
+        Read::Timeout
+    );
     assert_eq!(sim.dp("22"), Some(json!(1000)));
     assert!(sim.writes().is_empty());
 }
@@ -99,7 +114,10 @@ async fn cambios_de_afuera_llegan_como_push_a_todas_las_conexiones() {
         Read::Msg(m) => assert_eq!(common::dps_of(&m.payload).unwrap()["22"], json!(500)),
         other => panic!("{other:?}"),
     }
-    assert!(sim.writes().len() == 1, "set_dps no cuenta como escritura por la red");
+    assert!(
+        sim.writes().len() == 1,
+        "set_dps no cuenta como escritura por la red"
+    );
 }
 
 #[tokio::test]
@@ -128,10 +146,17 @@ async fn falla_no_responder_y_recuperarse_en_caliente() {
     assert_eq!(c.heartbeat().await, Read::Timeout);
     assert!(sim.stats().muted >= 1);
     sim.set_dps(dps(json!({"20": false})));
-    assert_eq!(c.recv(Duration::from_millis(200)).await, Read::Timeout, "mudo: tampoco pushes");
+    assert_eq!(
+        c.recv(Duration::from_millis(200)).await,
+        Read::Timeout,
+        "mudo: tampoco pushes"
+    );
 
     sim.update_faults(|f| f.mute = false);
-    assert!(c.status().await.is_some(), "la misma conexión vuelve a andar");
+    assert!(
+        c.status().await.is_some(),
+        "la misma conexión vuelve a andar"
+    );
 }
 
 #[tokio::test]
@@ -142,12 +167,18 @@ async fn falla_rechazar_la_clave_en_34_y_35_rompe_la_negociacion() {
             ..Faults::default()
         }))
         .await;
-        assert!(Client::connect(&sim).await.is_err(), "{v}: la negociación tiene que fallar");
+        assert!(
+            Client::connect(&sim).await.is_err(),
+            "{v}: la negociación tiene que fallar"
+        );
         assert!(sim.wait_until(T, |s| s.key_rejections == 1).await, "{v}");
         assert_eq!(sim.stats().negotiations, 0);
 
         sim.set_faults(Faults::default());
-        assert!(Client::connect(&sim).await.is_ok(), "{v}: con la clave buena vuelve");
+        assert!(
+            Client::connect(&sim).await.is_ok(),
+            "{v}: con la clave buena vuelve"
+        );
     }
 }
 
@@ -161,8 +192,14 @@ async fn falla_rechazar_la_clave_en_31_y_33_corta_la_conexion() {
         sim.update_faults(|f| f.reject_key = true);
         assert_eq!(c.recv(T).await, Read::Closed, "{v}");
 
+        // En 3.1 la consulta va en claro: el corte llega con el primer comando cifrado.
         let mut c = Client::connect(&sim).await.unwrap();
-        assert_eq!(c.status().await, None, "{v}");
+        let respuesta = if v == V31 {
+            c.set(json!({"20": false})).await
+        } else {
+            c.status().await
+        };
+        assert_eq!(respuesta, None, "{v}");
         assert!(sim.wait_until(T, |s| s.key_rejections >= 1).await, "{v}");
     }
 }
@@ -278,7 +315,7 @@ async fn broadcasts_udp_y_req_devinfo() {
 
     // REQ_DEVINFO al "7000": contesta a la IP del pedido, en el puerto de respuesta.
     let app = UdpSocket::bind("127.0.0.1:0").await.unwrap();
-    let pedido = common::plain::udp_frame(cmd::REQ_DEVINFO, br#"{"from":"app","ip":"127.0.0.1"}"#);
+    let pedido = tuya_proto::udp::encode_req_devinfo("127.0.0.1", [7; 12]);
     app.send_to(&pedido, ("127.0.0.1", req_port)).await.unwrap();
     // Llegan anuncios periódicos y la respuesta; alcanza con que llegue alguno más.
     let (n, _) = tokio::time::timeout(T, listener.recv_from(&mut buf))

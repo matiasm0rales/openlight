@@ -62,8 +62,11 @@ impl CapabilitiesExt for Capabilities {
         Some(Capabilities {
             dp_switch: switch.clone(),
             dp_mode: mode.map(|(dp, _)| dp.clone()),
-            dp_bright: bright.map(|(dp, s)| range(dp, s, NEW_BRIGHT)),
-            dp_temp: temp.map(|(dp, s)| range(dp, s, NEW_TEMP)),
+            // Sin `min`/`max` en el esquema, el rango por defecto depende del código: los
+            // `*_v2` son de los focos nuevos (10–1000) y los viejos usan 25–255 / 0–255.
+            dp_bright: bright
+                .map(|(dp, s)| range(dp, s, if is_v2(s) { NEW_BRIGHT } else { OLD_BRIGHT })),
+            dp_temp: temp.map(|(dp, s)| range(dp, s, if is_v2(s) { NEW_TEMP } else { OLD_TEMP })),
             dp_colour: colour.map(|(dp, s)| {
                 let format = if s.code.ends_with("_v2") {
                     ColourFormat::V2Hsv12
@@ -80,6 +83,11 @@ impl CapabilitiesExt for Capabilities {
     fn from_dps(dps: &Dps) -> Option<Self> {
         from_numbers(dps.keys().map(String::as_str), Some(dps))
     }
+}
+
+/// Si el código es de los focos nuevos (`bright_value_v2`, `temp_value_v2`...).
+fn is_v2(schema: &DpSchema) -> bool {
+    schema.code.ends_with("_v2")
 }
 
 /// Rango de un DP numérico desde su esquema (`values.min/max/step`); si no los trae, `fallback`.
@@ -281,6 +289,40 @@ mod tests {
         let caps = Capabilities::from_mapping(&m).unwrap();
         assert_eq!(caps.dp_switch, "20");
         assert_eq!(caps.dp_colour, Some(("24".into(), ColourFormat::V2Hsv12)));
+    }
+
+    #[test]
+    fn los_codigos_viejos_sin_rango_usan_los_rangos_viejos() {
+        let m = mapping(
+            r#"{"1": {"code": "switch_led", "type": "Boolean", "values": {}},
+                "3": {"code": "bright_value", "type": "Integer", "values": {}},
+                "4": {"code": "temp_value", "type": "Integer", "values": {}},
+                "5": {"code": "colour_data", "type": "String", "values": {}}}"#,
+        );
+        let caps = Capabilities::from_mapping(&m).unwrap();
+        assert_eq!(
+            caps.dp_bright.as_ref().map(|r| (r.min, r.max)),
+            Some((25, 255))
+        );
+        assert_eq!(
+            caps.dp_temp.as_ref().map(|r| (r.min, r.max)),
+            Some((0, 255))
+        );
+        // Los `_v2` siguen con los rangos nuevos.
+        let m = mapping(
+            r#"{"20": {"code": "switch_led", "type": "Boolean", "values": {}},
+                "22": {"code": "bright_value_v2", "type": "Integer", "values": {}},
+                "23": {"code": "temp_value_v2", "type": "Integer", "values": {}}}"#,
+        );
+        let caps = Capabilities::from_mapping(&m).unwrap();
+        assert_eq!(
+            caps.dp_bright.as_ref().map(|r| (r.min, r.max)),
+            Some((10, 1000))
+        );
+        assert_eq!(
+            caps.dp_temp.as_ref().map(|r| (r.min, r.max)),
+            Some((0, 1000))
+        );
     }
 
     #[test]

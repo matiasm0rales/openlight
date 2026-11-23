@@ -10,7 +10,15 @@ authors.workspace = true
 publish = false
 
 [dependencies]
-# openlight-types.workspace = true  (descomentar al implementar)
+openlight-types.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["net", "io-util", "time", "rt", "macros", "sync"] }
+getrandom = "0.3.4"
+tracing = "0.1.44"
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt-multi-thread", "signal", "io-std"] }
 
 [lints]
 workspace = true

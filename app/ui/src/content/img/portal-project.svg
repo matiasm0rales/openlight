@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" role="img" aria-label="Menú Cloud, Development y el botón Create Cloud Project">
+  <rect x="8" y="8" width="304" height="184" rx="14" fill="#2a251e" stroke="#6b5f4e"/>
+  <rect x="8" y="8" width="74" height="184" rx="14" fill="#1b1814"/>
+  <rect x="20" y="30" width="44" height="7" rx="3.5" fill="#8e8474"/>
+  <rect x="20" y="48" width="50" height="16" rx="5" fill="#ffb547" opacity=".2"/>
+  <text x="24" y="59" font-family="sans-serif" font-size="8" font-weight="700" fill="#ffb547">Cloud</text>
+  <text x="30" y="76" font-family="sans-serif" font-size="7.5" fill="#f3ede2">Development</text>
+  <rect x="20" y="88" width="40" height="7" rx="3.5" fill="#5a5042"/>
+  <rect x="20" y="104" width="36" height="7" rx="3.5" fill="#5a5042"/>
+  <rect x="98" y="28" width="120" height="10" rx="5" fill="#f3ede2"/>
+  <rect x="214" y="58" width="84" height="20" rx="10" fill="#ffb547"/>
+  <text x="256" y="71" text-anchor="middle" font-family="sans-serif" font-size="7.5" font-weight="700" fill="#1b1206">Create Cloud Project</text>
+  <rect x="98" y="92" width="200" height="22" rx="6" fill="#1b1814" stroke="#3b342a"/>
+  <rect x="98" y="120" width="200" height="22" rx="6" fill="#1b1814" stroke="#3b342a"/>
+  <rect x="98" y="148" width="200" height="22" rx="6" fill="#1b1814" stroke="#3b342a"/>
+  <path d="M256 84 L256 52" stroke="#ffb547" stroke-width="2" stroke-dasharray="3 3"/>
+</svg>

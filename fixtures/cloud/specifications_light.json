@@ -1,0 +1,101 @@
+{
+  "result": {
+    "category": "dj",
+    "functions": [
+      {
+        "code": "switch_led",
+        "dp_id": 20,
+        "type": "Boolean",
+        "values": "{}"
+      },
+      {
+        "code": "work_mode",
+        "dp_id": 21,
+        "type": "Enum",
+        "values": "{\"range\":[\"white\",\"colour\",\"scene\",\"music\"]}"
+      },
+      {
+        "code": "bright_value_v2",
+        "dp_id": 22,
+        "type": "Integer",
+        "values": "{\"min\":10,\"max\":1000,\"scale\":0,\"step\":1}"
+      },
+      {
+        "code": "temp_value_v2",
+        "dp_id": 23,
+        "type": "Integer",
+        "values": "{\"min\":0,\"max\":1000,\"scale\":0,\"step\":1}"
+      },
+      {
+        "code": "colour_data_v2",
+        "dp_id": 24,
+        "type": "Json",
+        "values": "{\"h\":{\"min\":0,\"scale\":0,\"unit\":\"\",\"max\":360,\"step\":1},\"s\":{\"min\":0,\"scale\":0,\"unit\":\"\",\"max\":1000,\"step\":1},\"v\":{\"min\":0,\"scale\":0,\"unit\":\"\",\"max\":1000,\"step\":1}}"
+      },
+      {
+        "code": "scene_data_v2",
+        "dp_id": 25,
+        "type": "Json",
+        "values": "{}"
+      },
+      {
+        "code": "countdown_1",
+        "dp_id": 26,
+        "type": "Integer",
+        "values": "{\"unit\":\"秒\",\"min\":0,\"max\":86400,\"scale\":0,\"step\":1}"
+      },
+      {
+        "code": "control_data",
+        "dp_id": 28,
+        "type": "Json",
+        "values": "{}"
+      }
+    ],
+    "status": [
+      {
+        "code": "switch_led",
+        "dp_id": 20,
+        "type": "Boolean",
+        "values": "{}"
+      },
+      {
+        "code": "work_mode",
+        "dp_id": 21,
+        "type": "Enum",
+        "values": "{\"range\":[\"white\",\"colour\",\"scene\",\"music\"]}"
+      },
+      {
+        "code": "bright_value_v2",
+        "dp_id": 22,
+        "type": "Integer",
+        "values": "{\"min\":10,\"max\":1000,\"scale\":0,\"step\":1}"
+      },
+      {
+        "code": "colour_data_v2",
+        "dp_id": 24,
+        "type": "Json",
+        "values": "{\"h\":{\"min\":0,\"scale\":0,\"unit\":\"\",\"max\":360,\"step\":1},\"s\":{\"min\":0,\"scale\":0,\"unit\":\"\",\"max\":1000,\"step\":1},\"v\":{\"min\":0,\"scale\":0,\"unit\":\"\",\"max\":1000,\"step\":1}}"
+      },
+      {
+        "code": "rhythm_mode",
+        "dp_id": 30,
+        "type": "Raw",
+        "values": "{\"maxlen\":255}"
+      },
+      {
+        "code": "do_not_disturb",
+        "dp_id": 34,
+        "type": "Boolean",
+        "values": "{}"
+      },
+      {
+        "code": "remote_name",
+        "type": "String",
+        "values": "{\"maxlen\":32}"
+      }
+    ]
+  },
+  "success": true,
+  "t": 1700000000600,
+  "tid": "rawtid0007"
+}

@@ -10,7 +10,59 @@ authors.workspace = true
 publish = false
 
 [dependencies]
-# openlight-types.workspace = true  (descomentar al implementar)
+openlight-types.workspace = true
+tokio.workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+# macos_14_0 habilita preservesAspectRatio y captureResolution; en macOS anteriores esas
+# llamadas fallan en tiempo de ejecución sin romper nada.
+screencapturekit = { version = "12.0.0", features = ["macos_14_0"] }
+objc2 = "0.6.5"
+objc2-core-graphics = { version = "0.3.2", default-features = false, features = ["std", "libc", "CGDirectDisplay", "CGDisplayConfiguration", "CGError", "CGWindow"] }
+objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std", "NSScreen", "NSGraphics"] }
+objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSString", "NSDictionary", "NSValue", "NSArray", "NSEnumerator"] }
+dispatch2 = { version = "0.3.1", default-features = false, features = ["std"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows = { version = "0.62.2", features = [
+    "Foundation",
+    "Graphics_Capture",
+    "Graphics_DirectX",
+    "Graphics_DirectX_Direct3D11",
+    "Security_Authorization_AppCapabilityAccess",
+    "Win32_Devices_Display",
+    "Win32_Foundation",
+    "Win32_Graphics_Direct3D",
+    "Win32_Graphics_Direct3D11",
+    "Win32_Graphics_Dxgi",
+    "Win32_Graphics_Dxgi_Common",
+    "Win32_Graphics_Gdi",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Power",
+    "Win32_System_SystemServices",
+    "Win32_System_WinRT",
+    "Win32_System_WinRT_Direct3D11",
+    "Win32_System_WinRT_Graphics_Capture",
+    "Win32_UI_WindowsAndMessaging",
+] }
+# Linux (E3): X11 con RandR + Render, Wayland con el portal ScreenCast + PipeWire.
+[target.'cfg(target_os = "linux")'.dependencies]
+x11rb = { version = "0.14.0", features = ["randr", "render", "dpms"] }
+ashpd = { version = "0.14.3", default-features = false, features = ["tokio", "screencast"] }
+tokio = { workspace = true, features = ["rt", "time", "macros"] }
+wayland-client = "0.31.15"
+wayland-protocols = { version = "0.32.13", features = ["client", "unstable"] }
+# Solo los bindings `-sys`: se generan contra los headers instalados y sirven para PipeWire 0.3.48
+# (Ubuntu 22.04) y 1.x. Los crates seguros `pipewire`/`libspa` no compilan en las dos.
+pipewire-sys = { version = "0.10.1", optional = true }
+libspa-sys = { version = "0.10.1", optional = true }
+tracing = "0.1.44"
+
+[features]
+default = ["pipewire"]
+# Linux: cuadros de Wayland por PipeWire. Sin esta feature, Wayland responde `Unsupported`
+# (sirve para compilar sin libpipewire, por ejemplo al chequear desde otra plataforma).
+pipewire = ["dep:pipewire-sys", "dep:libspa-sys"]
 
 [lints]
 workspace = true

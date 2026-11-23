@@ -1,0 +1,134 @@
+{
+  "topics": {
+    "tuya_account": {
+      "title": "Crear la cuenta de desarrollador",
+      "intro": "Es gratis y se hace una sola vez. OpenLight la usa solo para leer la clave local de cada foco; después todo funciona sin nube.",
+      "steps": [
+        "Entrá a iot.tuya.com y tocá «Sign Up».",
+        "Usá tu mail (puede ser el mismo de Smart Life, pero no hace falta).",
+        "Confirmá el código que te llega por mail.",
+        "Si te pregunta el tipo de cuenta, elegí «Individual developer»."
+      ],
+      "tip": "El portal está en inglés y cambia seguido. Si algo no coincide con esta guía, buscá el botón con un nombre parecido.",
+      "links": [{ "label": "Abrir iot.tuya.com", "url": "https://iot.tuya.com/" }]
+    },
+    "cloud_project": {
+      "title": "Crear el proyecto Cloud",
+      "intro": "El proyecto es lo que te da el Access ID y el Access Secret que pide OpenLight.",
+      "steps": [
+        "En el menú de la izquierda: Cloud → Development.",
+        "Tocá «Create Cloud Project».",
+        "Poné cualquier nombre (por ejemplo «OpenLight»).",
+        "Industry: «Smart Home». Development Method: «Smart Home».",
+        "Data Center: el que corresponde a tu cuenta de Smart Life (mirá «Elegir el Data Center»).",
+        "Aceptá los servicios que propone (tiene que estar «IoT Core»).",
+        "En la pestaña «Overview» del proyecto están el Access ID y el Access Secret."
+      ],
+      "tip": "Si copiaste mal el Access Secret, Tuya responde «firma inválida». Copialo con el botón de copiar del portal.",
+      "links": [{ "label": "Abrir Cloud → Development", "url": "https://iot.tuya.com/cloud/" }]
+    },
+    "data_center": {
+      "title": "Elegir el Data Center",
+      "intro": "Tiene que ser el mismo lugar donde vive tu cuenta de Smart Life, que depende del país que elegiste al crearla.",
+      "steps": [
+        "En Smart Life: Yo → Ajustes → Cuenta y seguridad → Región. Ese es tu país.",
+        "América: «Western America». Europa: «Central Europe». India: «India». China: «China».",
+        "Si dudás, elegí cualquiera: OpenLight prueba las demás y te dice cuál es la correcta."
+      ],
+      "tip": "El Data Center del proyecto se puede cambiar después en Overview → Edit."
+    },
+    "link_smart_life": {
+      "title": "Vincular Smart Life",
+      "intro": "Así el proyecto puede ver los focos que ya tenés agregados en la app del celular.",
+      "steps": [
+        "En el proyecto: pestaña «Devices» → «Link App Account» (o «Link Tuya App Account»).",
+        "Tocá «Add App Account»: aparece un código QR.",
+        "En el celular, abrí Smart Life → Yo → el ícono de escanear (arriba a la derecha).",
+        "Escaneá el QR y confirmá. En el portal aparece tu cuenta y tus focos."
+      ],
+      "tip": "Si Tuya dice «permiso denegado», casi siempre es que falta este paso o que el Data Center no es el de tu cuenta."
+    },
+    "iot_core_trial": {
+      "title": "Extender la prueba de IoT Core",
+      "intro": "La prueba gratis del servicio IoT Core vence cada tanto. Solo hace falta para agregar focos o renovar claves: el uso diario es 100 % local.",
+      "steps": [
+        "Entrá a iot.tuya.com → Cloud → Cloud Services.",
+        "Buscá «IoT Core» y entrá.",
+        "Tocá «Extend Trial Period» (o «Renew»), completá el formulario y esperá la aprobación (suele ser automática)."
+      ],
+      "links": [{ "label": "Abrir Cloud Services", "url": "https://iot.tuya.com/cloud/products" }]
+    },
+    "device_troubleshooting": {
+      "title": "El foco no responde",
+      "intro": "Casi siempre es una de estas cuatro cosas.",
+      "steps": [
+        "La compu y el foco tienen que estar en la misma Wi-Fi (ojo con las redes «invitados» o de 5 GHz separadas).",
+        "Cerrá la app Smart Life en el celular: a veces ocupa la conexión local del foco.",
+        "Si el foco se apagó desde el interruptor de la pared, prendelo y esperá 10 segundos.",
+        "Si lo volviste a vincular en Smart Life, la clave cambió: usá «Renovar clave»."
+      ],
+      "tip": "En Diagnóstico ves el motivo exacto del último corte de cada foco."
+    },
+    "permissions": {
+      "title": "Permisos del sistema",
+      "intro": "OpenLight necesita ver la pantalla y hablar con los focos de tu red. Nada sale de tu compu.",
+      "steps": [
+        "macOS: Ajustes del Sistema → Privacidad y seguridad → Grabación de pantalla → activá OpenLight. Después hay que reabrir la app: macOS lo exige.",
+        "macOS: en la misma sección, «Red local» → activá OpenLight.",
+        "Windows: si aparece el aviso del firewall, permití «Redes privadas».",
+        "Linux (Wayland): cuando el escritorio pregunte qué pantalla compartir, elegí el monitor. OpenLight recuerda la elección."
+      ]
+    }
+  },
+  "wizard": {
+    "tuya_account": {
+      "lead": "Tuya es la empresa detrás de Smart Life. Su portal para desarrolladores es la única forma oficial de leer la clave local de tus focos.",
+      "steps": [
+        "Abrí iot.tuya.com y creá una cuenta gratis (mail y contraseña).",
+        "Confirmá el código que te llega por mail.",
+        "Si pregunta, elegí «Individual developer»."
+      ],
+      "image": "portal-signup",
+      "link": { "label": "Abrir iot.tuya.com", "url": "https://iot.tuya.com/" }
+    },
+    "cloud_project": {
+      "lead": "Un proyecto Cloud es una «app» tuya dentro del portal. Te da las dos claves que vas a pegar en el paso 6.",
+      "steps": [
+        "Menú izquierdo: Cloud → Development → «Create Cloud Project».",
+        "Nombre: el que quieras. Industry y Development Method: «Smart Home».",
+        "Data Center: el de tu cuenta de Smart Life (elegilo abajo).",
+        "Aceptá los servicios propuestos; tiene que estar «IoT Core»."
+      ],
+      "image": "portal-project",
+      "note": "IoT Core viene con una prueba gratis que vence cada unos meses. No pasa nada: solo hace falta para agregar focos o renovar claves, y se extiende gratis."
+    },
+    "link_app": {
+      "lead": "Vinculá tu cuenta de Smart Life al proyecto para que vea tus focos.",
+      "steps": [
+        "En el proyecto: pestaña «Devices» → «Link App Account».",
+        "«Add App Account»: aparece un QR en la pantalla."
+      ],
+      "phone_steps": [
+        "Abrí Smart Life en el celular.",
+        "Tocá «Yo» (abajo a la derecha).",
+        "Tocá el ícono de escanear (arriba a la derecha) y apuntá al QR.",
+        "Confirmá: en el portal aparecen tus focos."
+      ],
+      "image": "phone-scan"
+    },
+    "credentials": {
+      "lead": "En el proyecto, pestaña «Overview»: copiá el Access ID y el Access Secret (el botón de copiar evita errores).",
+      "steps": [],
+      "note": "Las claves se guardan en el llavero del sistema, nunca en un archivo de texto."
+    }
+  },
+  "data_centers": [
+    { "where": "Argentina, Uruguay, Chile, México y el resto de América", "region": "us" },
+    { "where": "Estados Unidos (costa este)", "region": "us_east" },
+    { "where": "España, Alemania, Italia y casi toda Europa", "region": "eu" },
+    { "where": "Reino Unido, Francia y Europa occidental", "region": "eu_west" },
+    { "where": "India", "region": "india" },
+    { "where": "China", "region": "china" },
+    { "where": "Sudeste asiático", "region": "singapore" }
+  ]
+}

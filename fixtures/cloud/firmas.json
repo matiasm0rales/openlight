@@ -1,0 +1,48 @@
+{
+  "source": "tinytuya 1.20.0, Cloud._tuyaplatform (new_sign_algorithm=True)",
+  "access_id": "fakeaccessid00000000",
+  "access_secret": "fakeaccesssecret0000000000000000",
+  "region": "us",
+  "cases": [
+    {
+      "name": "token",
+      "method": "GET",
+      "url": "https://openapi.tuyaus.com/v1.0/token?grant_type=1",
+      "token": null,
+      "t": "1700000000123",
+      "sign": "0C4F4240C0013B13347AE281E985A842AA5E005FC51F9DA42BA7F85946C58468"
+    },
+    {
+      "name": "devices_first_page",
+      "method": "GET",
+      "url": "https://openapi.tuyaus.com/v1.0/iot-01/associated-users/devices?size=50",
+      "token": "faketoken0000000000000000000000",
+      "t": "1700000000123",
+      "sign": "8FD1CACFB8558616258AAD3A854B7C185575F921E8FE232AA267FDF2BB8A2EC6"
+    },
+    {
+      "name": "devices_next_page",
+      "method": "GET",
+      "url": "https://openapi.tuyaus.com/v1.0/iot-01/associated-users/devices?last_row_key=FAKEROWKEY01&size=50",
+      "token": "faketoken0000000000000000000000",
+      "t": "1700000000123",
+      "sign": "7D36AE255F0C313788343BAE139715B0EDA8D2D6DA2BDD220569D2088643B5B8"
+    },
+    {
+      "name": "devices_by_user",
+      "method": "GET",
+      "url": "https://openapi.tuyaus.com/v1.3/iot-03/devices?page_size=75&source_id=fakeuid&source_type=tuyaUser",
+      "token": "faketoken0000000000000000000000",
+      "t": "1700000000123",
+      "sign": "6963E680C198A141CE7C1E3DDE35FA58712439EC57637A38E13F5F0ABC182670"
+    },
+    {
+      "name": "specifications",
+      "method": "GET",
+      "url": "https://openapi.tuyaus.com/v1.1/devices/openlightfakedevice001/specifications",
+      "token": "faketoken0000000000000000000000",
+      "t": "1700000000123",
+      "sign": "528CA8E6C10AAED669412EB752BE5C0B62074E15F7D1B3542F88716B9698FA02"
+    }
+  ]
+}

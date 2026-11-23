@@ -1,0 +1,134 @@
+{
+  "topics": {
+    "tuya_account": {
+      "title": "Create the developer account",
+      "intro": "It is free and you only do it once. OpenLight uses it just to read each bulb's local key; after that everything works without the cloud.",
+      "steps": [
+        "Go to iot.tuya.com and click “Sign Up”.",
+        "Use your email (it can be the same as Smart Life, but it doesn't have to).",
+        "Confirm the code you get by email.",
+        "If it asks for the account type, choose “Individual developer”."
+      ],
+      "tip": "The portal changes often. If something doesn't match this guide, look for a button with a similar name.",
+      "links": [{ "label": "Open iot.tuya.com", "url": "https://iot.tuya.com/" }]
+    },
+    "cloud_project": {
+      "title": "Create the Cloud project",
+      "intro": "The project is what gives you the Access ID and Access Secret OpenLight asks for.",
+      "steps": [
+        "In the left menu: Cloud → Development.",
+        "Click “Create Cloud Project”.",
+        "Use any name (for example “OpenLight”).",
+        "Industry: “Smart Home”. Development Method: “Smart Home”.",
+        "Data Center: the one matching your Smart Life account (see “Choose the Data Center”).",
+        "Accept the suggested services (“IoT Core” must be there).",
+        "The project's “Overview” tab shows the Access ID and Access Secret."
+      ],
+      "tip": "If the Access Secret is mistyped, Tuya answers “sign invalid”. Use the portal's copy button.",
+      "links": [{ "label": "Open Cloud → Development", "url": "https://iot.tuya.com/cloud/" }]
+    },
+    "data_center": {
+      "title": "Choose the Data Center",
+      "intro": "It must be where your Smart Life account lives, which depends on the country you picked when you created it.",
+      "steps": [
+        "In Smart Life: Me → Settings → Account and Security → Region. That is your country.",
+        "Americas: “Western America”. Europe: “Central Europe”. India: “India”. China: “China”.",
+        "If unsure, pick any: OpenLight tries the others and tells you the right one."
+      ],
+      "tip": "You can change the project's Data Center later in Overview → Edit."
+    },
+    "link_smart_life": {
+      "title": "Link Smart Life",
+      "intro": "This lets the project see the bulbs you already added in the phone app.",
+      "steps": [
+        "In the project: “Devices” tab → “Link App Account” (or “Link Tuya App Account”).",
+        "Click “Add App Account”: a QR code appears.",
+        "On your phone, open Smart Life → Me → the scan icon (top right).",
+        "Scan the QR and confirm. Your account and bulbs show up in the portal."
+      ],
+      "tip": "If Tuya says “permission denied”, this step is almost always missing or the Data Center is not your account's."
+    },
+    "iot_core_trial": {
+      "title": "Extend the IoT Core trial",
+      "intro": "The free IoT Core trial expires every few months. It is only needed to add bulbs or renew keys: daily use is 100% local.",
+      "steps": [
+        "Go to iot.tuya.com → Cloud → Cloud Services.",
+        "Find “IoT Core” and open it.",
+        "Click “Extend Trial Period” (or “Renew”), fill in the form and wait for approval (usually automatic)."
+      ],
+      "links": [{ "label": "Open Cloud Services", "url": "https://iot.tuya.com/cloud/products" }]
+    },
+    "device_troubleshooting": {
+      "title": "The bulb doesn't respond",
+      "intro": "It is almost always one of these four things.",
+      "steps": [
+        "The computer and the bulb must be on the same Wi-Fi (watch out for “guest” or separate 5 GHz networks).",
+        "Close the Smart Life app on your phone: it sometimes holds the bulb's local connection.",
+        "If the bulb was turned off at the wall switch, turn it on and wait 10 seconds.",
+        "If you re-paired it in Smart Life, the key changed: use “Renew key”."
+      ],
+      "tip": "Diagnostics shows the exact reason for each bulb's last disconnect."
+    },
+    "permissions": {
+      "title": "System permissions",
+      "intro": "OpenLight needs to see the screen and talk to the bulbs on your network. Nothing leaves your computer.",
+      "steps": [
+        "macOS: System Settings → Privacy & Security → Screen Recording → enable OpenLight. Then reopen the app: macOS requires it.",
+        "macOS: in the same section, “Local Network” → enable OpenLight.",
+        "Windows: if the firewall prompt appears, allow “Private networks”.",
+        "Linux (Wayland): when the desktop asks which screen to share, choose the monitor. OpenLight remembers the choice."
+      ]
+    }
+  },
+  "wizard": {
+    "tuya_account": {
+      "lead": "Tuya is the company behind Smart Life. Its developer portal is the only official way to read your bulbs' local key.",
+      "steps": [
+        "Open iot.tuya.com and create a free account (email and password).",
+        "Confirm the code you get by email.",
+        "If asked, choose “Individual developer”."
+      ],
+      "image": "portal-signup",
+      "link": { "label": "Open iot.tuya.com", "url": "https://iot.tuya.com/" }
+    },
+    "cloud_project": {
+      "lead": "A Cloud project is your own “app” inside the portal. It gives you the two keys you paste in step 6.",
+      "steps": [
+        "Left menu: Cloud → Development → “Create Cloud Project”.",
+        "Name: anything. Industry and Development Method: “Smart Home”.",
+        "Data Center: your Smart Life account's (choose it below).",
+        "Accept the suggested services; “IoT Core” must be there."
+      ],
+      "image": "portal-project",
+      "note": "IoT Core comes with a free trial that expires every few months. That's fine: it is only needed to add bulbs or renew keys, and it can be extended for free."
+    },
+    "link_app": {
+      "lead": "Link your Smart Life account to the project so it can see your bulbs.",
+      "steps": [
+        "In the project: “Devices” tab → “Link App Account”.",
+        "“Add App Account”: a QR shows up on screen."
+      ],
+      "phone_steps": [
+        "Open Smart Life on your phone.",
+        "Tap “Me” (bottom right).",
+        "Tap the scan icon (top right) and point at the QR.",
+        "Confirm: your bulbs show up in the portal."
+      ],
+      "image": "phone-scan"
+    },
+    "credentials": {
+      "lead": "In the project, “Overview” tab: copy the Access ID and Access Secret (the copy button avoids typos).",
+      "steps": [],
+      "note": "The keys are stored in the system keychain, never in a text file."
+    }
+  },
+  "data_centers": [
+    { "where": "Argentina, Uruguay, Chile, Mexico and the rest of the Americas", "region": "us" },
+    { "where": "United States (east coast)", "region": "us_east" },
+    { "where": "Spain, Germany, Italy and most of Europe", "region": "eu" },
+    { "where": "United Kingdom, France and Western Europe", "region": "eu_west" },
+    { "where": "India", "region": "india" },
+    { "where": "China", "region": "china" },
+    { "where": "Southeast Asia", "region": "singapore" }
+  ]
+}

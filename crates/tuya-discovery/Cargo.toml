@@ -10,7 +10,18 @@ authors.workspace = true
 publish = false
 
 [dependencies]
-# openlight-types.workspace = true  (descomentar al implementar)
+openlight-types.workspace = true
+tuya-proto = { path = "../tuya-proto" }
+serde_json.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["net", "time", "rt", "macros"] }
+socket2 = { version = "0.6", features = ["all"] }
+if-addrs = "0.15"
+rand = "0.10"
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+hex = "0.4.3"
 
 [lints]
 workspace = true

@@ -4,11 +4,23 @@
 //! esa tarea es dueña de esta carpeta (ver `docs/AGENTS.md`).
 //!
 //! Cada backend vive en su carpeta y tiene su propio dueño: `src/macos` (E1),
-//! `src/windows` (E2) y `src/linux` (E3).
+//! `src/windows` (E2) y `src/linux` (E3). `src/common` (E1) tiene lo que no depende del sistema:
+//! qué monitor seguir (`elegir_monitor` del script), reducción de cuadros y cuadro vacío.
+
+pub mod common;
 
 #[cfg(target_os = "linux")]
 pub mod linux;
 #[cfg(target_os = "macos")]
 pub mod macos;
-#[cfg(target_os = "windows")]
+#[cfg(target_os = "macos")]
+pub use macos::MacosCapture as PlatformCapture;
+// El módulo de Windows también se compila en las pruebas de los otros sistemas: así sus
+// conversiones puras (HDR → SDR, reducción) se prueban en cualquier máquina.
+#[cfg(any(target_os = "windows", test))]
 pub mod windows;
+#[cfg(target_os = "windows")]
+pub use windows::WindowsCapture as PlatformCapture;
+
+#[cfg(target_os = "linux")]
+pub use linux::LinuxCapture as PlatformCapture;

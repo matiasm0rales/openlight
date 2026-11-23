@@ -1,0 +1,4 @@
+{
+  "_comment": "Escenas que ofrece el control manual a los focos con modo 'scene'. Cada 'value' es el valor del DP de escena tal como lo espera el foco: hay que verificarlo contra el mapeo real (tarea F / Q2) antes de agregarlo. Mientras la lista esté vacía, la UI explica que las escenas se eligen desde Smart Life.",
+  "scenes": []
+}

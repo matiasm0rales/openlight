@@ -1,0 +1,7 @@
+{
+  "1": {"code": "switch_led", "type": "Boolean", "values": {}},
+  "2": {"code": "work_mode", "type": "Enum", "values": {"range": ["white", "colour", "scene", "music"]}},
+  "3": {"code": "bright_value", "type": "Integer", "values": {"min": 25, "max": 255, "scale": 0, "step": 1}},
+  "4": {"code": "temp_value", "type": "Integer", "values": {"min": 0, "max": 255, "scale": 0, "step": 1}},
+  "5": {"code": "colour_data", "type": "String", "values": {"maxlen": 14}}
+}

@@ -42,6 +42,7 @@ pub(crate) const MEDIA_SUBTYPE_RAW: u32 = 1;
 
 /// Tipos de choice (`spa/pod/pod.h`).
 pub(crate) mod choice {
+    #[cfg(test)]
     pub const NONE: u32 = 0;
     pub const RANGE: u32 = 1;
     pub const ENUM: u32 = 3;

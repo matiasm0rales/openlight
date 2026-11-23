@@ -89,7 +89,7 @@ pub fn downscale_bgra(
             let mut sum = [0u64; 4];
             for y in y0..y1 {
                 let fila = &src[y * stride + x0 * 4..y * stride + x1 * 4];
-                for px in fila.chunks_exact(4) {
+                for px in fila.as_chunks::<4>().0 {
                     for (s, &c) in sum.iter_mut().zip(px) {
                         *s += u64::from(c);
                     }
@@ -120,7 +120,7 @@ pub fn average_rgb(bgra: &[u8]) -> Option<(f32, f32, f32)> {
         return None;
     }
     let mut sum = [0u64; 3];
-    for px in bgra.chunks_exact(4) {
+    for px in bgra.as_chunks::<4>().0 {
         sum[0] += u64::from(px[2]);
         sum[1] += u64::from(px[1]);
         sum[2] += u64::from(px[0]);
@@ -147,7 +147,8 @@ mod tests {
     // port: test_ambilight.py::ElegirMonitor::test_casos
     #[test]
     fn elegir_monitor_casos() {
-        let casos: &[(Option<usize>, &[bool], Option<usize>, &str)] = &[
+        type Caso<'a> = (Option<usize>, &'a [bool], Option<usize>, &'a str);
+        let casos: &[Caso] = &[
             (None, &[true, false], Some(2), "externo a la derecha"),
             (None, &[false, true], Some(1), "externo como principal"),
             (None, &[true], Some(1), "solo la MacBook"),

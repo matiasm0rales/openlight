@@ -224,10 +224,11 @@ mod tests {
         assert_ne!(estado, PermissionState::NotApplicable);
     }
 
-    // Necesita el permiso de Grabación de pantalla, que los runners de macOS del CI no tienen.
+    // Necesita el permiso de Grabación de pantalla (los runners de macOS del CI no lo tienen) y
+    // un monitor despierto: macOS saca de la lista activa a los que están dormidos.
     // Correr a mano con `cargo test -p capture -- --ignored`.
     #[test]
-    #[ignore = "necesita permiso de Grabación de pantalla"]
+    #[ignore = "necesita permiso de Grabación de pantalla y una pantalla despierta"]
     fn captura_cuadros_reales_del_monitor_elegido() {
         let mut fuente = MacosCapture::new().unwrap();
         let pantallas = fuente.displays().unwrap();
@@ -244,7 +245,7 @@ mod tests {
         let cuadro = rx.borrow().clone().unwrap();
         assert_eq!((cuadro.width, cuadro.height), (96, 54));
         assert_eq!(cuadro.bgra.len(), 96 * 54 * 4);
-        assert!(cuadro.bgra.chunks_exact(4).all(|px| px[3] == 255));
+        assert!(cuadro.bgra.as_chunks::<4>().0.iter().all(|px| px[3] == 255));
         fuente.stop();
         assert!(!fuente.is_running());
     }

@@ -4,7 +4,11 @@
 
 pub mod caps;
 pub mod colour;
+pub mod config;
+#[allow(dead_code)] // temporal: lo usa el actor (commit siguiente)
+mod health;
 pub mod original;
 
 pub use caps::CapabilitiesExt;
+pub use config::{DeviceConfig, IpMode, Locator, NoLocator, TCP_PORT, Timings};
 pub use original::{MemoryStore, SavedState, StateStore, choose_original};

@@ -11,7 +11,13 @@ publish = false
 
 [dependencies]
 openlight-types.workspace = true
+tuya-proto = { path = "../tuya-proto" }
+async-trait.workspace = true
 serde_json.workspace = true
+tokio = { workspace = true, features = ["time", "sync"] }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["time", "sync", "rt", "macros", "test-util"] }
 
 [lints]
 workspace = true

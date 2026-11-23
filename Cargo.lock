@@ -5408,8 +5408,11 @@ dependencies = [
 name = "tuya-device"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "openlight-types",
  "serde_json",
+ "tokio",
+ "tuya-proto",
 ]
 
 [[package]]

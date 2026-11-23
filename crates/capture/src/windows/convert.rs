@@ -110,42 +110,67 @@ pub(crate) fn rgba16f_to_bgra8(
 /// Reduce (o agranda) una imagen BGRA de 8 bits a `dst` con promedio de áreas.
 ///
 /// `pitch` son los bytes por fila de la fuente (puede tener relleno, como una textura mapeada).
-/// Cada píxel de destino promedia el rectángulo de la fuente que le toca; si la fuente es más
-/// chica que el destino, toma el píxel más cercano. El alfa de salida siempre es 255.
+/// Cada píxel de destino cubre un rectángulo fraccionario de la fuente (por ejemplo, 1.25
+/// píxeles de ancho al pasar de 120 a 96) y cada píxel de la fuente pesa según cuánto de él
+/// cae adentro. Así todos los píxeles de destino representan la misma área y el promedio del
+/// cuadro reducido es el de la imagen original. Si la fuente es más chica que el destino, cada
+/// píxel de destino toma el de la fuente que lo contiene. El alfa de salida siempre es 255.
 pub(crate) fn box_resample_bgra8(
     src: &[u8],
     src_size: (u32, u32),
     pitch: usize,
     dst: (u32, u32),
 ) -> Vec<u8> {
-    let (sw, sh) = (src_size.0 as usize, src_size.1 as usize);
     let (dw, dh) = (dst.0.max(1) as usize, dst.1.max(1) as usize);
-    let span = |d: usize, s: usize, n: usize| {
-        let a = d * s / n;
-        let b = ((d + 1) * s / n).max(a + 1).min(s);
-        (a.min(s - 1), b)
-    };
+    let cols = area_weights(src_size.0 as usize, dw);
+    let rows = area_weights(src_size.1 as usize, dh);
     let mut out = Vec::with_capacity(dw * dh * 4);
-    for dy in 0..dh {
-        let (y0, y1) = span(dy, sh, dh);
-        for dx in 0..dw {
-            let (x0, x1) = span(dx, sw, dw);
-            let mut acc = [0u32; 3];
-            for y in y0..y1 {
+    for row_weights in &rows {
+        for col_weights in &cols {
+            let mut acc = [0f32; 3];
+            let mut total = 0f32;
+            for &(y, wy) in row_weights {
                 let row = &src[y * pitch..];
-                for x in x0..x1 {
+                for &(x, wx) in col_weights {
+                    let w = wy * wx;
                     let p = &row[x * 4..x * 4 + 3];
-                    acc[0] += u32::from(p[0]);
-                    acc[1] += u32::from(p[1]);
-                    acc[2] += u32::from(p[2]);
+                    acc[0] += w * f32::from(p[0]);
+                    acc[1] += w * f32::from(p[1]);
+                    acc[2] += w * f32::from(p[2]);
+                    total += w;
                 }
             }
-            let n = ((y1 - y0) * (x1 - x0)) as u32;
-            let avg = acc.map(|v| ((v + n / 2) / n) as u8);
+            let avg = acc.map(|v| (v / total).round().clamp(0.0, 255.0) as u8);
             out.extend_from_slice(&[avg[0], avg[1], avg[2], 255]);
         }
     }
     out
+}
+
+/// Para cada uno de los `dst` píxeles de destino de un eje, los píxeles de la fuente (de `src`)
+/// que cubre y qué fracción de cada uno cae adentro.
+fn area_weights(src: usize, dst: usize) -> Vec<Vec<(usize, f32)>> {
+    let src = src.max(1);
+    let scale = src as f64 / dst as f64;
+    (0..dst)
+        .map(|i| {
+            let (a, b) = (i as f64 * scale, (i + 1) as f64 * scale);
+            let first = (a.floor() as usize).min(src - 1);
+            let mut weights = Vec::new();
+            let mut x = first;
+            while x < src && (x as f64) < b {
+                let w = b.min(x as f64 + 1.0) - a.max(x as f64);
+                if w > 1e-9 {
+                    weights.push((x, w as f32));
+                }
+                x += 1;
+            }
+            if weights.is_empty() {
+                weights.push((first, 1.0));
+            }
+            weights
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -269,6 +294,50 @@ mod tests {
                 .iter()
                 .all(|p| p == &[10, 20, 30, 255])
         );
+    }
+
+    #[test]
+    fn box_conserva_el_promedio_de_la_imagen() {
+        // 120 → 96 columnas: con rangos enteros, unas celdas cubrirían 1 columna y otras 2, y
+        // las angostas pesarían de más en el promedio. Con pesos por área, no.
+        let (sw, sh) = (120usize, 67usize);
+        let mut src = Vec::with_capacity(sw * sh * 4);
+        for y in 0..sh {
+            for x in 0..sw {
+                // Columnas alternadas negras y blancas, más un gradiente vertical en verde.
+                let v = if x % 2 == 0 { 0 } else { 255 };
+                src.extend_from_slice(&[v, (y * 255 / (sh - 1)) as u8, 255 - v, 255]);
+            }
+        }
+        let media = |img: &[u8], c: usize| {
+            let n = img.len() / 4;
+            img.as_chunks::<4>()
+                .0
+                .iter()
+                .map(|p| f64::from(p[c]))
+                .sum::<f64>()
+                / n as f64
+        };
+        let out = box_resample_bgra8(&src, (120, 67), 120 * 4, (96, 54));
+        for c in 0..3 {
+            let (a, b) = (media(&src, c), media(&out, c));
+            assert!((a - b).abs() < 0.6, "canal {c}: {a} vs {b}");
+        }
+    }
+
+    #[test]
+    fn pesos_por_area_suman_lo_mismo_en_cada_celda() {
+        for (s, d) in [(120, 96), (67, 54), (7, 3), (3, 7), (1, 5)] {
+            let pesos = area_weights(s, d);
+            assert_eq!(pesos.len(), d);
+            // Cada celda cubre `s / d` píxeles de la fuente (menos de 1 si se agranda).
+            let esperado = s as f32 / d as f32;
+            for celda in &pesos {
+                let suma: f32 = celda.iter().map(|&(_, w)| w).sum();
+                assert!(celda.iter().all(|&(x, _)| x < s));
+                assert!((suma - esperado).abs() < 1e-4, "{s}→{d}: {suma}");
+            }
+        }
     }
 
     #[test]

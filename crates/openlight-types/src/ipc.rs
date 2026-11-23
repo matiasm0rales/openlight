@@ -25,6 +25,8 @@ pub mod events {
     pub const ERROR_RAISED: &str = "error://raised";
     /// Payload [`super::DiscoveredDevice`].
     pub const DISCOVERY_FOUND: &str = "discovery://found";
+    /// Payload [`super::PipelineStatsEvent`], una vez por segundo mientras hay sesión.
+    pub const PIPELINE_STATS: &str = "stats://pipeline";
 }
 
 // ---------- Asistente ----------
@@ -327,6 +329,24 @@ pub struct LiveColorEvent {
     pub sent: Option<Hsv>,
 }
 
+/// Envíos por segundo de un foco (parte de [`PipelineStatsEvent`]).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+pub struct DeviceRate {
+    /// Foco.
+    pub device: DeviceId,
+    /// Comandos de color mandados en el último segundo.
+    pub sends_per_s: f32,
+}
+
+/// Evento `stats://pipeline`: lo que alimenta los gráficos del diagnóstico.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+pub struct PipelineStatsEvent {
+    /// Capturas por segundo que llegaron de verdad (no las pedidas).
+    pub capture_fps: f32,
+    /// Envíos por segundo de cada foco.
+    pub devices: Vec<DeviceRate>,
+}
+
 // ---------- Importar y diagnóstico ----------
 
 /// Resultado de importar el setup del script (`devices.json`, `config.json`, `calibracion.json`).
@@ -340,4 +360,31 @@ pub struct ImportReport {
     pub settings_applied: bool,
     /// Avisos (claves i18n).
     pub warnings: Vec<String>,
+}
+
+/// Nivel de una línea del log.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Type)]
+#[serde(rename_all = "snake_case")]
+pub enum LogLevel {
+    /// Error.
+    Error,
+    /// Advertencia.
+    Warn,
+    /// Información.
+    Info,
+    /// Detalle para depurar.
+    Debug,
+}
+
+/// Una línea del log para el visor del diagnóstico (ya sin secretos).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+pub struct LogLine {
+    /// Cuándo (ms desde la época Unix).
+    pub at_ms: f64,
+    /// Nivel.
+    pub level: LogLevel,
+    /// Módulo que la escribió (`tuya_device`, `capture`...).
+    pub target: String,
+    /// Mensaje.
+    pub message: String,
 }

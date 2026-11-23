@@ -335,3 +335,31 @@ fn un_actor_sin_handles_se_va() {
         );
     });
 }
+
+#[test]
+fn los_suscriptores_se_enteran_de_los_cambios_pero_no_de_cada_byte() {
+    run(async {
+        let rig = Rig::new(ProtocolVersion::V35).await;
+        rig.start().await;
+        let mut rx = rig.device.subscribe();
+        rx.borrow_and_update();
+
+        // Un push de STATUS cambia solo los bytes contados: nadie se despierta.
+        rig.sim.set_dps(dps(json!({"22": 700})));
+        pump(STEP).await;
+        assert!(!rx.has_changed().unwrap());
+        assert!(
+            rig.device.health().bytes_rx > 0,
+            "pero el handle los ve al día"
+        );
+
+        // Un corte sí.
+        rig.sim.disconnect_all();
+        pump(STEP).await;
+        assert!(rx.has_changed().unwrap());
+        assert_eq!(
+            rx.borrow_and_update().state,
+            DeviceSessionState::Reconnecting
+        );
+    });
+}

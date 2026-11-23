@@ -209,7 +209,8 @@ impl DeviceHandle {
         self.snapshot().health
     }
 
-    /// Para enterarse de cada cambio de estado o de salud.
+    /// Para enterarse de cada cambio de estado o de salud. No despierta por los bytes contados
+    /// (cambian en cada lectura): para verlos al día, [`DeviceHandle::snapshot`].
     pub fn subscribe(&self) -> watch::Receiver<DeviceSnapshot> {
         self.snapshot.clone()
     }

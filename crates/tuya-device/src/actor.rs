@@ -135,6 +135,8 @@ impl Actor {
 
     // ---- estado publicado ----
 
+    /// Publica el estado. Avisa a los suscriptores solo si cambió algo más que los bytes
+    /// contados: cada lectura los cambiaría, y no hay razón para despertar a nadie por eso.
     fn publish(&mut self) {
         let health: LinkHealth = self.health.snapshot(Instant::now(), &self.counters);
         let next = DeviceSnapshot {
@@ -143,11 +145,16 @@ impl Actor {
             ip: self.ip,
         };
         self.snapshot.send_if_modified(|current| {
-            let changed = *current != next;
-            if changed {
-                *current = next;
-            }
-            changed
+            let quiet = |health: &LinkHealth| LinkHealth {
+                bytes_rx: 0,
+                bytes_tx: 0,
+                ..health.clone()
+            };
+            let notify = current.state != next.state
+                || current.ip != next.ip
+                || quiet(&current.health) != quiet(&next.health);
+            *current = next;
+            notify
         });
     }
 

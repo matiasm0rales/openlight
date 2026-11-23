@@ -97,6 +97,11 @@ impl HealthTracker {
         self.health.last_disconnect_at_ms = now_ms();
     }
 
+    /// Motivo del último corte.
+    pub fn last_reason(&self) -> Option<DisconnectReason> {
+        self.health.last_disconnect.clone()
+    }
+
     /// Salió una señal de vida.
     pub fn heartbeat_sent(&mut self, now: Instant) {
         self.heartbeat_sent = Some(now);

@@ -75,6 +75,13 @@ impl HealthTracker {
         self.heartbeat_sent = None;
     }
 
+    /// Se cerró la sesión a propósito (al restaurar): no es un corte.
+    pub fn closed(&mut self) {
+        self.health.connected = false;
+        self.heartbeat_sent = None;
+        self.health.rtt_ms = None;
+    }
+
     /// Se cortó una sesión abierta.
     pub fn disconnected(&mut self, reason: DisconnectReason, now: Instant) {
         self.health.connected = false;

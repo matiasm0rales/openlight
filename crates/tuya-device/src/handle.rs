@@ -50,6 +50,8 @@ pub(crate) enum Cmd {
         reply: Reply<()>,
     },
     Heartbeat(Reply<()>),
+    ReturnToOriginal(Reply<()>),
+    Restore(Reply<()>),
 }
 
 /// Un foco. Se puede clonar y mandar a otras tareas; el actor termina cuando se sueltan todos.
@@ -172,6 +174,27 @@ impl DeviceHandle {
     /// Si no hay conexión o el foco no responde.
     pub async fn heartbeat(&self) -> Result<(), DeviceError> {
         self.ask(Cmd::Heartbeat).await
+    }
+
+    /// Deja el foco como estaba antes de empezar, pero sigue conectado y listo para retomar con
+    /// [`DeviceHandle::activate`] (`devolver_estado`: la pausa por falta de pantalla). El estado
+    /// original sigue guardado.
+    ///
+    /// # Errors
+    /// Si no pudo devolverlo (sin conexión, sin respuesta).
+    pub async fn return_to_original(&self) -> Result<(), DeviceError> {
+        self.ask(Cmd::ReturnToOriginal).await
+    }
+
+    /// Devuelve el foco a su estado original, olvida lo guardado y cierra la conexión
+    /// (`restaurar`: salir). Si falla, el original queda guardado para la próxima ejecución y la
+    /// conexión se cierra igual. Si el foco no se había iniciado, no hace nada.
+    ///
+    /// # Errors
+    /// Si no pudo devolverlo. Si se había cortado la conexión, antes hace un intento de volver a
+    /// conectar.
+    pub async fn restore(&self) -> Result<(), DeviceError> {
+        self.ask(Cmd::Restore).await
     }
 
     /// Estado publicado por el actor, con los bytes al día.

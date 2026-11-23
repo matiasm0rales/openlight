@@ -10,6 +10,8 @@
 //! | `mantener` (latido, conexión muerta, reconectar) | las ramas de [`Actor::run`], [`Actor::reconnect`] |
 //! | `_leer_respuestas` | [`Actor::on_data`] |
 //! | `_perdida` / `_al_reconectar` | [`Actor::lost`] / [`Actor::reconnect`] |
+//! | `devolver_estado` | [`Actor::return_state`] |
+//! | `restaurar` | [`Actor::restore`] |
 //!
 //! El actor no comparte estado con nadie: recibe órdenes por un canal `mpsc` ([`Cmd`]) y los
 //! colores por un `watch` (que se queda con el último: la coalescencia), y publica su estado en
@@ -234,6 +236,12 @@ impl Actor {
                         .await
                 };
                 let _ = reply.send(result);
+            }
+            Cmd::ReturnToOriginal(reply) => {
+                let _ = reply.send(self.return_state().await);
+            }
+            Cmd::Restore(reply) => {
+                let _ = reply.send(self.restore().await);
             }
             Cmd::Heartbeat(reply) => {
                 let sent = Instant::now();
@@ -497,37 +505,36 @@ impl Actor {
     /// fallido no cuenta como reconexión. Con la sesión activa, el foco puede haber arrancado
     /// en otro modo si se cortó la luz: se vuelve a ponerlo en `colour`.
     async fn reconnect(&mut self) {
-        self.last_attempt = Instant::now();
-        match self.connect_and_query().await {
-            Ok(_) => {
-                tracing::info!("reconectado con el foco");
-                self.failures = 0;
-                self.reset_timers();
-                self.health.connected();
-                self.save_ip();
-                let state = if self.active {
-                    DeviceSessionState::Active
-                } else {
-                    DeviceSessionState::Idle
-                };
-                self.state = state;
-                self.prepare_if_active().await;
-                self.publish();
-            }
-            Err(e) => {
-                self.failures = self.failures.saturating_add(1);
-                tracing::debug!(error = %e, failures = self.failures, "no se pudo reconectar");
-                self.state = match e {
-                    DeviceError::KeyRejected => {
-                        DeviceSessionState::Error(ErrorCode::DeviceKeyRejected)
-                    }
-                    _ => DeviceSessionState::Reconnecting,
-                };
-                // La IP pudo cambiar mientras no había conexión.
-                self.refresh_ip().await;
-                self.publish();
-            }
+        if let Err(e) = self.try_reconnect().await {
+            self.failures = self.failures.saturating_add(1);
+            tracing::debug!(error = %e, failures = self.failures, "no se pudo reconectar");
+            self.state = match e {
+                DeviceError::KeyRejected => DeviceSessionState::Error(ErrorCode::DeviceKeyRejected),
+                _ => DeviceSessionState::Reconnecting,
+            };
+            // La IP pudo cambiar mientras no había conexión.
+            self.refresh_ip().await;
+            self.publish();
         }
+    }
+
+    /// Un intento de reconectar. Si sale bien, deja todo como después de `_al_reconectar`.
+    async fn try_reconnect(&mut self) -> Result<(), DeviceError> {
+        self.last_attempt = Instant::now();
+        self.connect_and_query().await?;
+        tracing::info!("reconectado con el foco");
+        self.failures = 0;
+        self.reset_timers();
+        self.health.connected();
+        self.save_ip();
+        self.state = if self.active {
+            DeviceSessionState::Active
+        } else {
+            DeviceSessionState::Idle
+        };
+        self.prepare_if_active().await;
+        self.publish();
+        Ok(())
     }
 
     // ---- seguir la pantalla ----
@@ -566,6 +573,60 @@ impl Actor {
         if self.conn.is_some() {
             self.set_state(DeviceSessionState::Active);
         }
+    }
+
+    /// `devolver_estado`: deja el foco como estaba antes de empezar. Deja de seguir colores.
+    async fn return_state(&mut self) -> Result<(), DeviceError> {
+        self.active = false;
+        // Un color pedido antes de pausar no vale al retomar.
+        self.colour.borrow_and_update();
+        let Some(original) = self.original.clone() else {
+            return Ok(());
+        };
+        self.set_state(DeviceSessionState::Restoring);
+        let result = self.put_back(&original).await;
+        // Si salió mal y se cortó la conexión, el actor sigue intentando reconectar.
+        self.set_state(if self.conn.is_some() {
+            DeviceSessionState::Idle
+        } else {
+            DeviceSessionState::Reconnecting
+        });
+        result
+    }
+
+    async fn put_back(&mut self, original: &Dps) -> Result<(), DeviceError> {
+        if self.conn.is_none() {
+            // Se cortó hace poco: un intento antes de rendirse.
+            self.try_reconnect().await?;
+        }
+        self.request(cmd::CONTROL, Some(PayloadData::from(original)))
+            .await
+            .map(drop)
+    }
+
+    /// `restaurar`: devuelve el estado, olvida lo guardado y cierra la conexión.
+    async fn restore(&mut self) -> Result<(), DeviceError> {
+        if !self.started {
+            return Ok(());
+        }
+        let result = self.return_state().await;
+        match &result {
+            Ok(()) => {
+                let mut saved = self.store.load(&self.cfg.creds.id);
+                saved.original = None;
+                self.store.save(&self.cfg.creds.id, &saved);
+            }
+            // Queda guardado: se recupera en la próxima ejecución.
+            Err(e) => tracing::warn!(error = %e, "no pude devolver el foco a su estado original"),
+        }
+        // Se cierra pase lo que pase (`finally: self.dev.close()`).
+        if self.conn.take().is_some() {
+            self.health.closed();
+        }
+        self.started = false;
+        self.original = None;
+        self.set_state(DeviceSessionState::Idle);
+        result
     }
 
     /// `enviar_hsv`: pide el último color recibido, tal cual. Sin conexión no hace nada.

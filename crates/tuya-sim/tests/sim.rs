@@ -215,6 +215,40 @@ async fn cliente_con_otra_clave_no_negocia() {
 }
 
 #[tokio::test]
+async fn drop_every_corta_aunque_haya_latencia() {
+    let sim = start(cfg(V33).faults(Faults {
+        drop_every: Some(Duration::from_millis(200)),
+        latency: Duration::from_millis(800),
+        ..Faults::default()
+    }))
+    .await;
+    let mut c = Client::connect(&sim).await.unwrap();
+    let t0 = Instant::now();
+    c.send(cmd::HEART_BEAT, b"{}".to_vec()).await.unwrap();
+    assert_eq!(
+        c.recv(T).await,
+        Read::Closed,
+        "no sale la respuesta demorada"
+    );
+    assert!(t0.elapsed() < Duration::from_millis(700), "cortó a tiempo");
+    assert!(sim.wait_until(T, |s| s.drops == 1).await);
+}
+
+#[tokio::test]
+async fn wait_until_se_entera_de_los_cierres() {
+    let sim = start(cfg(V33)).await;
+    let c = Client::connect(&sim).await.unwrap();
+    assert!(sim.wait_until(T, |s| s.connections == 1).await);
+    drop(c);
+    let t0 = Instant::now();
+    assert!(sim.wait_until(T, |_| sim.active_connections() == 0).await);
+    assert!(
+        t0.elapsed() < Duration::from_millis(500),
+        "no esperó todo el timeout"
+    );
+}
+
+#[tokio::test]
 async fn falla_latencia() {
     let sim = start(cfg(V34).faults(Faults {
         latency: Duration::from_millis(250),

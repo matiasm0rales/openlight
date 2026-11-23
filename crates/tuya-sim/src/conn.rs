@@ -56,6 +56,7 @@ struct Conn {
     rejecting: bool,
     phase: Phase,
     push_seq: u32,
+    opened: Instant,
 }
 
 /// Baja el contador de conexiones activas al terminar, pase lo que pase.
@@ -64,6 +65,8 @@ struct ActiveGuard(Arc<Shared>);
 impl Drop for ActiveGuard {
     fn drop(&mut self) {
         self.0.active.fetch_sub(1, Ordering::SeqCst);
+        // Las esperas sobre `active_connections()` tienen que enterarse del cierre.
+        self.0.wake();
     }
 }
 
@@ -108,6 +111,7 @@ pub(crate) async fn run(
             Phase::Ready
         },
         push_seq: 0,
+        opened,
         shared: shared.clone(),
     };
     tracing::debug!(%peer, "conexión nueva");
@@ -208,9 +212,17 @@ impl Conn {
         if out.is_empty() {
             return true;
         }
-        let latency = self.shared.faults().latency;
-        if !latency.is_zero() {
-            tokio::time::sleep(latency).await;
+        let faults = self.shared.faults();
+        let drop_at = faults.drop_every.map(|d| self.opened + d);
+        // La latencia no frena a `drop_every`: si el corte vence antes, no sale la respuesta.
+        let dropped = tokio::select! {
+            _ = tokio::time::sleep(faults.latency) => drop_at.is_some_and(|at| Instant::now() >= at),
+            _ = sleep_until(drop_at) => true,
+        };
+        if dropped {
+            tracing::debug!("drop_every venció antes de responder: corto");
+            self.shared.stat(|s| s.drops += 1);
+            return false;
         }
         for o in out {
             if o.msg.cmd == cmd::STATUS {

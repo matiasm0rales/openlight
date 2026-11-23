@@ -51,6 +51,11 @@ impl Shared {
         self.faults.borrow().clone()
     }
 
+    /// Despierta a quien espere en [`SimHandle::wait_until`].
+    pub fn wake(&self) {
+        self.notify.notify_waiters();
+    }
+
     pub fn stat(&self, f: impl FnOnce(&mut SimStats)) {
         f(&mut lock(&self.stats));
         self.notify.notify_waiters();

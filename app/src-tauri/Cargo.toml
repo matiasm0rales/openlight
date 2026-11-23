@@ -23,11 +23,12 @@ serde.workspace = true
 serde_json.workspace = true
 specta.workspace = true
 specta-typescript.workspace = true
-tauri.workspace = true
+tauri = { workspace = true, features = ["tray-icon", "image-png"] }
 tauri-specta.workspace = true
 tauri-plugin-opener.workspace = true
 tauri-plugin-updater = "2.14.1"
 tauri-plugin-autostart = "2.7.0"
+sys-locale = "0.3.2"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 # Estado de Grabación de pantalla (CGPreflight/CGRequestScreenCaptureAccess): API segura, sin `unsafe`.

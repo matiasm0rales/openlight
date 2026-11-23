@@ -5414,6 +5414,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "tracing",
+ "tuya-discovery",
  "tuya-proto",
  "tuya-sim",
 ]

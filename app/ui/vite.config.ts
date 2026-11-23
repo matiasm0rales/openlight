@@ -6,6 +6,8 @@ const host = process.env.TAURI_DEV_HOST;
 
 export default defineConfig({
   plugins: [svelte()],
+  // En Vitest, Svelte tiene que resolverse a su versión de navegador para montar componentes.
+  resolve: process.env.VITEST ? { conditions: ["browser"] } : undefined,
   clearScreen: false,
   server: {
     port: 1420,

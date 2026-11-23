@@ -42,7 +42,9 @@ jobs:
           git diff --exit-code -- app/ui/src/lib/bindings.ts || (echo "::error::bindings.ts desactualizado: corré 'cargo test -p openlight' y commiteá el resultado" && exit 1)
       - name: svelte-check
         run: pnpm check
-      - name: Vitest
+      - name: Navegador para Playwright
+        run: pnpm --filter openlight-ui exec playwright install --with-deps chromium
+      - name: Vitest y Playwright
         run: pnpm test
 
   build:

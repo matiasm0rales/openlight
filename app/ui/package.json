@@ -8,10 +8,14 @@
     "build": "vite build",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.json",
-    "test": "vitest run"
+    "test": "vitest run && playwright test",
+    "test:unit": "vitest run",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@tauri-apps/api": "2.12.5"
+    "@tauri-apps/api": "2.12.5",
+    "@tauri-apps/plugin-autostart": "^2.7.0",
+    "@tauri-apps/plugin-opener": "^2.7.3"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",

@@ -1,57 +1,741 @@
 {
-  "app": { "name": "OpenLight", "tagline": "Your lights follow the colors on your screen." },
+  "app": {
+    "name": "OpenLight",
+    "tagline": "Your lights follow the colors on your screen.",
+    "lang": "en"
+  },
   "settings": {
-    "level": { "basic": "Basic", "advanced": "Advanced", "expert": "Expert" },
+    "level": {
+      "basic": "Basic",
+      "advanced": "Advanced",
+      "expert": "Expert"
+    },
     "restore_default": "Restore",
     "color_mode": {
       "title": "Color mode",
       "help": "Dominant: the color you see the most in the zone. Average: the mix of the whole zone.",
-      "option": { "dominant": "Dominant", "average": "Average" }
+      "option": {
+        "dominant": "Dominant",
+        "average": "Average"
+      }
     },
-    "saturation": { "title": "Color boost", "help": "Multiplies saturation. Higher means more intense colors." },
-    "brightness_min": { "title": "Minimum brightness", "help": "Light brightness when the screen is dark." },
-    "brightness_max": { "title": "Maximum brightness", "help": "Brightness cap when the screen is very bright." },
-    "smoothing_ms": { "title": "Smoothing", "help": "Higher means slower, flicker-free transitions. Scene cuts are always faster." },
+    "saturation": {
+      "title": "Color boost",
+      "help": "Multiplies saturation. Higher means more intense colors."
+    },
+    "brightness_min": {
+      "title": "Minimum brightness",
+      "help": "Light brightness when the screen is dark."
+    },
+    "brightness_max": {
+      "title": "Maximum brightness",
+      "help": "Brightness cap when the screen is very bright."
+    },
+    "smoothing_ms": {
+      "title": "Smoothing",
+      "help": "Higher means slower, flicker-free transitions. Scene cuts are always faster."
+    },
     "send_channel": {
       "title": "Light channel",
       "help": "How colors are sent to the light. If colors look choppy, try the control channel.",
-      "option": { "colour": "Color (standard)", "control_direct": "Direct control", "control_gradual": "Control with transition" }
+      "option": {
+        "colour": "Color (standard)",
+        "control_direct": "Direct control",
+        "control_gradual": "Control with transition"
+      }
     },
-    "capture_fps": { "title": "Captures per second", "help": "How many times per second the screen is read. Higher is faster but uses more power." },
-    "max_sends_per_s": { "title": "Commands per second", "help": "Maximum colors sent to the light per second. Lower it if the light stutters." },
-    "send_threshold": { "title": "Send threshold", "help": "Changes smaller than this are not sent, since you can't see them." },
-    "black_bar": { "title": "Black bars", "help": "Rows and columns darker than this count as black bars and don't affect brightness." },
-    "grey_threshold": { "title": "Grey threshold", "help": "Below this saturation the screen counts as grey and the light turns white." },
-    "dark_screen": { "title": "Dark screen", "help": "Below this brightness the last color is kept instead of turning white." },
-    "hue_stickiness": { "title": "Hue stability", "help": "Keeps the light from jumping between two colors that cover almost the same area." },
-    "no_screen_wait_s": { "title": "Wait without screen", "help": "With no screen for this long, the light goes back to how it was until the screen returns." },
-    "heartbeat_s": { "title": "Heartbeat", "help": "How often the light is told the connection is still alive." },
-    "dead_after_s": { "title": "Connection dead after", "help": "With no reply from the light for this long, it reconnects." },
-    "retry_every_s": { "title": "Retry every", "help": "Time between reconnection attempts." }
+    "capture_fps": {
+      "title": "Captures per second",
+      "help": "How many times per second the screen is read. Higher is faster but uses more power."
+    },
+    "max_sends_per_s": {
+      "title": "Commands per second",
+      "help": "Maximum colors sent to the light per second. Lower it if the light stutters."
+    },
+    "send_threshold": {
+      "title": "Send threshold",
+      "help": "Changes smaller than this are not sent, since you can't see them."
+    },
+    "black_bar": {
+      "title": "Black bars",
+      "help": "Rows and columns darker than this count as black bars and don't affect brightness."
+    },
+    "grey_threshold": {
+      "title": "Grey threshold",
+      "help": "Below this saturation the screen counts as grey and the light turns white."
+    },
+    "dark_screen": {
+      "title": "Dark screen",
+      "help": "Below this brightness the last color is kept instead of turning white."
+    },
+    "hue_stickiness": {
+      "title": "Hue stability",
+      "help": "Keeps the light from jumping between two colors that cover almost the same area."
+    },
+    "no_screen_wait_s": {
+      "title": "Wait without screen",
+      "help": "With no screen for this long, the light goes back to how it was until the screen returns."
+    },
+    "heartbeat_s": {
+      "title": "Heartbeat",
+      "help": "How often the light is told the connection is still alive."
+    },
+    "dead_after_s": {
+      "title": "Connection dead after",
+      "help": "With no reply from the light for this long, it reconnects."
+    },
+    "retry_every_s": {
+      "title": "Retry every",
+      "help": "Time between reconnection attempts."
+    },
+    "title": "Settings",
+    "default_is": "Default: {value}",
+    "inherited": "Inherited",
+    "restore_named": "Restore {name}",
+    "restore_all": "Restore all",
+    "level_label": "Level of detail",
+    "scope": "Applies to",
+    "scope_global": "All bulbs",
+    "scope_devices": "One bulb",
+    "scope_profiles": "One profile",
+    "scope_note": {
+      "global": "You change the values for every bulb. Each bulb and profile can override any of them.",
+      "device": "Only this bulb. Settings with a dashed border are inherited from the global ones.",
+      "profile": "What you save here applies while the profile is active."
+    },
+    "more_hidden": "There are {n} more settings in the next levels.",
+    "preview": "Live preview",
+    "preview_on": "Changes show on the bulb while you move the control.",
+    "preview_off": "Start the effect to see changes live.",
+    "profiles": {
+      "title": "Profiles",
+      "help": "A profile stores a set of values. Switch it here, on the dashboard, from the tray or with its shortcut.",
+      "builtin": "Built-in",
+      "active": "Active",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "edit": "Edit values",
+      "duplicate": "Duplicate",
+      "rename": "Rename",
+      "delete_named": "Delete {name}",
+      "shortcut": "Shortcut",
+      "press_keys": "Press the combination… (Esc cancels, Delete removes it)",
+      "assign": "Assign",
+      "none": "none",
+      "new": "New profile",
+      "new_placeholder": "For example, Series",
+      "create": "Create",
+      "copy_of": "Copy of {name}",
+      "shortcut_of": "shortcut for {name}"
+    }
   },
-  "profile": { "movies": "Movies", "games": "Games", "work": "Work" },
+  "profile": {
+    "movies": "Movies",
+    "games": "Games",
+    "work": "Work"
+  },
   "error": {
-    "screen_permission_denied": { "title": "Screen Recording permission missing", "detail": "Without it the screen can't be read. Turn it on in Settings and reopen OpenLight." },
-    "local_network_denied": { "title": "Local Network permission missing", "detail": "Without it the lights can't be reached. Turn it on in System Settings." },
-    "firewall_blocked": { "title": "The firewall blocks light discovery", "detail": "Allow OpenLight in the firewall to find the lights on your network." },
-    "capture_unsupported": { "title": "Screen capture isn't available", "detail": "Your desktop doesn't offer a way to share the screen (ScreenCast portal)." },
-    "no_display": { "title": "No display", "detail": "No screen is on right now. OpenLight will resume when one shows up." },
-    "device_not_found": { "title": "Can't find the light", "detail": "Make sure it's on and the computer is on the same Wi-Fi." },
-    "device_key_rejected": { "title": "The light rejected the key", "detail": "The local key changed (error 914). Renew it with one click." },
-    "device_timeout": { "title": "The light isn't responding", "detail": "It may be switched off at the wall or too far from the router." },
-    "device_busy": { "title": "Another app is using the light", "detail": "Close the Smart Life app on your phone: it sometimes holds the light's local connection." },
-    "device_no_colour": { "title": "This device can't show colors", "detail": "It only has white light, so it can't follow the screen." },
-    "cloud_invalid_signature": { "title": "The Access Secret doesn't match", "detail": "It was probably copied wrong. Copy it again from iot.tuya.com." },
-    "cloud_invalid_token": { "title": "The Tuya session expired", "detail": "Try again; if it persists, check the Access ID." },
-    "cloud_permission_denied": { "title": "Tuya denied access", "detail": "Check that you linked your Smart Life account to the project and picked the right Data Center." },
-    "cloud_wrong_region": { "title": "Wrong Data Center", "detail": "Your credentials work in {region}. Switch to it?" },
-    "cloud_service_not_authorized": { "title": "A service is missing from the project", "detail": "Add the IoT Core service to your Cloud project." },
-    "cloud_trial_expired": { "title": "The IoT Core trial expired", "detail": "You can extend it for free at iot.tuya.com. It's only needed to renew keys." },
-    "cloud_network": { "title": "Can't reach Tuya", "detail": "Check your internet connection." },
-    "import_invalid": { "title": "Couldn't import that folder", "detail": "No valid devices.json was found." },
-    "invalid_setting": { "title": "Invalid value", "detail": "The {setting} setting doesn't accept that value." },
-    "storage": { "title": "Couldn't save the settings", "detail": "Check that there's free disk space." },
-    "not_implemented": { "title": "Not available yet", "detail": "{command} isn't implemented yet." },
-    "internal": { "title": "Something went wrong", "detail": "Export the diagnostics and open an issue so we can look into it." }
+    "screen_permission_denied": {
+      "title": "Screen Recording permission missing",
+      "detail": "Without it the screen can't be read. Turn it on in Settings and reopen OpenLight."
+    },
+    "local_network_denied": {
+      "title": "Local Network permission missing",
+      "detail": "Without it the lights can't be reached. Turn it on in System Settings."
+    },
+    "firewall_blocked": {
+      "title": "The firewall blocks light discovery",
+      "detail": "Allow OpenLight in the firewall to find the lights on your network."
+    },
+    "capture_unsupported": {
+      "title": "Screen capture isn't available",
+      "detail": "Your desktop doesn't offer a way to share the screen (ScreenCast portal)."
+    },
+    "no_display": {
+      "title": "No display",
+      "detail": "No screen is on right now. OpenLight will resume when one shows up."
+    },
+    "device_not_found": {
+      "title": "Can't find the light",
+      "detail": "Make sure it's on and the computer is on the same Wi-Fi."
+    },
+    "device_key_rejected": {
+      "title": "The light rejected the key",
+      "detail": "The local key changed (error 914). Renew it with one click."
+    },
+    "device_timeout": {
+      "title": "The light isn't responding",
+      "detail": "It may be switched off at the wall or too far from the router."
+    },
+    "device_busy": {
+      "title": "Another app is using the light",
+      "detail": "Close the Smart Life app on your phone: it sometimes holds the light's local connection."
+    },
+    "device_no_colour": {
+      "title": "This device can't show colors",
+      "detail": "It only has white light, so it can't follow the screen."
+    },
+    "cloud_invalid_signature": {
+      "title": "The Access Secret doesn't match",
+      "detail": "It was probably copied wrong. Copy it again from iot.tuya.com."
+    },
+    "cloud_invalid_token": {
+      "title": "The Tuya session expired",
+      "detail": "Try again; if it persists, check the Access ID."
+    },
+    "cloud_permission_denied": {
+      "title": "Tuya denied access",
+      "detail": "Check that you linked your Smart Life account to the project and picked the right Data Center."
+    },
+    "cloud_wrong_region": {
+      "title": "Wrong Data Center",
+      "detail": "Your credentials work in {region}. Switch to it?"
+    },
+    "cloud_service_not_authorized": {
+      "title": "A service is missing from the project",
+      "detail": "Add the IoT Core service to your Cloud project."
+    },
+    "cloud_trial_expired": {
+      "title": "The IoT Core trial expired",
+      "detail": "You can extend it for free at iot.tuya.com. It's only needed to renew keys."
+    },
+    "cloud_network": {
+      "title": "Can't reach Tuya",
+      "detail": "Check your internet connection."
+    },
+    "import_invalid": {
+      "title": "Couldn't import that folder",
+      "detail": "No valid devices.json was found."
+    },
+    "invalid_setting": {
+      "title": "Invalid value",
+      "detail": "The {setting} setting doesn't accept that value."
+    },
+    "storage": {
+      "title": "Couldn't save the settings",
+      "detail": "Check that there's free disk space."
+    },
+    "not_implemented": {
+      "title": "Not available yet",
+      "detail": "{command} isn't implemented yet."
+    },
+    "internal": {
+      "title": "Something went wrong",
+      "detail": "Export the diagnostics and open an issue so we can look into it."
+    }
+  },
+  "common": {
+    "cancel": "Cancel",
+    "close": "Close",
+    "dismiss": "Dismiss",
+    "loading": "Loading…",
+    "notifications": "Notifications",
+    "save": "Save",
+    "skip_to_content": "Skip to content"
+  },
+  "nav": {
+    "label": "Sections",
+    "dashboard": "Dashboard",
+    "settings": "Settings",
+    "devices": "Devices",
+    "diagnostics": "Diagnostics",
+    "tray": "Tray menu",
+    "manual": "Manual control",
+    "onboarding": "Setup",
+    "calibrate": "Calibration"
+  },
+  "prefs": {
+    "theme": "Theme",
+    "theme_system": "System theme",
+    "theme_light": "Light theme",
+    "theme_dark": "Dark theme",
+    "language": "Language"
+  },
+  "session": {
+    "start": "Start",
+    "stop": "Stop",
+    "state": {
+      "idle": "off",
+      "connecting": "connecting",
+      "active": "active",
+      "paused": "paused",
+      "restoring": "restoring"
+    },
+    "explain": {
+      "idle": "Your bulbs are as you left them. Start to make them follow the screen.",
+      "connecting": "Connecting to the bulbs over the local network…",
+      "active": "Your bulbs follow the colors on your screen.",
+      "paused": "No screen: the bulbs went back to their state and resume on their own when it returns.",
+      "restoring": "Putting the bulbs back as they were…"
+    }
+  },
+  "device_state": {
+    "idle": "Unused",
+    "connecting": "Connecting",
+    "active": "Connected",
+    "reconnecting": "Reconnecting",
+    "paused": "Paused",
+    "restoring": "Restoring",
+    "error": "Needs attention"
+  },
+  "disconnect": {
+    "peer_closed": "The bulb closed the connection",
+    "timeout": "Timed out",
+    "no_response": "No response",
+    "key_rejected": "Key rejected (914)",
+    "refused": "Connection refused",
+    "io": "Network error"
+  },
+  "disconnect_help": {
+    "peer_closed": "Some bulbs do this often: OpenLight reconnects on its own. If it happens a lot, lower “Commands per second”.",
+    "timeout": "The bulb was slow to answer. It may be far from the router.",
+    "no_response": "The bulb stopped answering heartbeats. Was it turned off at the wall switch?",
+    "key_rejected": "The local key changed. Renew it from Devices.",
+    "refused": "Another app (Smart Life) may be holding the bulb.",
+    "io": "Network problem on the computer or router."
+  },
+  "fix": {
+    "open_settings": {
+      "screen_recording": "Open Screen Recording",
+      "local_network": "Open Local Network",
+      "firewall": "Open the firewall",
+      "screen_cast_portal": "Open portal permissions"
+    },
+    "renew_key": "Renew key",
+    "retry": "Retry",
+    "open_url": "Open {host}",
+    "show_help": "Guide: {topic}",
+    "use_region": "Use {region}",
+    "open_diagnostics": "Open diagnostics"
+  },
+  "help": {
+    "eyebrow": "Guide",
+    "tuya_account": {
+      "title": "Tuya account"
+    },
+    "cloud_project": {
+      "title": "Cloud project"
+    },
+    "data_center": {
+      "title": "Data Center"
+    },
+    "link_smart_life": {
+      "title": "Link Smart Life"
+    },
+    "iot_core_trial": {
+      "title": "IoT Core trial"
+    },
+    "device_troubleshooting": {
+      "title": "The bulb doesn't respond"
+    },
+    "permissions": {
+      "title": "System permissions"
+    }
+  },
+  "region": {
+    "us": "Western America",
+    "us_east": "Eastern America",
+    "eu": "Central Europe",
+    "eu_west": "Western Europe",
+    "china": "China",
+    "india": "India",
+    "singapore": "Singapore"
+  },
+  "hue": {
+    "red": "Red",
+    "orange": "Orange",
+    "yellow": "Yellow",
+    "lime": "Lime",
+    "green": "Green",
+    "teal": "Teal",
+    "cyan": "Cyan",
+    "sky": "Sky blue",
+    "blue": "Blue",
+    "violet": "Violet",
+    "magenta": "Magenta",
+    "pink": "Pink",
+    "none": "no color (grey)",
+    "unknown": "no data"
+  },
+  "eclipse": {
+    "label": "Screen: {screen}. Bulb: {sent}.",
+    "off": "off"
+  },
+  "chart": {
+    "series": "Series",
+    "now": "Now",
+    "average": "Average"
+  },
+  "permission": {
+    "screen_recording": {
+      "title": "Screen Recording",
+      "why": "To see the colors on screen. The image never leaves your computer."
+    },
+    "local_network": {
+      "title": "Local Network",
+      "why": "To find the bulbs and talk to them directly over your Wi-Fi."
+    },
+    "firewall": {
+      "title": "Firewall",
+      "why": "To hear the bulbs' announcements on the network (UDP)."
+    },
+    "screen_cast_portal": {
+      "title": "Screen sharing (portal)",
+      "why": "On Wayland, the desktop asks which screen to share."
+    },
+    "state": {
+      "granted": "Granted",
+      "denied": "Denied",
+      "not_determined": "Not asked yet",
+      "not_applicable": "Not applicable"
+    }
+  },
+  "capability": {
+    "colour": "Color",
+    "white": "White",
+    "temperature": "Temperature",
+    "realtime": "Live control",
+    "scenes": "Scenes"
+  },
+  "zones": {
+    "devices": "Bulb to edit",
+    "choose_display": "Monitor",
+    "builtin": "built-in",
+    "primary": "main",
+    "loading_preview": "Loading preview…",
+    "preview_alt": "Preview of {name}",
+    "rect_label": "{name}'s zone",
+    "rect_value": "from {x}, {y}; size {w} × {h}",
+    "keys": "Drag the zone or use the keyboard: arrows move it, Shift + arrows resize it, Alt for fine steps.",
+    "presets_for": "Zone presets for {name}",
+    "preset": {
+      "full": "Whole",
+      "left": "Left",
+      "right": "Right",
+      "top": "Top",
+      "bottom": "Bottom",
+      "center": "Center",
+      "custom": "Custom"
+    }
+  },
+  "log_level": {
+    "error": "Error",
+    "warn": "Warning",
+    "info": "Info",
+    "debug": "Debug"
+  },
+  "onboarding": {
+    "progress_label": "Setup progress",
+    "progress_value": "Step {n} of {total}: {name}",
+    "step_n": "Step {n}",
+    "back": "Back",
+    "next": "Next",
+    "pause": "Continue later",
+    "how": "How?",
+    "on_your_phone": "On your phone",
+    "welcome": {
+      "short": "Welcome",
+      "title": "Your bulbs, following your screen",
+      "lead": "OpenLight watches the colors on your monitor and sends them to your Smart Life bulbs over the local network. Setting it up takes about 15 minutes, once.",
+      "needs": "Ready to start.",
+      "need": {
+        "bulbs": {
+          "title": "Bulbs in Smart Life",
+          "text": "Already added in the phone app, with color."
+        },
+        "wifi": {
+          "title": "The same Wi-Fi",
+          "text": "The computer and the bulbs on the same network."
+        },
+        "time": {
+          "title": "About 15 minutes",
+          "text": "With your phone at hand to scan a QR."
+        }
+      },
+      "why_title": "Why a Tuya developer account?",
+      "why_text": "Each bulb has a local key that can only be read from the Tuya portal. OpenLight reads it once; after that everything works without internet or cloud.",
+      "import_title": "Were you using the ambilight.py script?",
+      "import_text": "Import devices.json, config.json and calibracion.json from its folder and skip most of the setup.",
+      "import_cta": "I have devices.json",
+      "import_folder": "Script folder",
+      "import_hint": "For example ~/Documents/Open RGB. The keys move to the system keychain.",
+      "import_run": "Import",
+      "import_ok": "Done: {devices} bulbs and {calibrations} calibrations imported.",
+      "import_continue": "Continue with zones"
+    },
+    "permissions": {
+      "short": "Permissions",
+      "title": "System permissions",
+      "lead": "OpenLight needs to see the screen and talk to the bulbs on your network. Nothing leaves your computer.",
+      "needs": "Grant the permissions above first.",
+      "checking": "Checking permissions…",
+      "none_needed": "This system needs no special permissions.",
+      "auto": "It re-checks on its own every few seconds.",
+      "restart": "macOS requires reopening the app after enabling Screen Recording. When you come back, setup continues from here."
+    },
+    "tuya_account": {
+      "short": "Tuya account",
+      "title": "Create your Tuya Developer account",
+      "lead": "It's free and you only do it once.",
+      "needs": "Tick the box when you have the account.",
+      "confirm": "I have an iot.tuya.com account",
+      "image_alt": "The Tuya portal with the Sign Up button highlighted"
+    },
+    "cloud_project": {
+      "short": "Cloud project",
+      "title": "Create the Cloud project",
+      "lead": "It gives you the keys OpenLight needs to read your bulbs.",
+      "needs": "Choose where you created your account and tick the box.",
+      "confirm": "I created the project",
+      "where": "Where did you create your Smart Life account?",
+      "choose": "Under “Data Center” choose:",
+      "image_alt": "Cloud → Development menu and the Create Cloud Project button"
+    },
+    "link_app": {
+      "short": "Link Smart Life",
+      "title": "Link Smart Life to the project",
+      "lead": "With a QR code, from your phone.",
+      "needs": "Tick the box once you scanned the QR.",
+      "confirm": "I linked my Smart Life account",
+      "image_alt": "Phone with Smart Life scanning the portal's QR"
+    },
+    "credentials": {
+      "short": "Keys",
+      "title": "Paste the Access ID and Access Secret",
+      "lead": "OpenLight tests them with Tuya before moving on.",
+      "needs": "Test the keys to continue.",
+      "id_help": "About 20 characters, in the project's Overview tab.",
+      "id_short": "Looks incomplete: the Access ID has about 20 characters.",
+      "secret_help": "32 characters. Stored in the system keychain.",
+      "secret_length": "The Access Secret has 32 characters and you pasted {n}.",
+      "show": "Show",
+      "hide": "Hide",
+      "region": "Data Center",
+      "test": "Test",
+      "testing": "Testing with Tuya…",
+      "ok": "It works! Connected to Tuya in {region}.",
+      "saved": "Keys are already saved. You can continue or test others."
+    },
+    "choose_devices": {
+      "short": "Choose bulbs",
+      "title": "Choose your bulbs",
+      "lead": "These are the devices in your account. Tick the ones that should follow the screen.",
+      "needs": "Choose at least one bulb.",
+      "loading": "Asking Tuya for the list…",
+      "scanning": "Looking for the bulbs on your network…",
+      "scanned": "{n} found on your network.",
+      "rescan": "Search again",
+      "legend": "Bulbs in your account",
+      "in_lan": "On your network",
+      "not_in_lan": "Not on your network",
+      "no_colour": "No color",
+      "offline": "Offline",
+      "others": "Other devices ({n})",
+      "not_light": "Not a light"
+    },
+    "test_devices": {
+      "short": "Test",
+      "title": "Test each bulb",
+      "lead": "You'll see red, green and blue, a second and a half each.",
+      "needs": "Confirm you saw the colors on each bulb.",
+      "run": "Test red, green and blue",
+      "running": "Testing…",
+      "question": "Did you see the three colors on {name}?",
+      "yes": "Yes, I saw them",
+      "no": "No",
+      "works": "Works",
+      "trouble_title": "Let's check together:",
+      "check": {
+        "wifi": "Are the computer and the bulb on the same Wi-Fi?",
+        "smart_life": "Is the Smart Life app open on your phone? Close it: it sometimes holds the bulb.",
+        "switch": "Is the bulb on at the wall switch?",
+        "key": "Did you re-pair it recently? Then the key changed: renew it."
+      },
+      "again": "Test again",
+      "blink": "Make it blink",
+      "remove": "Remove this bulb",
+      "empty": "No bulbs yet. Go back one step."
+    },
+    "zones": {
+      "short": "Zones",
+      "title": "Monitor and zones",
+      "lead": "Choose which part of the screen each bulb follows. With two bulbs, left and right looks great.",
+      "needs": "Each bulb needs a zone."
+    },
+    "calibrate": {
+      "short": "Calibrate",
+      "title": "Calibrate the colors (recommended)",
+      "lead": "Each bulb renders colors its own way. In 5 minutes you match them to your monitor.",
+      "needs": "Optional step.",
+      "why": "You'll see 12 hues full screen and move the bulb until it matches. Quick mode uses 6.",
+      "full": "Calibrate",
+      "quick": "Quick mode (6)",
+      "skip_hint": "You can skip it and do it later from the dashboard."
+    },
+    "done": {
+      "short": "Done",
+      "title": "All set!",
+      "lead": "Everything is ready. Start it and play a colorful video.",
+      "needs": "All done.",
+      "autostart": "Open OpenLight at login",
+      "tray_mac": "OpenLight lives in the menu bar, top right: turn it on, switch profiles or quit from there.",
+      "tray_windows": "OpenLight lives in the system tray, bottom right (it may be inside the little arrow).",
+      "tray_linux": "OpenLight lives in your desktop panel's tray.",
+      "start": "Start",
+      "later": "Not now"
+    }
+  },
+  "dashboard": {
+    "eyebrow": "Dashboard",
+    "title_on": "Your bulbs follow the screen",
+    "title_off": "Everything paused",
+    "profile": "Profile",
+    "no_profile": "No profile",
+    "resume": "{n} setup steps left.",
+    "resume_cta": "Resume",
+    "empty_title": "No bulbs yet",
+    "empty_text": "Add your bulbs with the setup assistant.",
+    "empty_cta": "Open setup",
+    "latency": "Latency",
+    "drops": "Drops (1 h)",
+    "last_drop": "Last drop",
+    "no_drops": "No drops",
+    "screen": "Screen",
+    "sent": "Bulb",
+    "brightness": "Brightness",
+    "manual": "Manual control",
+    "calibrate": "Calibrate",
+    "device_settings": "Bulb settings"
+  },
+  "devices": {
+    "title": "Your bulbs",
+    "add": "Add bulbs",
+    "name": "Name",
+    "edit": "Edit",
+    "ip": "IP address",
+    "ip_mode": "How the bulb is found",
+    "ip_auto": "Automatic",
+    "ip_fixed": "Fixed",
+    "auto_ip": "Automatic IP",
+    "dps": "Protocol and DPs",
+    "dps_caption": "Detected DPs for {name}",
+    "dp": {
+      "switch": "Power",
+      "mode": "Mode",
+      "bright": "Brightness",
+      "temp": "Temperature",
+      "colour": "Color",
+      "control": "Live control",
+      "modes": "Modes"
+    },
+    "calibrated": "Calibrated",
+    "not_calibrated": "Not calibrated",
+    "renewed": "Key renewed. The bulb is connected again.",
+    "identify": "Identify",
+    "remove": "Remove",
+    "remove_title": "Remove {name}?",
+    "remove_text": "Its key is deleted from the keychain along with its calibration. You can add it again any time.",
+    "zones": "Zones"
+  },
+  "calibration": {
+    "eyebrow": "Calibrating {name}",
+    "mode": "Number of hues",
+    "full": "{n} hues",
+    "quick": "Quick ({n})",
+    "help": "Look at the bulb and move the controls until its light looks like this color. Saturation above 100% only boosts pale colors.",
+    "key_hue": "hue",
+    "key_sat": "saturation",
+    "key_next": "next",
+    "hue": "Bulb hue",
+    "sat": "Bulb saturation",
+    "points": "Hues",
+    "go_to": "Go to {name}",
+    "prev": "Previous",
+    "next": "Next",
+    "fullscreen": "Full screen",
+    "ab": "A/B test",
+    "cancel": "Exit without saving",
+    "save": "Save",
+    "save_exit": "Save and exit",
+    "saved": "Calibration saved.",
+    "starting": "Preparing the bulb…"
+  },
+  "ab": {
+    "eyebrow": "A/B test · {name}",
+    "question": "Question {n} of {total}: {setting}",
+    "intro": "You'll see option A and then B, six seconds each, while this window shows changing colors. Watch the bulb.",
+    "start": "Start",
+    "seconds": "{n} s",
+    "which": "Which one looked more like the screen?",
+    "pick": "I'll take {v}",
+    "same": "Same",
+    "repeat": "Repeat",
+    "needs_session": "To compare, the effect must be running.",
+    "done_title": "Done, this is what stays",
+    "nothing": "This bulb has no options to compare.",
+    "back": "Back to calibration"
+  },
+  "manual": {
+    "title": "Manual control",
+    "device": "Bulb",
+    "power": "Power",
+    "mode": "Mode",
+    "colour": "Color",
+    "white": "White",
+    "quick_colours": "Quick colors",
+    "hue": "Hue",
+    "saturation": "Saturation",
+    "brightness": "Brightness",
+    "temperature": "Temperature",
+    "warm": "Warm",
+    "cool": "Cool",
+    "scenes": "Scenes",
+    "scenes_from_app": "This bulb has its own scenes. For now, choose them from the Smart Life app.",
+    "session_running": "The effect is running and will override what you choose here.",
+    "no_devices": "No bulbs to control yet."
+  },
+  "diagnostics": {
+    "title": "Diagnostics",
+    "export": "Export diagnostics",
+    "exported": "Saved to {path}",
+    "charts": "Charts",
+    "no_session": "Start the effect to see the capture and send charts.",
+    "captured": "Captured",
+    "fps_title": "Captures per second (target {target})",
+    "sends_title": "Sends per second per bulb (max {max})",
+    "health": "Health of each link",
+    "col": {
+      "device": "Bulb",
+      "state": "State",
+      "traffic": "Traffic",
+      "reconnects": "Reconnects"
+    },
+    "log": "Log",
+    "levels": "Levels",
+    "search": "Search the log",
+    "follow": "Follow latest",
+    "log_empty": "No lines match those filters.",
+    "no_secrets": "The log and the export never include keys or the Access Secret."
+  },
+  "tray": {
+    "title": "Tray menu",
+    "explain": "This is how the menu bar or system tray menu looks. The native app builds it with the same commands.",
+    "menu_label": "OpenLight menu",
+    "devices": "Bulbs",
+    "open": "Open OpenLight",
+    "quit": "Quit (restores the bulbs)",
+    "quit_note": "The bulbs went back to their state. In the real app, OpenLight would quit here.",
+    "mock_title": "Fake backend scenarios",
+    "mock_help": "Only shown in the browser, without Tauri. Useful to test the UI with real failures.",
+    "mock_fresh": "Start from scratch",
+    "mock_configured": "Two configured bulbs",
+    "mock_914": "Force key rejected (914)",
+    "mock_drop": "Force a drop",
+    "mock_no_display": "No monitor"
+  },
+  "import": {
+    "warning": {
+      "calibration_single_device": "calibracion.json was for a single bulb: it was applied to the first one. Calibrate the other from the dashboard."
+    }
   }
 }

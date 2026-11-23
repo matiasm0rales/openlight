@@ -181,11 +181,175 @@ mod macos {
     }
 }
 
-// Sistemas todavía sin implementación: sin permisos (los agregan los commits siguientes).
-#[cfg(not(target_os = "macos"))]
+#[cfg(target_os = "windows")]
+use win as platform;
+
+/// Windows: el firewall. Windows pregunta "¿permitir el acceso?" la primera vez que una app abre
+/// un socket UDP de entrada (el discovery de los focos escucha en 6666 y 6667); si se cancela,
+/// crea una regla de bloqueo para la app y los focos dejan de aparecer sin ningún aviso.
+#[cfg(any(target_os = "windows", test))]
+mod windows_firewall {
+    use super::*;
+
+    /// Qué dicen las reglas de entrada del firewall sobre este ejecutable.
+    ///
+    /// `json` es la salida de `ConvertTo-Json` sobre `Select-Object Enabled, Action`: una lista de
+    /// objetos. PowerShell escribe los enums como número (`Action`: 2 = Allow, 4 = Block;
+    /// `Enabled`: 1 = True) y, según la versión o el idioma del sistema, a veces como texto. Se
+    /// aceptan las dos formas para no depender del idioma.
+    ///
+    /// Una regla de bloqueo activa gana sobre una de permiso (el firewall hace lo mismo).
+    pub(super) fn state_from_rules(json: &str) -> PermissionState {
+        let Ok(value) = serde_json::from_str::<serde_json::Value>(json) else {
+            return PermissionState::NotDetermined;
+        };
+        let rules = match value {
+            serde_json::Value::Array(rules) => rules,
+            single @ serde_json::Value::Object(_) => vec![single],
+            _ => Vec::new(),
+        };
+        let mut allowed = false;
+        for rule in &rules {
+            if !is_enabled(&rule["Enabled"]) {
+                continue;
+            }
+            match action(&rule["Action"]) {
+                Some(Action::Block) => return PermissionState::Denied,
+                Some(Action::Allow) => allowed = true,
+                None => {}
+            }
+        }
+        if allowed {
+            PermissionState::Granted
+        } else {
+            PermissionState::NotDetermined
+        }
+    }
+
+    enum Action {
+        Allow,
+        Block,
+    }
+
+    fn is_enabled(v: &serde_json::Value) -> bool {
+        match v {
+            serde_json::Value::Number(n) => n.as_i64() == Some(1),
+            serde_json::Value::Bool(b) => *b,
+            serde_json::Value::String(s) => s.eq_ignore_ascii_case("true") || s == "1",
+            _ => false,
+        }
+    }
+
+    fn action(v: &serde_json::Value) -> Option<Action> {
+        match v {
+            serde_json::Value::Number(n) => match n.as_i64() {
+                Some(2) => Some(Action::Allow),
+                Some(4) => Some(Action::Block),
+                _ => None,
+            },
+            serde_json::Value::String(s) if s.eq_ignore_ascii_case("allow") => Some(Action::Allow),
+            serde_json::Value::String(s) if s.eq_ignore_ascii_case("block") => Some(Action::Block),
+            _ => None,
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn sin_reglas_no_se_sabe() {
+            assert_eq!(state_from_rules("[]"), PermissionState::NotDetermined);
+            assert_eq!(state_from_rules(""), PermissionState::NotDetermined);
+            assert_eq!(state_from_rules("basura"), PermissionState::NotDetermined);
+        }
+
+        #[test]
+        fn regla_de_permiso_activa_es_concedido() {
+            let json = r#"[{"Enabled":1,"Action":2},{"Enabled":1,"Action":2}]"#;
+            assert_eq!(state_from_rules(json), PermissionState::Granted);
+        }
+
+        #[test]
+        fn regla_de_bloqueo_activa_gana() {
+            let json = r#"[{"Enabled":1,"Action":2},{"Enabled":1,"Action":4}]"#;
+            assert_eq!(state_from_rules(json), PermissionState::Denied);
+        }
+
+        #[test]
+        fn reglas_desactivadas_no_cuentan() {
+            let json = r#"[{"Enabled":0,"Action":4},{"Enabled":1,"Action":2}]"#;
+            assert_eq!(state_from_rules(json), PermissionState::Granted);
+            let json = r#"[{"Enabled":0,"Action":4}]"#;
+            assert_eq!(state_from_rules(json), PermissionState::NotDetermined);
+        }
+
+        #[test]
+        fn acepta_un_solo_objeto_y_enums_como_texto() {
+            let un_objeto = r#"{"Enabled":1,"Action":4}"#;
+            assert_eq!(state_from_rules(un_objeto), PermissionState::Denied);
+            let texto = r#"[{"Enabled":"True","Action":"Allow"}]"#;
+            assert_eq!(state_from_rules(texto), PermissionState::Granted);
+        }
+    }
+}
+
+#[cfg(target_os = "windows")]
+mod win {
+    use std::os::windows::process::CommandExt;
+    use std::process::Command;
+
+    use super::windows_firewall::state_from_rules;
+    use super::*;
+
+    /// No abre una consola al lanzar PowerShell.
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+
+    /// Reglas de entrada que mencionan este ejecutable. El ejecutable va por variable de entorno
+    /// para no tener que escapar la ruta dentro del script.
+    const SCRIPT: &str = "$ErrorActionPreference = 'SilentlyContinue'; \
+        $r = Get-NetFirewallApplicationFilter -Program $env:OPENLIGHT_EXE | Get-NetFirewallRule \
+        | Where-Object { $_.Direction -eq 'Inbound' } | Select-Object Enabled, Action; \
+        if ($r) { ConvertTo-Json -InputObject @($r) -Compress } else { '[]' }";
+
+    pub(super) fn check() -> Vec<PermissionStatus> {
+        vec![status(
+            PermissionKind::Firewall,
+            firewall_state(),
+            Some(SystemPane::Firewall),
+            false,
+        )]
+    }
+
+    pub(super) fn request_screen_recording() -> PermissionState {
+        PermissionState::NotApplicable
+    }
+
+    /// Consulta el firewall con PowerShell. Si no se puede (sin PowerShell, sin permisos), el
+    /// estado queda en "no se sabe" y la UI deja el aviso con el botón para abrir el firewall.
+    fn firewall_state() -> PermissionState {
+        let Ok(exe) = std::env::current_exe() else {
+            return PermissionState::NotDetermined;
+        };
+        let out = Command::new("powershell.exe")
+            .args(["-NoProfile", "-NonInteractive", "-Command", SCRIPT])
+            .env("OPENLIGHT_EXE", exe)
+            .creation_flags(CREATE_NO_WINDOW)
+            .output();
+        match out {
+            Ok(out) if out.status.success() => {
+                state_from_rules(String::from_utf8_lossy(&out.stdout).trim())
+            }
+            _ => PermissionState::NotDetermined,
+        }
+    }
+}
+
+// Sistemas todavía sin implementación: sin permisos (los agrega el commit siguiente).
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
 use otros as platform;
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
 mod otros {
     use super::*;
 

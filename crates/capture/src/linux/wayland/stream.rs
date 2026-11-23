@@ -337,6 +337,14 @@ unsafe extern "C" fn on_process(data: *mut c_void) {
     }
 }
 
+/// Rango de bytes válidos de un chunk dentro del búfer mapeado. `None` si está vacío o se sale
+/// del búfer.
+fn valid_region(maxsize: u32, offset: u32, size: u32) -> Option<std::ops::Range<usize>> {
+    let (maxsize, offset, size) = (maxsize as usize, offset as usize, size as usize);
+    let end = offset.checked_add(size)?;
+    (size > 0 && end <= maxsize).then_some(offset..end)
+}
+
 /// # Safety
 /// `buffer` tiene que ser un búfer sacado de `cb.stream` y todavía no devuelto.
 unsafe fn handle_buffer(cb: &mut Callbacks, buffer: *mut pw::pw_buffer) {
@@ -348,7 +356,7 @@ unsafe fn handle_buffer(cb: &mut Callbacks, buffer: *mut pw::pw_buffer) {
         return;
     };
     // SAFETY: estructuras de SPA válidas mientras el búfer no se devuelva (ver arriba).
-    let (bytes, offset, stride) = unsafe {
+    let (bytes, stride) = unsafe {
         let spa_buffer = (*buffer).buffer;
         if spa_buffer.is_null() || (*spa_buffer).n_datas == 0 || (*spa_buffer).datas.is_null() {
             return;
@@ -365,17 +373,19 @@ unsafe fn handle_buffer(cb: &mut Callbacks, buffer: *mut pw::pw_buffer) {
         if chunk.flags & CHUNK_CORRUPTED != 0 {
             return;
         }
-        let bytes = std::slice::from_raw_parts(data.data.cast::<u8>(), data.maxsize as usize);
-        (bytes, chunk.offset as usize, chunk.stride)
+        // Solo la parte válida del chunk: lo que sigue puede ser de un cuadro anterior.
+        let Some(valid) = valid_region(data.maxsize, chunk.offset, chunk.size) else {
+            return;
+        };
+        let mapped = std::slice::from_raw_parts(data.data.cast::<u8>(), data.maxsize as usize);
+        (&mapped[valid], chunk.stride)
     };
     let stride = if stride > 0 {
         stride as usize
     } else {
         width as usize * 4
     };
-    let Some(bytes) = bytes.get(offset..) else {
-        return;
-    };
+    // Si el chunk no trae el cuadro entero, `downscale` lo rechaza y se descarta.
     let src = SourceImage {
         data: bytes,
         width,
@@ -429,6 +439,15 @@ mod tests {
         assert_eq!(pod::video::BGRA, spa::SPA_VIDEO_FORMAT_BGRA);
         assert_eq!(pod::video::ARGB, spa::SPA_VIDEO_FORMAT_ARGB);
         assert_eq!(pod::video::ABGR, spa::SPA_VIDEO_FORMAT_ABGR);
+    }
+
+    #[test]
+    fn solo_se_lee_la_parte_valida_del_chunk() {
+        assert_eq!(valid_region(100, 10, 50), Some(10..60));
+        assert_eq!(valid_region(100, 0, 100), Some(0..100));
+        assert_eq!(valid_region(100, 0, 0), None);
+        assert_eq!(valid_region(100, 60, 50), None);
+        assert_eq!(valid_region(100, u32::MAX, 2), None);
     }
 
     #[test]

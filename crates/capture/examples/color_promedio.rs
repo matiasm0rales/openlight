@@ -11,7 +11,7 @@
 //! Es uno solo para los tres sistemas (convención de E1/E2/E3): usa `capture::PlatformCapture`.
 //! Cada backend agrega su `target_os` a la lista de `cfg` de abajo cuando exporta su alias.
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 fn main() {
     if let Err(e) = real::run() {
         eprintln!("error: {e}");
@@ -19,12 +19,12 @@ fn main() {
     }
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
 fn main() {
     eprintln!("todavía no hay backend de captura para este sistema");
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 mod real {
     use std::io::Write;
     use std::time::{Duration, Instant};

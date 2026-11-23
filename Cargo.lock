@@ -481,6 +481,7 @@ dependencies = [
  "openlight-types",
  "screencapturekit",
  "tokio",
+ "windows",
 ]
 
 [[package]]

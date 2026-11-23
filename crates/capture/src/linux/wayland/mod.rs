@@ -11,6 +11,8 @@
 //!    que restaura la elección sin diálogo.
 
 pub(crate) mod outputs;
+#[cfg_attr(not(feature = "pipewire"), allow(dead_code))]
+mod pod;
 mod portal;
 #[cfg(feature = "pipewire")]
 mod stream;

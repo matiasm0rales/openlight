@@ -20,14 +20,17 @@ ashpd = { version = "0.14.3", default-features = false, features = ["tokio", "sc
 tokio = { workspace = true, features = ["rt", "time", "macros"] }
 wayland-client = "0.31.15"
 wayland-protocols = { version = "0.32.13", features = ["client", "unstable"] }
-pipewire = { version = "0.10.1", optional = true }
+# Solo los bindings `-sys`: se generan contra los headers instalados y sirven para PipeWire 0.3.48
+# (Ubuntu 22.04) y 1.x. Los crates seguros `pipewire`/`libspa` no compilan en las dos.
+pipewire-sys = { version = "0.10.1", optional = true }
+libspa-sys = { version = "0.10.1", optional = true }
 tracing = "0.1.44"
 
 [features]
 default = ["pipewire"]
 # Linux: cuadros de Wayland por PipeWire. Sin esta feature, Wayland responde `Unsupported`
 # (sirve para compilar sin libpipewire, por ejemplo al chequear desde otra plataforma).
-pipewire = ["dep:pipewire"]
+pipewire = ["dep:pipewire-sys", "dep:libspa-sys"]
 
 [lints]
 workspace = true

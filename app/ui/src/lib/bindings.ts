@@ -9,6 +9,8 @@ import type { InvokeOptions } from "@tauri-apps/api/core";
 export const commands = {
 	/**  Progreso del asistente inicial. */
 	onboardingState: (options?: InvokeOptions) => __TAURI_INVOKE<OnboardingState>("onboarding_state", undefined, options),
+	/**  Guarda el progreso del asistente (para pausar y retomar). */
+	onboardingSave: (step: OnboardingStep, completed: OnboardingStep[], options?: InvokeOptions) => __TAURI_INVOKE<OnboardingState>("onboarding_save", { step, completed }, options),
 	/**  Estado de los permisos del sistema que necesita la app en este SO. */
 	checkPermissions: (options?: InvokeOptions) => __TAURI_INVOKE<PermissionStatus_Serialize[]>("check_permissions", undefined, options),
 	/**  Abre el panel exacto de los ajustes del sistema. */
@@ -19,8 +21,12 @@ export const commands = {
 	cloudListDevices: (options?: InvokeOptions) => __TAURI_INVOKE<CloudDeviceInfo_Serialize[]>("cloud_list_devices", undefined, options),
 	/**  Busca focos en la red local durante `timeout_s` segundos (también emite `discovery://found`). */
 	discoverLan: (timeoutS: number | null, options?: InvokeOptions) => __TAURI_INVOKE<DiscoveredDevice_Serialize[]>("discover_lan", { timeoutS }, options),
+	/**  Focos configurados. */
+	devicesList: (options?: InvokeOptions) => __TAURI_INVOKE<ConfiguredDevice_Serialize[]>("devices_list", undefined, options),
 	/**  Agrega un foco. */
 	deviceAdd: (request: DeviceAddRequest_Deserialize, options?: InvokeOptions) => __TAURI_INVOKE<ConfiguredDevice_Serialize>("device_add", { request }, options),
+	/**  Cambia el nombre o la IP de un foco (`ip = None` = buscarla automáticamente). */
+	deviceUpdate: (request: DeviceAddRequest_Deserialize, options?: InvokeOptions) => __TAURI_INVOKE<ConfiguredDevice_Serialize>("device_update", { request }, options),
 	/**  Quita un foco (y su clave del llavero). */
 	deviceRemove: (device: DeviceId, options?: InvokeOptions) => __TAURI_INVOKE<null>("device_remove", { device }, options),
 	/**  Corre un patrón de prueba en un foco. */
@@ -51,6 +57,8 @@ export const commands = {
 	profilesDelete: (id: ProfileId, options?: InvokeOptions) => __TAURI_INVOKE<null>("profiles_delete", { id }, options),
 	/**  Activa un perfil (`None` = solo los ajustes globales). */
 	profilesActivate: (id: ProfileId | null, options?: InvokeOptions) => __TAURI_INVOKE<null>("profiles_activate", { id }, options),
+	/**  Estado actual de la sesión (después llegan los cambios por `session://state`). */
+	sessionState: (options?: InvokeOptions) => __TAURI_INVOKE<SessionState>("session_state", undefined, options),
 	/**  Arranca el efecto. */
 	sessionStart: (options?: InvokeOptions) => __TAURI_INVOKE<SessionState>("session_start", undefined, options),
 	/**  Detiene el efecto y devuelve los focos a su estado. */
@@ -65,6 +73,8 @@ export const commands = {
 	calibrationCancel: (options?: InvokeOptions) => __TAURI_INVOKE<null>("calibration_cancel", undefined, options),
 	/**  Importa el setup del script Python desde una carpeta. */
 	importLegacy: (folder: string, options?: InvokeOptions) => __TAURI_INVOKE<ImportReport>("import_legacy", { folder }, options),
+	/**  Últimas líneas del log (las más nuevas al final), para el visor del diagnóstico. */
+	diagnosticsLog: (limit: number | null, options?: InvokeOptions) => __TAURI_INVOKE<LogLine[]>("diagnostics_log", { limit }, options),
 	/**  Exporta un zip de diagnóstico sin secretos y devuelve su ruta. */
 	diagnosticsExport: (destination: string | null, options?: InvokeOptions) => __TAURI_INVOKE<string>("diagnostics_export", { destination }, options),
 };
@@ -77,6 +87,8 @@ export const EVENT_DEVICE_HEALTH = "device://health" as const;
 export const EVENT_DISCOVERY_FOUND = "discovery://found" as const;
 
 export const EVENT_ERROR_RAISED = "error://raised" as const;
+
+export const EVENT_PIPELINE_STATS = "stats://pipeline" as const;
 
 export const EVENT_SESSION_STATE = "session://state" as const;
 
@@ -331,6 +343,14 @@ export type DeviceOverrides = {
 	device: DeviceId,
 	/**  Lo que pisa. */
 	overrides: SettingsOverride,
+};
+
+/**  Envíos por segundo de un foco (parte de [`PipelineStatsEvent`]). */
+export type DeviceRate = {
+	/**  Foco. */
+	device: DeviceId,
+	/**  Comandos de color mandados en el último segundo. */
+	sends_per_s: number | null,
 };
 
 /**  Estado de un foco dentro de la sesión. */
@@ -597,6 +617,29 @@ export type LiveColorEvent_Serialize = {
 	sent: Hsv | null,
 };
 
+/**  Nivel de una línea del log. */
+export type LogLevel = 
+/**  Error. */
+"error" | 
+/**  Advertencia. */
+"warn" | 
+/**  Información. */
+"info" | 
+/**  Detalle para depurar. */
+"debug";
+
+/**  Una línea del log para el visor del diagnóstico (ya sin secretos). */
+export type LogLine = {
+	/**  Cuándo (ms desde la época Unix). */
+	at_ms: number | null,
+	/**  Nivel. */
+	level: LogLevel,
+	/**  Módulo que la escribió (`tuya_device`, `capture`...). */
+	target: string,
+	/**  Mensaje. */
+	message: string,
+};
+
 /**  Control manual (pantalla E). */
 export type ManualSet = 
 /**  Prender o apagar. */
@@ -709,6 +752,14 @@ export type PermissionStatus_Serialize = {
 	pane: SystemPane | null,
 	/**  Si hay que reabrir la app después de concederlo (macOS, Grabación de pantalla). */
 	needs_restart: boolean,
+};
+
+/**  Evento `stats://pipeline`: lo que alimenta los gráficos del diagnóstico. */
+export type PipelineStatsEvent = {
+	/**  Capturas por segundo que llegaron de verdad (no las pedidas). */
+	capture_fps: number | null,
+	/**  Envíos por segundo de cada foco. */
+	devices: DeviceRate[],
 };
 
 /**  Vista previa de un monitor para el paso 9. */

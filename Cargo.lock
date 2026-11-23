@@ -5700,6 +5700,17 @@ dependencies = [
 [[package]]
 name = "tuya-device"
 version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "getrandom 0.3.4",
+ "openlight-types",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "tuya-discovery",
+ "tuya-proto",
+ "tuya-sim",
+]
 
 [[package]]
 name = "tuya-discovery"

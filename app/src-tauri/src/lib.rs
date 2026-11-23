@@ -4,6 +4,7 @@
 //! `openlight-core`.
 
 pub mod ipc;
+pub mod permissions;
 
 /// Arranca la app.
 pub fn run() {

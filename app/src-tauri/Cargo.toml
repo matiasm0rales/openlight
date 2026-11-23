@@ -28,5 +28,9 @@ tauri-specta.workspace = true
 tauri-plugin-opener.workspace = true
 tauri-plugin-updater = "2.14.1"
 
+[target.'cfg(target_os = "macos")'.dependencies]
+# Estado de Grabación de pantalla (CGPreflight/CGRequestScreenCaptureAccess): API segura, sin `unsafe`.
+objc2-core-graphics = { version = "0.3.2", default-features = false, features = ["std", "CGWindow"] }
+
 [lints.rust]
 unsafe_code = "deny"

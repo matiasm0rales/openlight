@@ -3402,6 +3402,7 @@ dependencies = [
 name = "openlight"
 version = "0.1.0"
 dependencies = [
+ "objc2-core-graphics",
  "openlight-types",
  "serde",
  "serde_json",

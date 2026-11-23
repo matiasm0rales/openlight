@@ -1,0 +1,101 @@
+name: Release
+
+# Arma los instaladores de los 3 SO.
+#  - Con un tag `v*` además crea (o completa) un *borrador* de Release con los instaladores:
+#    publicarlo es decisión de quien mantiene el repo.
+#  - Con `workflow_dispatch` solo deja los instaladores como artifacts del run.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS universal (.dmg)
+            os: macos-15
+            args: --target universal-apple-darwin
+            rust_targets: aarch64-apple-darwin,x86_64-apple-darwin
+            artifact: instalador-macos
+          - name: Windows (MSI + NSIS)
+            os: windows-latest
+            args: ""
+            rust_targets: ""
+            artifact: instalador-windows
+          - name: Linux (AppImage + deb + rpm)
+            os: ubuntu-22.04
+            args: ""
+            rust_targets: ""
+            artifact: instalador-linux
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Xcode 26 (macOS)
+        if: runner.os == 'macOS'
+        # Igual que en ci.yml: `capture` compila un puente en Swift con APIs del SDK de macOS 26.
+        run: |
+          xcode=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [ -z "$xcode" ]; then
+            echo "::error::el runner no tiene Xcode 26"
+            ls -d /Applications/Xcode*.app
+            exit 1
+          fi
+          sudo xcode-select -s "$xcode"
+          xcodebuild -version
+          xcrun --sdk macosx --show-sdk-version
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_targets }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: release-${{ matrix.os }}
+
+      - name: Dependencias de Tauri (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev patchelf libpipewire-0.3-dev libclang-dev xvfb rpm
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Compilar y empaquetar
+        id: tauri
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tauriScript: pnpm tauri
+          args: ${{ matrix.args }}
+          # Solo con tag: sube los instaladores a un borrador de Release.
+          tagName: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
+          releaseName: OpenLight ${{ github.ref_name }}
+          releaseDraft: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
+
+      - name: Subir instaladores como artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ join(fromJSON(steps.tauri.outputs.artifactPaths), '\n') }}
+          if-no-files-found: error

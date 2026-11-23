@@ -1,57 +1,741 @@
 {
-  "app": { "name": "OpenLight", "tagline": "Tus focos siguen los colores de tu pantalla." },
+  "app": {
+    "name": "OpenLight",
+    "tagline": "Tus focos siguen los colores de tu pantalla.",
+    "lang": "es"
+  },
   "settings": {
-    "level": { "basic": "Básico", "advanced": "Avanzado", "expert": "Experto" },
+    "level": {
+      "basic": "Básico",
+      "advanced": "Avanzado",
+      "expert": "Experto"
+    },
     "restore_default": "Restaurar",
     "color_mode": {
       "title": "Modo de color",
       "help": "Dominante: el color que más se ve en la zona. Promedio: la mezcla de toda la zona.",
-      "option": { "dominant": "Dominante", "average": "Promedio" }
+      "option": {
+        "dominant": "Dominante",
+        "average": "Promedio"
+      }
     },
-    "saturation": { "title": "Realce de colores", "help": "Multiplica la saturación. Más alto, colores más intensos." },
-    "brightness_min": { "title": "Brillo mínimo", "help": "Brillo del foco cuando la pantalla está oscura." },
-    "brightness_max": { "title": "Brillo máximo", "help": "Tope de brillo del foco con la pantalla bien clara." },
-    "smoothing_ms": { "title": "Suavizado", "help": "Más alto, transiciones más lentas y sin parpadeo. Los cortes de escena siempre van más rápido." },
+    "saturation": {
+      "title": "Realce de colores",
+      "help": "Multiplica la saturación. Más alto, colores más intensos."
+    },
+    "brightness_min": {
+      "title": "Brillo mínimo",
+      "help": "Brillo del foco cuando la pantalla está oscura."
+    },
+    "brightness_max": {
+      "title": "Brillo máximo",
+      "help": "Tope de brillo del foco con la pantalla bien clara."
+    },
+    "smoothing_ms": {
+      "title": "Suavizado",
+      "help": "Más alto, transiciones más lentas y sin parpadeo. Los cortes de escena siempre van más rápido."
+    },
     "send_channel": {
       "title": "Canal del foco",
       "help": "Por dónde se le manda el color. Si los colores se ven entrecortados, probá el canal de control.",
-      "option": { "colour": "Color (normal)", "control_direct": "Control directo", "control_gradual": "Control con transición" }
+      "option": {
+        "colour": "Color (normal)",
+        "control_direct": "Control directo",
+        "control_gradual": "Control con transición"
+      }
     },
-    "capture_fps": { "title": "Capturas por segundo", "help": "Cuántas veces por segundo se mira la pantalla. Más alto, más rápido pero más consumo." },
-    "max_sends_per_s": { "title": "Comandos por segundo", "help": "Máximo de colores que se le mandan al foco por segundo. Bajalo si el foco se traba." },
-    "send_threshold": { "title": "Umbral de envío", "help": "Los cambios más chicos que esto no se mandan, porque no se notan." },
-    "black_bar": { "title": "Bandas negras", "help": "Las filas y columnas más oscuras que esto se toman como bandas negras y no cuentan para el brillo." },
-    "grey_threshold": { "title": "Umbral de gris", "help": "Con menos saturación que esto, la pantalla se considera gris y el foco da luz blanca." },
-    "dark_screen": { "title": "Pantalla oscura", "help": "Por debajo de este brillo se conserva el último color en vez de pasar a blanco." },
-    "hue_stickiness": { "title": "Estabilidad del tono", "help": "Evita que el foco salte entre dos colores que ocupan casi lo mismo de la pantalla." },
-    "no_screen_wait_s": { "title": "Espera sin pantalla", "help": "Si no hay pantalla durante este tiempo, el foco vuelve a como estaba hasta que la pantalla vuelva." },
-    "heartbeat_s": { "title": "Señal de vida", "help": "Cada cuánto se le avisa al foco que la conexión sigue viva." },
-    "dead_after_s": { "title": "Conexión muerta tras", "help": "Sin ninguna respuesta del foco durante este tiempo, se reconecta." },
-    "retry_every_s": { "title": "Reintentar cada", "help": "Tiempo entre intentos de reconexión." }
+    "capture_fps": {
+      "title": "Capturas por segundo",
+      "help": "Cuántas veces por segundo se mira la pantalla. Más alto, más rápido pero más consumo."
+    },
+    "max_sends_per_s": {
+      "title": "Comandos por segundo",
+      "help": "Máximo de colores que se le mandan al foco por segundo. Bajalo si el foco se traba."
+    },
+    "send_threshold": {
+      "title": "Umbral de envío",
+      "help": "Los cambios más chicos que esto no se mandan, porque no se notan."
+    },
+    "black_bar": {
+      "title": "Bandas negras",
+      "help": "Las filas y columnas más oscuras que esto se toman como bandas negras y no cuentan para el brillo."
+    },
+    "grey_threshold": {
+      "title": "Umbral de gris",
+      "help": "Con menos saturación que esto, la pantalla se considera gris y el foco da luz blanca."
+    },
+    "dark_screen": {
+      "title": "Pantalla oscura",
+      "help": "Por debajo de este brillo se conserva el último color en vez de pasar a blanco."
+    },
+    "hue_stickiness": {
+      "title": "Estabilidad del tono",
+      "help": "Evita que el foco salte entre dos colores que ocupan casi lo mismo de la pantalla."
+    },
+    "no_screen_wait_s": {
+      "title": "Espera sin pantalla",
+      "help": "Si no hay pantalla durante este tiempo, el foco vuelve a como estaba hasta que la pantalla vuelva."
+    },
+    "heartbeat_s": {
+      "title": "Señal de vida",
+      "help": "Cada cuánto se le avisa al foco que la conexión sigue viva."
+    },
+    "dead_after_s": {
+      "title": "Conexión muerta tras",
+      "help": "Sin ninguna respuesta del foco durante este tiempo, se reconecta."
+    },
+    "retry_every_s": {
+      "title": "Reintentar cada",
+      "help": "Tiempo entre intentos de reconexión."
+    },
+    "title": "Ajustes",
+    "default_is": "Por defecto: {value}",
+    "inherited": "Heredado",
+    "restore_named": "Restaurar {name}",
+    "restore_all": "Restaurar todo",
+    "level_label": "Nivel de detalle",
+    "scope": "Se aplica a",
+    "scope_global": "Todos los focos",
+    "scope_devices": "Un foco",
+    "scope_profiles": "Un perfil",
+    "scope_note": {
+      "global": "Cambiás los valores de todos los focos. Cada foco y cada perfil pueden pisar los que quieran.",
+      "device": "Solo este foco. Los ajustes con borde punteado se heredan de los globales.",
+      "profile": "Lo que guardes acá se aplica cuando el perfil está activo."
+    },
+    "more_hidden": "Hay {n} ajustes más en los niveles siguientes.",
+    "preview": "Vista previa en vivo",
+    "preview_on": "Los cambios se ven en el foco mientras movés el control.",
+    "preview_off": "Arrancá el efecto para ver los cambios en vivo.",
+    "profiles": {
+      "title": "Perfiles",
+      "help": "Un perfil guarda un conjunto de valores. Se cambia desde acá, el panel, el tray o con su atajo.",
+      "builtin": "De fábrica",
+      "active": "Activo",
+      "activate": "Activar",
+      "deactivate": "Desactivar",
+      "edit": "Editar valores",
+      "duplicate": "Duplicar",
+      "rename": "Renombrar",
+      "delete_named": "Borrar {name}",
+      "shortcut": "Atajo",
+      "press_keys": "Apretá la combinación… (Esc cancela, Borrar lo quita)",
+      "assign": "Asignar",
+      "none": "ninguno",
+      "new": "Perfil nuevo",
+      "new_placeholder": "Por ejemplo, Series",
+      "create": "Crear",
+      "copy_of": "Copia de {name}",
+      "shortcut_of": "atajo de {name}"
+    }
   },
-  "profile": { "movies": "Películas", "games": "Juegos", "work": "Trabajo" },
+  "profile": {
+    "movies": "Películas",
+    "games": "Juegos",
+    "work": "Trabajo"
+  },
   "error": {
-    "screen_permission_denied": { "title": "Falta el permiso de Grabación de pantalla", "detail": "Sin ese permiso no se puede ver la pantalla. Activalo en Ajustes y volvé a abrir OpenLight." },
-    "local_network_denied": { "title": "Falta el permiso de Red local", "detail": "Sin ese permiso no se puede hablar con los focos. Activalo en Ajustes del Sistema." },
-    "firewall_blocked": { "title": "El firewall bloquea la búsqueda de focos", "detail": "Permití a OpenLight en el firewall para encontrar los focos en tu red." },
-    "capture_unsupported": { "title": "No se puede capturar la pantalla", "detail": "Tu escritorio no ofrece una forma de compartir la pantalla (portal ScreenCast)." },
-    "no_display": { "title": "No hay monitor", "detail": "No encuentro ninguna pantalla encendida. Cuando aparezca, sigo solo." },
-    "device_not_found": { "title": "No encuentro el foco", "detail": "Revisá que esté prendido y que la compu esté en la misma Wi-Fi." },
-    "device_key_rejected": { "title": "El foco rechazó la clave", "detail": "La clave local cambió (error 914). Renovala con un clic." },
-    "device_timeout": { "title": "El foco no responde", "detail": "Puede estar apagado desde el interruptor o lejos del router." },
-    "device_busy": { "title": "Otra app está usando el foco", "detail": "Cerrá la app Smart Life en el celular: a veces ocupa la conexión local del foco." },
-    "device_no_colour": { "title": "Este dispositivo no muestra colores", "detail": "Solo tiene luz blanca, así que no puede seguir la pantalla." },
-    "cloud_invalid_signature": { "title": "El Access Secret no coincide", "detail": "Seguramente quedó mal copiado. Copialo de nuevo desde iot.tuya.com." },
-    "cloud_invalid_token": { "title": "La sesión con Tuya venció", "detail": "Probá de nuevo; si sigue, revisá el Access ID." },
-    "cloud_permission_denied": { "title": "Tuya no da permiso", "detail": "Revisá que vinculaste la cuenta de Smart Life al proyecto y que el Data Center es el correcto." },
-    "cloud_wrong_region": { "title": "Data Center equivocado", "detail": "Tus credenciales funcionan en {region}. ¿Lo cambio?" },
-    "cloud_service_not_authorized": { "title": "Falta un servicio en el proyecto", "detail": "Agregá el servicio IoT Core al proyecto Cloud." },
-    "cloud_trial_expired": { "title": "Venció la prueba de IoT Core", "detail": "Se puede extender gratis desde iot.tuya.com. Solo hace falta para renovar claves." },
-    "cloud_network": { "title": "Sin conexión con Tuya", "detail": "Revisá tu conexión a internet." },
-    "import_invalid": { "title": "No pude importar esa carpeta", "detail": "No encontré un devices.json válido." },
-    "invalid_setting": { "title": "Valor no válido", "detail": "El ajuste {setting} no acepta ese valor." },
-    "storage": { "title": "No pude guardar la configuración", "detail": "Revisá que haya espacio en el disco." },
-    "not_implemented": { "title": "Todavía no está disponible", "detail": "{command} todavía no está implementado." },
-    "internal": { "title": "Algo salió mal", "detail": "Exportá el diagnóstico y abrí un issue para que lo revisemos." }
+    "screen_permission_denied": {
+      "title": "Falta el permiso de Grabación de pantalla",
+      "detail": "Sin ese permiso no se puede ver la pantalla. Activalo en Ajustes y volvé a abrir OpenLight."
+    },
+    "local_network_denied": {
+      "title": "Falta el permiso de Red local",
+      "detail": "Sin ese permiso no se puede hablar con los focos. Activalo en Ajustes del Sistema."
+    },
+    "firewall_blocked": {
+      "title": "El firewall bloquea la búsqueda de focos",
+      "detail": "Permití a OpenLight en el firewall para encontrar los focos en tu red."
+    },
+    "capture_unsupported": {
+      "title": "No se puede capturar la pantalla",
+      "detail": "Tu escritorio no ofrece una forma de compartir la pantalla (portal ScreenCast)."
+    },
+    "no_display": {
+      "title": "No hay monitor",
+      "detail": "No encuentro ninguna pantalla encendida. Cuando aparezca, sigo solo."
+    },
+    "device_not_found": {
+      "title": "No encuentro el foco",
+      "detail": "Revisá que esté prendido y que la compu esté en la misma Wi-Fi."
+    },
+    "device_key_rejected": {
+      "title": "El foco rechazó la clave",
+      "detail": "La clave local cambió (error 914). Renovala con un clic."
+    },
+    "device_timeout": {
+      "title": "El foco no responde",
+      "detail": "Puede estar apagado desde el interruptor o lejos del router."
+    },
+    "device_busy": {
+      "title": "Otra app está usando el foco",
+      "detail": "Cerrá la app Smart Life en el celular: a veces ocupa la conexión local del foco."
+    },
+    "device_no_colour": {
+      "title": "Este dispositivo no muestra colores",
+      "detail": "Solo tiene luz blanca, así que no puede seguir la pantalla."
+    },
+    "cloud_invalid_signature": {
+      "title": "El Access Secret no coincide",
+      "detail": "Seguramente quedó mal copiado. Copialo de nuevo desde iot.tuya.com."
+    },
+    "cloud_invalid_token": {
+      "title": "La sesión con Tuya venció",
+      "detail": "Probá de nuevo; si sigue, revisá el Access ID."
+    },
+    "cloud_permission_denied": {
+      "title": "Tuya no da permiso",
+      "detail": "Revisá que vinculaste la cuenta de Smart Life al proyecto y que el Data Center es el correcto."
+    },
+    "cloud_wrong_region": {
+      "title": "Data Center equivocado",
+      "detail": "Tus credenciales funcionan en {region}. ¿Lo cambio?"
+    },
+    "cloud_service_not_authorized": {
+      "title": "Falta un servicio en el proyecto",
+      "detail": "Agregá el servicio IoT Core al proyecto Cloud."
+    },
+    "cloud_trial_expired": {
+      "title": "Venció la prueba de IoT Core",
+      "detail": "Se puede extender gratis desde iot.tuya.com. Solo hace falta para renovar claves."
+    },
+    "cloud_network": {
+      "title": "Sin conexión con Tuya",
+      "detail": "Revisá tu conexión a internet."
+    },
+    "import_invalid": {
+      "title": "No pude importar esa carpeta",
+      "detail": "No encontré un devices.json válido."
+    },
+    "invalid_setting": {
+      "title": "Valor no válido",
+      "detail": "El ajuste {setting} no acepta ese valor."
+    },
+    "storage": {
+      "title": "No pude guardar la configuración",
+      "detail": "Revisá que haya espacio en el disco."
+    },
+    "not_implemented": {
+      "title": "Todavía no está disponible",
+      "detail": "{command} todavía no está implementado."
+    },
+    "internal": {
+      "title": "Algo salió mal",
+      "detail": "Exportá el diagnóstico y abrí un issue para que lo revisemos."
+    }
+  },
+  "common": {
+    "cancel": "Cancelar",
+    "close": "Cerrar",
+    "dismiss": "Descartar",
+    "loading": "Cargando…",
+    "notifications": "Avisos",
+    "save": "Guardar",
+    "skip_to_content": "Saltar al contenido"
+  },
+  "nav": {
+    "label": "Secciones",
+    "dashboard": "Panel",
+    "settings": "Ajustes",
+    "devices": "Dispositivos",
+    "diagnostics": "Diagnóstico",
+    "tray": "Menú del tray",
+    "manual": "Control manual",
+    "onboarding": "Asistente",
+    "calibrate": "Calibración"
+  },
+  "prefs": {
+    "theme": "Tema",
+    "theme_system": "Tema del sistema",
+    "theme_light": "Tema claro",
+    "theme_dark": "Tema oscuro",
+    "language": "Idioma"
+  },
+  "session": {
+    "start": "Arrancar",
+    "stop": "Detener",
+    "state": {
+      "idle": "apagado",
+      "connecting": "conectando",
+      "active": "activo",
+      "paused": "en pausa",
+      "restoring": "restaurando"
+    },
+    "explain": {
+      "idle": "Los focos están como los dejaste. Arrancá para que sigan la pantalla.",
+      "connecting": "Conectando con los focos por la red local…",
+      "active": "Los focos siguen los colores de tu pantalla.",
+      "paused": "No hay pantalla: los focos volvieron a su estado y siguen solos cuando vuelva.",
+      "restoring": "Devolviendo los focos a como estaban…"
+    }
+  },
+  "device_state": {
+    "idle": "Sin usar",
+    "connecting": "Conectando",
+    "active": "Conectado",
+    "reconnecting": "Reconectando",
+    "paused": "En pausa",
+    "restoring": "Restaurando",
+    "error": "Necesita atención"
+  },
+  "disconnect": {
+    "peer_closed": "El foco cerró la conexión",
+    "timeout": "Tiempo de espera agotado",
+    "no_response": "Sin respuesta",
+    "key_rejected": "Clave rechazada (914)",
+    "refused": "Conexión rechazada",
+    "io": "Error de red"
+  },
+  "disconnect_help": {
+    "peer_closed": "Pasa seguido con algunos focos: OpenLight reconecta solo. Si son muchos, bajá «Comandos por segundo».",
+    "timeout": "El foco tardó en contestar. Puede estar lejos del router.",
+    "no_response": "El foco dejó de contestar las señales de vida. ¿Lo apagaron del interruptor?",
+    "key_rejected": "La clave local cambió. Renovala desde Dispositivos.",
+    "refused": "Otra app (Smart Life) puede estar ocupando el foco.",
+    "io": "Problema de red en la compu o el router."
+  },
+  "fix": {
+    "open_settings": {
+      "screen_recording": "Abrir Grabación de pantalla",
+      "local_network": "Abrir Red local",
+      "firewall": "Abrir el firewall",
+      "screen_cast_portal": "Abrir permisos del portal"
+    },
+    "renew_key": "Renovar clave",
+    "retry": "Reintentar",
+    "open_url": "Abrir {host}",
+    "show_help": "Ver guía: {topic}",
+    "use_region": "Usar {region}",
+    "open_diagnostics": "Abrir diagnóstico"
+  },
+  "help": {
+    "eyebrow": "Guía",
+    "tuya_account": {
+      "title": "Cuenta de Tuya"
+    },
+    "cloud_project": {
+      "title": "Proyecto Cloud"
+    },
+    "data_center": {
+      "title": "Data Center"
+    },
+    "link_smart_life": {
+      "title": "Vincular Smart Life"
+    },
+    "iot_core_trial": {
+      "title": "Prueba de IoT Core"
+    },
+    "device_troubleshooting": {
+      "title": "El foco no responde"
+    },
+    "permissions": {
+      "title": "Permisos del sistema"
+    }
+  },
+  "region": {
+    "us": "Western America",
+    "us_east": "Eastern America",
+    "eu": "Central Europe",
+    "eu_west": "Western Europe",
+    "china": "China",
+    "india": "India",
+    "singapore": "Singapur"
+  },
+  "hue": {
+    "red": "Rojo",
+    "orange": "Naranja",
+    "yellow": "Amarillo",
+    "lime": "Lima",
+    "green": "Verde",
+    "teal": "Verde agua",
+    "cyan": "Cian",
+    "sky": "Celeste",
+    "blue": "Azul",
+    "violet": "Violeta",
+    "magenta": "Magenta",
+    "pink": "Rosa",
+    "none": "sin color (gris)",
+    "unknown": "sin datos"
+  },
+  "eclipse": {
+    "label": "Pantalla: {screen}. Foco: {sent}.",
+    "off": "apagado"
+  },
+  "chart": {
+    "series": "Serie",
+    "now": "Ahora",
+    "average": "Promedio"
+  },
+  "permission": {
+    "screen_recording": {
+      "title": "Grabación de pantalla",
+      "why": "Para ver los colores de la pantalla. La imagen nunca sale de tu compu."
+    },
+    "local_network": {
+      "title": "Red local",
+      "why": "Para encontrar los focos y hablarles directo por tu Wi-Fi."
+    },
+    "firewall": {
+      "title": "Firewall",
+      "why": "Para escuchar los avisos de los focos en la red (UDP)."
+    },
+    "screen_cast_portal": {
+      "title": "Compartir pantalla (portal)",
+      "why": "En Wayland, el escritorio pregunta qué pantalla compartir."
+    },
+    "state": {
+      "granted": "Concedido",
+      "denied": "Denegado",
+      "not_determined": "Sin pedir",
+      "not_applicable": "No aplica"
+    }
+  },
+  "capability": {
+    "colour": "Color",
+    "white": "Blanco",
+    "temperature": "Temperatura",
+    "realtime": "Control en vivo",
+    "scenes": "Escenas"
+  },
+  "zones": {
+    "devices": "Foco a editar",
+    "choose_display": "Monitor",
+    "builtin": "integrada",
+    "primary": "principal",
+    "loading_preview": "Cargando la vista previa…",
+    "preview_alt": "Vista previa de {name}",
+    "rect_label": "Zona de {name}",
+    "rect_value": "desde {x}, {y}; tamaño {w} × {h}",
+    "keys": "Arrastrá la zona o usá el teclado: flechas para moverla, Mayús + flechas para cambiar el tamaño, Alt para pasos finos.",
+    "presets_for": "Atajos de zona para {name}",
+    "preset": {
+      "full": "Toda",
+      "left": "Izquierda",
+      "right": "Derecha",
+      "top": "Arriba",
+      "bottom": "Abajo",
+      "center": "Centro",
+      "custom": "A mano"
+    }
+  },
+  "log_level": {
+    "error": "Error",
+    "warn": "Aviso",
+    "info": "Info",
+    "debug": "Detalle"
+  },
+  "onboarding": {
+    "progress_label": "Progreso del asistente",
+    "progress_value": "Paso {n} de {total}: {name}",
+    "step_n": "Paso {n}",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "pause": "Seguir después",
+    "how": "¿Cómo?",
+    "on_your_phone": "En el celular",
+    "welcome": {
+      "short": "Bienvenida",
+      "title": "Tus focos, siguiendo tu pantalla",
+      "lead": "OpenLight mira los colores de tu monitor y se los manda a tus focos Smart Life por la red local. Configurarlo lleva unos 15 minutos, una sola vez.",
+      "needs": "Listo para empezar.",
+      "need": {
+        "bulbs": {
+          "title": "Focos en Smart Life",
+          "text": "Ya agregados en la app del celular, con color."
+        },
+        "wifi": {
+          "title": "La misma Wi-Fi",
+          "text": "La compu y los focos en la misma red."
+        },
+        "time": {
+          "title": "Unos 15 minutos",
+          "text": "Con el celular a mano para escanear un QR."
+        }
+      },
+      "why_title": "¿Por qué una cuenta de desarrollador de Tuya?",
+      "why_text": "Cada foco tiene una clave local que solo se puede leer desde el portal de Tuya. OpenLight la lee una sola vez; después todo anda sin internet ni nube.",
+      "import_title": "¿Ya usabas el script ambilight.py?",
+      "import_text": "Importá devices.json, config.json y calibracion.json de su carpeta y salteá casi todo el asistente.",
+      "import_cta": "Ya tengo devices.json",
+      "import_folder": "Carpeta del script",
+      "import_hint": "Por ejemplo ~/Documents/Open RGB. Las claves pasan al llavero del sistema.",
+      "import_run": "Importar",
+      "import_ok": "Listo: {devices} focos y {calibrations} calibraciones importadas.",
+      "import_continue": "Seguir con las zonas"
+    },
+    "permissions": {
+      "short": "Permisos",
+      "title": "Permisos del sistema",
+      "lead": "OpenLight necesita ver la pantalla y hablar con los focos de tu red. Nada sale de tu compu.",
+      "needs": "Falta conceder los permisos de arriba.",
+      "checking": "Revisando los permisos…",
+      "none_needed": "Este sistema no necesita permisos especiales.",
+      "auto": "Se vuelve a revisar solo cada pocos segundos.",
+      "restart": "macOS exige reabrir la app después de activar Grabación de pantalla. Cuando vuelvas, el asistente sigue desde acá."
+    },
+    "tuya_account": {
+      "short": "Cuenta Tuya",
+      "title": "Creá tu cuenta en Tuya Developer",
+      "lead": "Es gratis y se hace una sola vez.",
+      "needs": "Marcá la casilla cuando tengas la cuenta.",
+      "confirm": "Ya tengo cuenta en iot.tuya.com",
+      "image_alt": "El portal de Tuya con el botón Sign Up resaltado"
+    },
+    "cloud_project": {
+      "short": "Proyecto Cloud",
+      "title": "Creá el proyecto Cloud",
+      "lead": "Es lo que te da las claves para que OpenLight lea tus focos.",
+      "needs": "Elegí dónde creaste tu cuenta y marcá la casilla.",
+      "confirm": "Ya creé el proyecto",
+      "where": "¿Dónde creaste tu cuenta de Smart Life?",
+      "choose": "En «Data Center» elegí:",
+      "image_alt": "Menú Cloud → Development y el botón Create Cloud Project"
+    },
+    "link_app": {
+      "short": "Vincular Smart Life",
+      "title": "Vinculá Smart Life al proyecto",
+      "lead": "Con un QR, desde el celular.",
+      "needs": "Marcá la casilla cuando hayas escaneado el QR.",
+      "confirm": "Ya vinculé mi cuenta de Smart Life",
+      "image_alt": "Celular con Smart Life escaneando el QR del portal"
+    },
+    "credentials": {
+      "short": "Claves",
+      "title": "Pegá el Access ID y el Access Secret",
+      "lead": "OpenLight las prueba con Tuya antes de seguir.",
+      "needs": "Probá las claves para seguir.",
+      "id_help": "Unos 20 caracteres, en la pestaña Overview del proyecto.",
+      "id_short": "Parece incompleto: el Access ID tiene unos 20 caracteres.",
+      "secret_help": "32 caracteres. Se guarda en el llavero del sistema.",
+      "secret_length": "El Access Secret tiene 32 caracteres y pegaste {n}.",
+      "show": "Mostrar",
+      "hide": "Ocultar",
+      "region": "Data Center",
+      "test": "Probar",
+      "testing": "Probando con Tuya…",
+      "ok": "¡Anda! Conectado con Tuya en {region}.",
+      "saved": "Ya hay claves guardadas. Podés seguir o probar otras."
+    },
+    "choose_devices": {
+      "short": "Elegir focos",
+      "title": "Elegí los focos",
+      "lead": "Estos son los dispositivos de tu cuenta. Marcá los que querés que sigan la pantalla.",
+      "needs": "Elegí al menos un foco.",
+      "loading": "Pidiendo la lista a Tuya…",
+      "scanning": "Buscando los focos en tu red…",
+      "scanned": "{n} encontrados en tu red.",
+      "rescan": "Buscar de nuevo",
+      "legend": "Focos de tu cuenta",
+      "in_lan": "En tu red",
+      "not_in_lan": "No aparece en tu red",
+      "no_colour": "No tiene color",
+      "offline": "Desconectado",
+      "others": "Otros dispositivos ({n})",
+      "not_light": "No es una luz"
+    },
+    "test_devices": {
+      "short": "Probar",
+      "title": "Probá cada foco",
+      "lead": "Vas a ver rojo, verde y azul, un segundo y medio cada uno.",
+      "needs": "Confirmá que viste los colores en cada foco.",
+      "run": "Probar rojo, verde y azul",
+      "running": "Probando…",
+      "question": "¿Viste los tres colores en {name}?",
+      "yes": "Sí, los vi",
+      "no": "No",
+      "works": "Funciona",
+      "trouble_title": "Revisemos juntos:",
+      "check": {
+        "wifi": "¿La compu y el foco están en la misma Wi-Fi?",
+        "smart_life": "¿Está abierta la app Smart Life en el celular? Cerrala: a veces ocupa el foco.",
+        "switch": "¿El foco está prendido desde el interruptor de la pared?",
+        "key": "¿Lo volviste a vincular hace poco? Entonces la clave cambió: renovala."
+      },
+      "again": "Probar de nuevo",
+      "blink": "Hacerlo parpadear",
+      "remove": "Quitar este foco",
+      "empty": "Todavía no hay focos. Volvé al paso anterior."
+    },
+    "zones": {
+      "short": "Zonas",
+      "title": "Monitor y zonas",
+      "lead": "Elegí qué parte de la pantalla sigue cada foco. Con dos focos, izquierda y derecha queda muy bien.",
+      "needs": "Cada foco necesita una zona."
+    },
+    "calibrate": {
+      "short": "Calibrar",
+      "title": "Calibrá los colores (recomendado)",
+      "lead": "Cada foco interpreta los colores a su manera. En 5 minutos los hacés coincidir con tu monitor.",
+      "needs": "Paso opcional.",
+      "why": "Vas a ver 12 tonos a pantalla completa y mover el foco hasta que se parezca. El modo rápido usa 6.",
+      "full": "Calibrar",
+      "quick": "Modo rápido (6)",
+      "skip_hint": "Lo podés saltear y hacerlo después desde el panel."
+    },
+    "done": {
+      "short": "Listo",
+      "title": "¡Listo!",
+      "lead": "Ya está todo. Arrancá y poné un video con colores.",
+      "needs": "Todo listo.",
+      "autostart": "Abrir OpenLight al iniciar sesión",
+      "tray_mac": "OpenLight queda en la barra de menú, arriba a la derecha: desde ahí lo prendés, cambiás de perfil o salís.",
+      "tray_windows": "OpenLight queda en la bandeja del sistema, abajo a la derecha (puede estar dentro de la flechita).",
+      "tray_linux": "OpenLight queda en la bandeja del panel de tu escritorio.",
+      "start": "Arrancar",
+      "later": "Ahora no"
+    }
+  },
+  "dashboard": {
+    "eyebrow": "Panel",
+    "title_on": "Tus focos siguen la pantalla",
+    "title_off": "Todo en pausa",
+    "profile": "Perfil",
+    "no_profile": "Sin perfil",
+    "resume": "Te faltan {n} pasos del asistente.",
+    "resume_cta": "Retomar",
+    "empty_title": "Todavía no hay focos",
+    "empty_text": "Agregá tus focos con el asistente.",
+    "empty_cta": "Abrir el asistente",
+    "latency": "Latencia",
+    "drops": "Cortes (1 h)",
+    "last_drop": "Último corte",
+    "no_drops": "Sin cortes",
+    "screen": "Pantalla",
+    "sent": "Foco",
+    "brightness": "Brillo",
+    "manual": "Control manual",
+    "calibrate": "Calibrar",
+    "device_settings": "Ajustes del foco"
+  },
+  "devices": {
+    "title": "Tus focos",
+    "add": "Agregar focos",
+    "name": "Nombre",
+    "edit": "Editar",
+    "ip": "Dirección IP",
+    "ip_mode": "Cómo se encuentra el foco",
+    "ip_auto": "Automática",
+    "ip_fixed": "Fija",
+    "auto_ip": "IP automática",
+    "dps": "Protocolo y DPs",
+    "dps_caption": "DPs detectados de {name}",
+    "dp": {
+      "switch": "Encendido",
+      "mode": "Modo",
+      "bright": "Brillo",
+      "temp": "Temperatura",
+      "colour": "Color",
+      "control": "Control en vivo",
+      "modes": "Modos"
+    },
+    "calibrated": "Calibrado",
+    "not_calibrated": "Sin calibrar",
+    "renewed": "Clave renovada. El foco ya está conectado.",
+    "identify": "Identificar",
+    "remove": "Quitar",
+    "remove_title": "¿Quitar {name}?",
+    "remove_text": "Se borra su clave del llavero y su calibración. Lo podés volver a agregar cuando quieras.",
+    "zones": "Zonas"
+  },
+  "calibration": {
+    "eyebrow": "Calibrando {name}",
+    "mode": "Cantidad de tonos",
+    "full": "{n} tonos",
+    "quick": "Rápido ({n})",
+    "help": "Mirá el foco y mové los controles hasta que su luz se parezca a este color. Una saturación de más de 100 % solo realza los colores pálidos.",
+    "key_hue": "tono",
+    "key_sat": "saturación",
+    "key_next": "siguiente",
+    "hue": "Tono del foco",
+    "sat": "Saturación del foco",
+    "points": "Tonos",
+    "go_to": "Ir a {name}",
+    "prev": "Anterior",
+    "next": "Siguiente",
+    "fullscreen": "Pantalla completa",
+    "ab": "Prueba A/B",
+    "cancel": "Salir sin guardar",
+    "save": "Guardar",
+    "save_exit": "Guardar y salir",
+    "saved": "Calibración guardada.",
+    "starting": "Preparando el foco…"
+  },
+  "ab": {
+    "eyebrow": "Prueba A/B · {name}",
+    "question": "Pregunta {n} de {total}: {setting}",
+    "intro": "Vas a ver la opción A y después la B, seis segundos cada una, mientras esta ventana muestra colores que cambian. Mirá el foco.",
+    "start": "Empezar",
+    "seconds": "{n} s",
+    "which": "¿Cuál se pareció más a la pantalla?",
+    "pick": "Me quedo con {v}",
+    "same": "Igual",
+    "repeat": "Repetir",
+    "needs_session": "Para comparar, el efecto tiene que estar andando.",
+    "done_title": "Listo, quedó así",
+    "nothing": "Este foco no tiene opciones para comparar.",
+    "back": "Volver a la calibración"
+  },
+  "manual": {
+    "title": "Control manual",
+    "device": "Foco",
+    "power": "Encendido",
+    "mode": "Modo",
+    "colour": "Color",
+    "white": "Blanco",
+    "quick_colours": "Colores rápidos",
+    "hue": "Tono",
+    "saturation": "Saturación",
+    "brightness": "Brillo",
+    "temperature": "Temperatura",
+    "warm": "Cálido",
+    "cool": "Frío",
+    "scenes": "Escenas",
+    "scenes_from_app": "Este foco tiene escenas propias. Por ahora se eligen desde la app Smart Life.",
+    "session_running": "El efecto está andando y va a pisar lo que elijas acá.",
+    "no_devices": "Todavía no hay focos para controlar."
+  },
+  "diagnostics": {
+    "title": "Diagnóstico",
+    "export": "Exportar diagnóstico",
+    "exported": "Guardado en {path}",
+    "charts": "Gráficos",
+    "no_session": "Arrancá el efecto para ver los gráficos de captura y envíos.",
+    "captured": "Capturados",
+    "fps_title": "Capturas por segundo (objetivo {target})",
+    "sends_title": "Envíos por segundo por foco (máximo {max})",
+    "health": "Salud de cada enlace",
+    "col": {
+      "device": "Foco",
+      "state": "Estado",
+      "traffic": "Tráfico",
+      "reconnects": "Reconexiones"
+    },
+    "log": "Registro",
+    "levels": "Niveles",
+    "search": "Buscar en el registro",
+    "follow": "Seguir lo último",
+    "log_empty": "No hay líneas con esos filtros.",
+    "no_secrets": "El registro y la exportación nunca incluyen claves ni el Access Secret."
+  },
+  "tray": {
+    "title": "Menú del tray",
+    "explain": "Así se ve el menú de la barra de menú o de la bandeja del sistema. Lo arma la app nativa con los mismos comandos.",
+    "menu_label": "Menú de OpenLight",
+    "devices": "Focos",
+    "open": "Abrir OpenLight",
+    "quit": "Salir (restaura los focos)",
+    "quit_note": "Los focos volvieron a su estado. En la app real, OpenLight se cerraría acá.",
+    "mock_title": "Escenarios del backend falso",
+    "mock_help": "Solo aparece en el navegador, sin Tauri. Sirve para probar la UI con fallas reales.",
+    "mock_fresh": "Empezar de cero",
+    "mock_configured": "Dos focos configurados",
+    "mock_914": "Forzar clave rechazada (914)",
+    "mock_drop": "Forzar un corte",
+    "mock_no_display": "Sin monitor"
+  },
+  "import": {
+    "warning": {
+      "calibration_single_device": "calibracion.json era de un solo foco: se aplicó al primero. Calibrá el otro desde el panel."
+    }
   }
 }

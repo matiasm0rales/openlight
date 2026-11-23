@@ -64,5 +64,14 @@
         ]
       }
     }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "REEMPLAZAR_POR_LA_CLAVE_PUBLICA_DEL_UPDATER (ver docs/release.md)",
+      "endpoints": [
+        "https://github.com/matiasm0rales/openlight/releases/latest/download/latest.json"
+      ],
+      "requireSignedVersion": true
+    }
   }
 }

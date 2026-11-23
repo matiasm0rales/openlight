@@ -26,6 +26,7 @@ specta-typescript.workspace = true
 tauri.workspace = true
 tauri-specta.workspace = true
 tauri-plugin-opener.workspace = true
+tauri-plugin-updater = "2.14.1"
 
 [lints.rust]
 unsafe_code = "deny"

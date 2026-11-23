@@ -122,6 +122,30 @@ jobs:
             echo "::warning::Sin secrets de Apple: el .dmg queda sin firmar ni notarizar (ver docs/release.md)."
           fi
 
+      - name: Firma del updater (opcional)
+        shell: bash
+        # Con TAURI_SIGNING_PRIVATE_KEY se generan los paquetes del updater (.sig + latest.json).
+        # Sin la clave el release sale igual, solo que sin actualizaciones automáticas.
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          if [ -z "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            echo "::warning::Sin TAURI_SIGNING_PRIVATE_KEY: no se generan los paquetes del updater (ver docs/release.md)."
+            exit 0
+          fi
+          if grep -q "REEMPLAZAR_POR" app/src-tauri/tauri.conf.json; then
+            echo "::error::Hay clave privada del updater pero falta la clave pública en plugins.updater.pubkey de tauri.conf.json."
+            exit 1
+          fi
+          {
+            echo "UPDATER_ARGS=--config app/src-tauri/tauri.updater.conf.json"
+            echo "TAURI_SIGNING_PRIVATE_KEY<<__FIN_CLAVE__"
+            echo "$TAURI_SIGNING_PRIVATE_KEY"
+            echo "__FIN_CLAVE__"
+            echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=$TAURI_SIGNING_PRIVATE_KEY_PASSWORD"
+          } >> "$GITHUB_ENV"
+
       - name: Compilar y empaquetar
         id: tauri
         uses: tauri-apps/tauri-action@v0
@@ -129,7 +153,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tauriScript: pnpm tauri
-          args: ${{ matrix.args }}
+          args: ${{ matrix.args }} ${{ env.UPDATER_ARGS }}
           # Solo con tag: sube los instaladores a un borrador de Release.
           tagName: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
           releaseName: OpenLight ${{ github.ref_name }}

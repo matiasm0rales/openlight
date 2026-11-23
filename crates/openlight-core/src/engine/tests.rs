@@ -293,3 +293,31 @@ fn detener_restaura_solo_si_hace_falta() {
     e.tick(0.0, &Frames::new(), CONNECTED);
     assert!(e.stop().is_empty());
 }
+
+#[test]
+fn un_envio_fallido_queda_pendiente() {
+    let mut e = engine(fast());
+    e.start(CONNECTED);
+    let step = e.tick(0.0, &frames("1", solid(ROJO)), CONNECTED);
+    assert_eq!(sends(&[step]).len(), 1);
+    e.send_failed();
+    assert_eq!(e.sent(), None);
+    let step = e.tick(1.0, &frames("1", solid(ROJO)), CONNECTED);
+    assert_eq!(
+        sends(&[step]).len(),
+        1,
+        "se reintenta aunque el color no cambió"
+    );
+}
+
+#[test]
+fn una_preparacion_fallida_se_repite_con_el_proximo_cuadro() {
+    let mut e = engine(fast());
+    e.start(CONNECTED);
+    e.prepare_failed();
+    let step = e.tick(0.0, &frames("1", solid(ROJO)), CONNECTED);
+    assert!(matches!(
+        step.actions[..],
+        [Action::Prepare, Action::Send(_)]
+    ));
+}

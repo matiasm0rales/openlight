@@ -125,6 +125,21 @@ impl DeviceEngine {
         vec![Action::Prepare]
     }
 
+    /// El último color que se mandó.
+    pub fn sent(&self) -> Option<Hsv> {
+        self.sent
+    }
+
+    /// `Action::Prepare` falló: se vuelve a pedir con el próximo cuadro con pantalla.
+    pub fn prepare_failed(&mut self) {
+        self.restored = true;
+    }
+
+    /// `Action::Send` falló: el color sigue pendiente y se reintenta en el próximo envío.
+    pub fn send_failed(&mut self) {
+        self.sent = None;
+    }
+
     /// Si el foco está devuelto a su estado original (sin pantalla, suspendido o detenido).
     pub fn is_restored(&self) -> bool {
         self.restored

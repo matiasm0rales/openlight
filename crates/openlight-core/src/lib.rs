@@ -12,6 +12,7 @@ pub mod engine;
 pub mod error;
 pub mod locks;
 pub mod pipeline;
+pub mod power;
 pub mod store;
 
 pub use driver::LightDriver;
@@ -19,3 +20,4 @@ pub use engine::{Action, DeviceEngine, Link, Step, Timing};
 pub use error::{CoreError, Result};
 pub use locks::{DeviceGuard, DeviceLocks, Holder};
 pub use pipeline::{ColorPipeline, Frames, Processed};
+pub use power::{NativePower, NoNativePower, PowerEvent, PowerEvents};

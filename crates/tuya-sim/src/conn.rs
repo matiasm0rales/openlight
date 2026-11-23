@@ -19,6 +19,7 @@ use serde_json::{Value, json};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::sync::broadcast::error::RecvError;
+use tokio::sync::{broadcast, watch};
 use tokio::time::Instant;
 
 use crate::server::Shared;
@@ -79,12 +80,16 @@ fn random16() -> [u8; 16] {
     b
 }
 
-pub(crate) async fn run(shared: Arc<Shared>, mut sock: TcpStream, peer: SocketAddr) {
+pub(crate) async fn run(
+    shared: Arc<Shared>,
+    mut sock: TcpStream,
+    peer: SocketAddr,
+    mut changes: broadcast::Receiver<Dps>,
+    mut kill: watch::Receiver<u64>,
+) {
     let _guard = ActiveGuard(shared.clone());
     let opened = Instant::now();
     let mut faults_rx = shared.faults.subscribe();
-    let mut changes = shared.changes.subscribe();
-    let mut kill = shared.kill.subscribe();
     let mut shutdown = shared.shutdown.subscribe();
 
     let faults = shared.faults();

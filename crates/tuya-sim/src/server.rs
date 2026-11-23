@@ -178,7 +178,10 @@ async fn accept_loop(listener: TcpListener, shared: Arc<Shared>) {
         shared.active.fetch_add(1, Ordering::SeqCst);
         shared.stat(|s| s.connections += 1);
         let _ = sock.set_nodelay(true);
-        tokio::spawn(conn::run(shared.clone(), sock, peer));
+        // Suscribirse antes de lanzar la tarea: así no se pierde ningún cambio posterior al accept.
+        let changes = shared.changes.subscribe();
+        let kill = shared.kill.subscribe();
+        tokio::spawn(conn::run(shared.clone(), sock, peer, changes, kill));
     }
 }
 

@@ -101,6 +101,8 @@ async fn cambios_de_afuera_llegan_como_push_a_todas_las_conexiones() {
     let sim = start(cfg(V33)).await;
     let mut a = Client::connect(&sim).await.unwrap();
     let mut b = Client::connect(&sim).await.unwrap();
+    // `connect` vuelve con el handshake del kernel; esperar a que el foco las haya aceptado.
+    assert!(sim.wait_until(T, |s| s.connections == 2).await);
     sim.set_dps(dps(json!({"20": false})));
     for c in [&mut a, &mut b] {
         match c.recv_payload(T).await {
@@ -272,6 +274,7 @@ async fn desconectar_todo() {
     let sim = start(cfg(V35)).await;
     let mut a = Client::connect(&sim).await.unwrap();
     let mut b = Client::connect(&sim).await.unwrap();
+    assert!(sim.wait_until(T, |s| s.connections == 2).await);
     sim.disconnect_all();
     assert_eq!(a.recv(T).await, Read::Closed);
     assert_eq!(b.recv(T).await, Read::Closed);

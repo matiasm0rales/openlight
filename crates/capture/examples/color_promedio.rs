@@ -10,8 +10,11 @@
 //!
 //! Es uno solo para los tres sistemas (convención de E1/E2/E3): usa `capture::PlatformCapture`.
 //! Cada backend agrega su `target_os` a la lista de `cfg` de abajo cuando exporta su alias.
+//!
+//! En Linux con Wayland, la primera vez el portal muestra el diálogo; el `restore_token` se guarda
+//! en `$TMPDIR/openlight-restore-token` para que la segunda corrida no lo muestre.
 
-#[cfg(any(target_os = "macos", target_os = "windows"))]
+#[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
 fn main() {
     if let Err(e) = real::run() {
         eprintln!("error: {e}");
@@ -19,12 +22,12 @@ fn main() {
     }
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
 fn main() {
     eprintln!("todavía no hay backend de captura para este sistema");
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows"))]
+#[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
 mod real {
     use std::io::Write;
     use std::time::{Duration, Instant};
@@ -68,6 +71,7 @@ mod real {
         let fps: f32 = args.next().and_then(|a| a.parse().ok()).unwrap_or(20.0);
 
         let mut fuente = PlatformCapture::new()?;
+        token::cargar(&mut fuente);
         match fuente.permission() {
             PermissionState::Granted | PermissionState::NotApplicable => {}
             _ => {
@@ -103,6 +107,7 @@ mod real {
                     if let Some(id) = &elegido {
                         match fuente.start(id.clone(), TARGET, fps) {
                             Ok(r) => {
+                                token::guardar(&fuente);
                                 println!("\nsiguiendo el monitor {id} a {fps} fps");
                                 rx = Some(r);
                             }
@@ -146,4 +151,35 @@ mod real {
             }
         }
     }
+}
+
+/// El `restore_token` del portal ScreenCast solo existe en Linux (Wayland).
+#[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+mod token {
+    use capture::PlatformCapture;
+
+    #[cfg(target_os = "linux")]
+    fn ruta() -> std::path::PathBuf {
+        std::env::temp_dir().join("openlight-restore-token")
+    }
+
+    #[cfg(target_os = "linux")]
+    pub fn cargar(fuente: &mut PlatformCapture) {
+        if let Ok(token) = std::fs::read_to_string(ruta()) {
+            fuente.set_restore_token(Some(token.trim().to_string()));
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    pub fn guardar(fuente: &PlatformCapture) {
+        if let Some(token) = fuente.restore_token() {
+            let _ = std::fs::write(ruta(), token);
+        }
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    pub fn cargar(_: &mut PlatformCapture) {}
+
+    #[cfg(not(target_os = "linux"))]
+    pub fn guardar(_: &PlatformCapture) {}
 }

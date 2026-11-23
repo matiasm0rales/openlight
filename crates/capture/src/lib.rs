@@ -21,3 +21,6 @@ pub use macos::MacosCapture as PlatformCapture;
 pub mod windows;
 #[cfg(target_os = "windows")]
 pub use windows::WindowsCapture as PlatformCapture;
+
+#[cfg(target_os = "linux")]
+pub use linux::LinuxCapture as PlatformCapture;

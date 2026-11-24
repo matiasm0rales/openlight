@@ -4,7 +4,9 @@ use std::net::IpAddr;
 use std::time::Duration;
 
 use async_trait::async_trait;
-use openlight_types::{Capabilities, DeviceCreds, DeviceId, SendChannel, Settings};
+use openlight_types::{
+    Capabilities, DeviceCreds, DeviceId, ProtocolVersion, SendChannel, Settings,
+};
 
 /// Puerto TCP de los focos Tuya.
 pub use tuya_proto::consts::TCP_PORT;
@@ -151,13 +153,38 @@ impl DeviceConfig {
     }
 }
 
-/// Quién encuentra la IP de un foco en la red (discovery UDP).
+/// Dónde está un foco en la red y qué versión del protocolo anuncia.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Located {
+    /// IP actual del foco.
+    pub ip: IpAddr,
+    /// Versión que anuncia el foco (`None` si el locator no la sabe). Si difiere de la
+    /// configurada, el actor usa la anunciada y la guarda.
+    pub version: Option<ProtocolVersion>,
+}
+
+impl Located {
+    /// Solo la IP.
+    pub fn ip(ip: IpAddr) -> Self {
+        Self { ip, version: None }
+    }
+
+    /// La IP y la versión que anuncia el foco.
+    pub fn with_version(ip: IpAddr, version: ProtocolVersion) -> Self {
+        Self {
+            ip,
+            version: Some(version),
+        }
+    }
+}
+
+/// Quién encuentra un foco en la red (discovery UDP): su IP y la versión que anuncia.
 ///
 /// En producción es [`crate::UdpLocator`]; las pruebas usan uno falso.
 #[async_trait]
 pub trait Locator: Send + Sync {
-    /// IP actual del foco `id`, o `None` si no apareció.
-    async fn locate(&self, id: &DeviceId) -> Option<IpAddr>;
+    /// Dónde está ahora el foco `id`, o `None` si no apareció.
+    async fn locate(&self, id: &DeviceId) -> Option<Located>;
 }
 
 /// Un [`Locator`] que nunca encuentra nada: para focos con IP fija.
@@ -166,7 +193,7 @@ pub struct NoLocator;
 
 #[async_trait]
 impl Locator for NoLocator {
-    async fn locate(&self, _id: &DeviceId) -> Option<IpAddr> {
+    async fn locate(&self, _id: &DeviceId) -> Option<Located> {
         None
     }
 }

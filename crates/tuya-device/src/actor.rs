@@ -271,7 +271,11 @@ impl Actor {
     /// IP a la que conectar: la que se tiene o, en modo automático, la que encuentre discovery.
     async fn resolve_ip(&mut self) -> Option<IpAddr> {
         if self.ip.is_none() && self.cfg.ip_mode == IpMode::Auto {
-            self.ip = self.locator.locate(&self.cfg.creds.id).await;
+            self.ip = self
+                .locator
+                .locate(&self.cfg.creds.id)
+                .await
+                .map(|found| found.ip);
         }
         self.ip
     }
@@ -280,9 +284,9 @@ impl Actor {
     /// discovery. Si no encuentra nada, se sigue con la que había.
     async fn refresh_ip(&mut self) {
         if self.cfg.ip_mode == IpMode::Auto
-            && let Some(ip) = self.locator.locate(&self.cfg.creds.id).await
+            && let Some(found) = self.locator.locate(&self.cfg.creds.id).await
         {
-            self.ip = Some(ip);
+            self.ip = Some(found.ip);
         }
     }
 
@@ -392,6 +396,7 @@ impl Actor {
             &self.cfg.creds.id,
             &SavedState {
                 ip: Some(ip),
+                version: saved.version,
                 original: Some(original.clone()),
             },
         );

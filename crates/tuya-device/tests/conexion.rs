@@ -273,6 +273,7 @@ fn al_reconectar_guarda_la_ip_sin_pisar_el_original() {
             &rig.id,
             &tuya_device::SavedState {
                 ip: Some("192.0.2.9".parse().unwrap()),
+                version: None,
                 original: original.clone(),
             },
         );

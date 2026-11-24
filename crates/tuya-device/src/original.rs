@@ -8,7 +8,7 @@ use std::collections::BTreeMap;
 use std::net::IpAddr;
 use std::sync::{Mutex, MutexGuard};
 
-use openlight_types::{Capabilities, DeviceId, Dps};
+use openlight_types::{Capabilities, DeviceId, Dps, ProtocolVersion};
 use serde_json::Value;
 
 /// Lo que se recuerda de un foco entre ejecuciones (`foco_estado.json` del script).
@@ -16,6 +16,9 @@ use serde_json::Value;
 pub struct SavedState {
     /// Última IP que funcionó.
     pub ip: Option<IpAddr>,
+    /// Versión del protocolo con la que funcionó cuando difería de la configurada (la que
+    /// anunció el foco por discovery). `None` = vale la configurada.
+    pub version: Option<ProtocolVersion>,
     /// Estado al que volver. Solo está mientras no se haya restaurado: si queda guardado, el
     /// programa murió sin devolver el foco.
     pub original: Option<Dps>,
@@ -173,6 +176,7 @@ mod tests {
         assert_eq!(store.load(&id), SavedState::default());
         let st = SavedState {
             ip: Some("192.0.2.9".parse().unwrap()),
+            version: Some(ProtocolVersion::V35),
             original: Some(estado_blanco()),
         };
         store.save(&id, &st);

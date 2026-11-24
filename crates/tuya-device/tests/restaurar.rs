@@ -68,6 +68,7 @@ fn si_falla_conserva_lo_guardado_para_la_proxima() {
             &rig.id,
             &SavedState {
                 ip: None,
+                version: None,
                 original: Some(estado_blanco()),
             },
         );

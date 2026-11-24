@@ -129,6 +129,9 @@ pub struct DeviceState {
     /// Última IP en la que respondió.
     #[serde(default)]
     pub last_ip: Option<String>,
+    /// Versión del protocolo que anunció el foco cuando difería de la del registro.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub version: Option<ProtocolVersion>,
     /// Estado al que volver al salir (`DPS_A_RESTAURAR`). Mientras exista, la app no cerró limpio.
     #[serde(default)]
     pub original: Option<Dps>,

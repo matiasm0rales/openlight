@@ -21,7 +21,9 @@ use openlight_types::{DeviceCreds, DeviceId, Dps, ProtocolVersion, Secret};
 use serde_json::{Value, json};
 use tokio::runtime::{Builder, Runtime};
 use tokio::time::Instant;
-use tuya_device::{DeviceConfig, DeviceHandle, IpMode, Locator, MemoryStore, StateStore, spawn};
+use tuya_device::{
+    DeviceConfig, DeviceHandle, IpMode, Located, Locator, MemoryStore, StateStore, spawn,
+};
 use tuya_sim::{DEFAULT_LOCAL_KEY, Faults, SimConfig, SimHandle};
 
 /// Cada cuánto avanza el reloj en `pump` y `pump_until`.
@@ -105,7 +107,7 @@ pub async fn pump_until(limit: Duration, what: &str, mut cond: impl FnMut() -> b
 /// Un [`Locator`] que contesta lo que se le diga y avisa cuántas veces lo llamaron.
 #[derive(Default)]
 pub struct MockLocator {
-    answer: Mutex<Option<IpAddr>>,
+    answer: Mutex<Option<Located>>,
     calls: AtomicU32,
     hook: Mutex<Option<Box<dyn FnMut() + Send>>>,
 }
@@ -113,13 +115,25 @@ pub struct MockLocator {
 impl MockLocator {
     pub fn new(answer: Option<IpAddr>) -> Arc<Self> {
         Arc::new(Self {
-            answer: Mutex::new(answer),
+            answer: Mutex::new(answer.map(Located::ip)),
+            ..Self::default()
+        })
+    }
+
+    /// Un locator que además anuncia la versión del protocolo.
+    pub fn announcing(ip: IpAddr, version: ProtocolVersion) -> Arc<Self> {
+        Arc::new(Self {
+            answer: Mutex::new(Some(Located::with_version(ip, version))),
             ..Self::default()
         })
     }
 
     pub fn answer(&self, ip: Option<IpAddr>) {
-        *self.answer.lock().unwrap() = ip;
+        *self.answer.lock().unwrap() = ip.map(Located::ip);
+    }
+
+    pub fn answer_version(&self, ip: IpAddr, version: ProtocolVersion) {
+        *self.answer.lock().unwrap() = Some(Located::with_version(ip, version));
     }
 
     /// Algo que correr cada vez que preguntan (por ejemplo, arreglar al foco).
@@ -134,7 +148,7 @@ impl MockLocator {
 
 #[async_trait]
 impl Locator for MockLocator {
-    async fn locate(&self, _id: &DeviceId) -> Option<IpAddr> {
+    async fn locate(&self, _id: &DeviceId) -> Option<Located> {
         self.calls.fetch_add(1, Ordering::SeqCst);
         if let Some(hook) = self.hook.lock().unwrap().as_mut() {
             hook();

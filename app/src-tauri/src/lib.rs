@@ -3,6 +3,8 @@
 //! En wave 0 los comandos son stubs (ver [`ipc`]); la tarea I1 (wave 3) los conecta con
 //! `openlight-core`.
 
+pub mod errors;
+pub mod events;
 pub mod ipc;
 
 /// Arranca la app.

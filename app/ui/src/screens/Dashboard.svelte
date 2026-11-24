@@ -69,8 +69,7 @@
     grid-template-columns: 1fr auto auto;
     gap: 2rem;
     align-items: end;
-    padding-bottom: 1.4rem;
-    border-bottom: 1px solid var(--line);
+    padding-bottom: 0.4rem;
   }
   .title {
     display: grid;
@@ -78,8 +77,8 @@
   }
   h1 {
     font-size: clamp(2.2rem, 4.6vw, 3.6rem);
-    font-variation-settings: "SOFT" 100, "opsz" 144;
-    font-weight: 480;
+    font-weight: 650;
+    letter-spacing: -0.035em;
   }
   .power {
     display: grid;
@@ -87,9 +86,8 @@
     gap: 0.4rem;
   }
   .state {
-    font-size: 0.72rem;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
+    font-size: 0.8rem;
+    font-weight: 600;
     color: var(--muted);
   }
   .profile {
@@ -98,15 +96,15 @@
     min-width: 210px;
   }
   .profile label {
-    font-weight: 700;
+    font-weight: 600;
     font-size: 0.85rem;
   }
   .resume {
     display: flex;
     gap: 0.8rem;
     align-items: center;
-    padding: 0.8rem 1rem;
-    border-color: var(--accent);
+    padding: 0.8rem 1.1rem;
+    border-radius: var(--radius-md);
   }
   .resume p {
     flex: 1;

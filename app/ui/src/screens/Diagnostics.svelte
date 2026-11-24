@@ -196,9 +196,7 @@
     vertical-align: top;
   }
   thead th {
-    font: 500 0.7rem var(--font-mono);
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
+    font: 600 0.8rem var(--font-body);
     color: var(--muted);
     border-bottom: 1px solid var(--line);
   }
@@ -242,7 +240,7 @@
     height: 320px;
     overflow: auto;
     padding: 0.8rem;
-    border-radius: var(--radius);
+    border-radius: var(--radius-md);
     border: 1px solid var(--line);
     background: var(--bg-deep);
     font: 0.82rem/1.6 var(--font-mono);

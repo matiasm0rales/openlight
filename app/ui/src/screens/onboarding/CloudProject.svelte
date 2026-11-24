@@ -43,7 +43,7 @@
     margin: 0;
     padding: 1rem;
     border: 1px solid var(--line);
-    border-radius: var(--radius);
+    border-radius: var(--radius-md);
     background: var(--surface);
     display: grid;
     gap: 0.7rem;

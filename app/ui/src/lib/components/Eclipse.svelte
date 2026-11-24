@@ -37,13 +37,14 @@
   .core {
     position: absolute;
     border-radius: 50%;
-    transition: background 260ms var(--ease), box-shadow 260ms var(--ease);
+    transition: background 260ms var(--ease), box-shadow 260ms var(--ease), opacity 260ms var(--ease);
   }
+  /* Halo grande y difuso, como el círculo de color de la referencia, teñido con lo que recibe el foco. */
   .halo {
-    inset: -18%;
-    background: radial-gradient(circle, color-mix(in srgb, var(--core) 55%, transparent) 0%, transparent 66%);
-    filter: blur(10px);
-    opacity: 0.85;
+    inset: -42%;
+    background: radial-gradient(circle, color-mix(in srgb, var(--core) 62%, transparent) 0%, color-mix(in srgb, var(--core) 24%, transparent) 40%, transparent 68%);
+    filter: blur(14px);
+    opacity: 0.9;
   }
   .off .halo {
     opacity: 0;
@@ -57,7 +58,7 @@
     inset: 17%;
     background: var(--core);
     box-shadow:
-      0 0 0 3px var(--surface),
-      0 0 24px -2px color-mix(in srgb, var(--core) 80%, transparent);
+      0 0 0 5px var(--surface),
+      0 10px 28px -6px color-mix(in srgb, var(--core) 80%, transparent);
   }
 </style>

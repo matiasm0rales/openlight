@@ -99,7 +99,7 @@
     grid-template-columns: auto 1fr auto;
     gap: 0.75rem;
     padding: 0.95rem 1rem;
-    border-radius: var(--radius);
+    border-radius: var(--radius-md);
     border: 1px solid color-mix(in srgb, var(--danger) 45%, var(--line));
     background: linear-gradient(160deg, var(--danger-soft), transparent 70%), var(--surface);
     box-shadow: var(--shadow);

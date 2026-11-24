@@ -100,56 +100,50 @@ pub async fn discover_lan(app: App<'_>, timeout_s: f32) -> CmdResult<Vec<Discove
 /// Focos configurados.
 #[tauri::command]
 #[specta::specta]
-pub async fn devices_list() -> CmdResult<Vec<ConfiguredDevice>> {
-    Ok(Vec::new())
+pub async fn devices_list(app: App<'_>) -> CmdResult<Vec<ConfiguredDevice>> {
+    app.devices_list()
 }
 
 /// Agrega un foco.
 #[tauri::command]
 #[specta::specta]
-pub async fn device_add(request: DeviceAddRequest) -> CmdResult<ConfiguredDevice> {
-    let _ = request;
-    todo("device_add")
+pub async fn device_add(app: App<'_>, request: DeviceAddRequest) -> CmdResult<ConfiguredDevice> {
+    app.device_add(request).await
 }
 
 /// Cambia el nombre o la IP de un foco (`ip = None` = buscarla automáticamente).
 #[tauri::command]
 #[specta::specta]
-pub async fn device_update(request: DeviceAddRequest) -> CmdResult<ConfiguredDevice> {
-    let _ = request;
-    todo("device_update")
+pub async fn device_update(app: App<'_>, request: DeviceAddRequest) -> CmdResult<ConfiguredDevice> {
+    app.device_update(request)
 }
 
 /// Quita un foco (y su clave del llavero).
 #[tauri::command]
 #[specta::specta]
-pub async fn device_remove(device: DeviceId) -> CmdResult<()> {
-    let _ = device;
-    todo("device_remove")
+pub async fn device_remove(app: App<'_>, device: DeviceId) -> CmdResult<()> {
+    app.device_remove(device).await
 }
 
 /// Corre un patrón de prueba en un foco.
 #[tauri::command]
 #[specta::specta]
-pub async fn device_test(device: DeviceId, pattern: TestPattern) -> CmdResult<()> {
-    let _ = (device, pattern);
-    todo("device_test")
+pub async fn device_test(app: App<'_>, device: DeviceId, pattern: TestPattern) -> CmdResult<()> {
+    app.device_test(device, pattern).await
 }
 
 /// Control manual de un foco.
 #[tauri::command]
 #[specta::specta]
-pub async fn device_manual(device: DeviceId, set: ManualSet) -> CmdResult<()> {
-    let _ = (device, set);
-    todo("device_manual")
+pub async fn device_manual(app: App<'_>, device: DeviceId, set: ManualSet) -> CmdResult<()> {
+    app.device_manual(device, set).await
 }
 
 /// Renueva la clave local con las credenciales guardadas (un clic; también lo ofrece el 914).
 #[tauri::command]
 #[specta::specta]
-pub async fn renew_key(device: DeviceId) -> CmdResult<()> {
-    let _ = device;
-    todo("renew_key")
+pub async fn renew_key(app: App<'_>, device: DeviceId) -> CmdResult<()> {
+    app.renew_key(device).await
 }
 
 // ---------- Pantallas y zonas ----------

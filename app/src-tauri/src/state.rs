@@ -50,6 +50,8 @@ pub struct BackendOptions {
     pub lookup_scan: Duration,
     /// Cuánto se espera a que cada foco vuelva a su estado al terminar la sesión.
     pub restore_timeout: Duration,
+    /// Cuánto se espera a que un foco aparezca en el control manual y en las pruebas.
+    pub connect_timeout: Duration,
     /// Ancho de la vista previa de un monitor, en píxeles.
     pub preview_width: u32,
     /// Retoque de la configuración de cada foco.
@@ -64,6 +66,7 @@ impl Default for BackendOptions {
             list_scan: Duration::from_secs(3),
             lookup_scan: Duration::from_secs(5),
             restore_timeout: Duration::from_secs(8),
+            connect_timeout: Duration::from_secs(15),
             preview_width: 480,
             device_tweak: None,
         }
@@ -155,8 +158,11 @@ pub(crate) struct ActiveSession {
 /// Conexión de control manual con un foco, que se suelta sola tras un rato sin usarla.
 pub(crate) struct ManualSlot {
     pub handle: DeviceHandle,
-    pub started: AsyncMutex<bool>,
+    /// `Some(capacidades)` mientras el foco está conectado (ya se llamó a `start`).
+    pub link: AsyncMutex<Option<Capabilities>>,
     pub last_used: Mutex<tokio::time::Instant>,
+    /// Si ya hay una tarea esperando para soltar la conexión.
+    pub reaper: std::sync::atomic::AtomicBool,
 }
 
 /// El estado compartido de la app.

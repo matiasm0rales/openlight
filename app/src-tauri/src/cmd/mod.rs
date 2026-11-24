@@ -3,5 +3,6 @@
 
 pub mod calibration;
 pub mod cloud;
+pub mod devices;
 pub mod onboarding;
 pub mod settings;

@@ -294,7 +294,9 @@ impl Conn {
     /// | latido y demás | un frame del mismo comando |
     ///
     /// Un push que no trae los DPs mandados (el de un envío anterior sin espera, o un cambio
-    /// de afuera) no cuenta: se pasa a `other` y se sigue esperando.
+    /// de afuera) no cuenta: se pasa a `other` y se sigue esperando. Si el control no recibe
+    /// respuesta, se lee el estado: un foco que ya tenía esos valores puede no mandar ningún
+    /// push, y el pedido está cumplido.
     ///
     /// # Errors
     /// [`DeviceError::Timeout`] si no llega en `io_timeout`; [`DeviceError::KeyRejected`] si
@@ -338,12 +340,49 @@ impl Conn {
                 };
             }
             match timeout_at(deadline, self.read_some()).await {
-                Err(_) => return Err(DeviceError::Timeout),
+                Err(_) => {
+                    // Un foco que ya tenía esos valores puede no mandar ningún push: se lee el
+                    // estado para ver si el pedido ya está cumplido.
+                    if let Some(dps) = &sent_dps
+                        && self.read_back(dps, &mut other).await
+                    {
+                        return Ok(None);
+                    }
+                    return Err(DeviceError::Timeout);
+                }
                 Ok(Err(e)) => return Err(e),
                 Ok(Ok(_)) => {}
             }
         }
     }
+
+    /// Consulta el estado y dice si ya trae `wanted`. Cualquier falla cuenta como que no.
+    async fn read_back(&mut self, wanted: &OrderedDps, other: &mut impl FnMut(&Incoming)) -> bool {
+        let Ok(query) = self.send(cmd::DP_QUERY, None).await else {
+            return false;
+        };
+        let deadline = Instant::now() + self.io_timeout;
+        loop {
+            for incoming in self.drain() {
+                match &incoming.body {
+                    Body::Json(value) if incoming.cmd == query.reply_cmd => {
+                        return dps_of(value).is_some_and(|dps| contains(&dps, wanted));
+                    }
+                    _ => other(&incoming),
+                }
+            }
+            if !matches!(timeout_at(deadline, self.read_some()).await, Ok(Ok(_))) {
+                return false;
+            }
+        }
+    }
+}
+
+/// Si `dps` trae todos los DPs de `wanted` con esos valores.
+fn contains(dps: &Dps, wanted: &OrderedDps) -> bool {
+    wanted
+        .iter()
+        .all(|(dp, value)| dps.get(dp).is_some_and(|got| got == value))
 }
 
 /// Si `incoming` contesta a un control que mandó `sent_dps` con el frame `sent`.
@@ -351,11 +390,7 @@ fn is_control_reply(incoming: &Incoming, sent: &Sent, sent_dps: &OrderedDps) -> 
     match incoming.cmd {
         // El push de estado del foco real: vale si trae lo que se pidió.
         cmd::STATUS => match &incoming.body {
-            Body::Json(value) => dps_of(value).is_some_and(|dps| {
-                sent_dps
-                    .iter()
-                    .all(|(dp, wanted)| dps.get(dp).is_some_and(|got| got == wanted))
-            }),
+            Body::Json(value) => dps_of(value).is_some_and(|dps| contains(&dps, sent_dps)),
             _ => false,
         },
         // El ack del mismo comando, con el seqno que mandamos.
@@ -572,6 +607,26 @@ mod tests {
                 Body::Json(v) if dps_of(v).is_some_and(|d| d["22"] == json!(300)))),
             "el push viejo se pasó a `other`: {others:?}"
         );
+    }
+
+    #[tokio::test]
+    async fn un_control_que_no_cambia_nada_se_confirma_leyendo_el_estado() {
+        let sim = sim_real(ProtocolVersion::V35).await;
+        let mut conn = open(&sim).await.unwrap();
+        // El foco ya tiene 21 = colour: con el firmware real no manda ningún push.
+        let result = conn
+            .request(
+                cmd::CONTROL,
+                Some(dps_json(json!({"21": "colour"}))),
+                |_| {},
+            )
+            .await;
+        assert_eq!(result, Ok(None));
+        // Pero un valor distinto que no se aplica (fuera de rango) sigue siendo un fallo.
+        let result = conn
+            .request(cmd::CONTROL, Some(dps_json(json!({"22": 5}))), |_| {})
+            .await;
+        assert_eq!(result, Err(DeviceError::Timeout));
     }
 
     #[tokio::test]

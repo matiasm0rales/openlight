@@ -123,3 +123,16 @@ fn restaurar_despues_de_un_corte_con_el_firmware_real() {
         assert!(volvio_a_blanco(&rig), "{:?}", rig.sim.dps());
     });
 }
+
+#[test]
+fn set_dps_con_espera_de_lo_que_el_foco_ya_tiene_no_corta_la_conexion() {
+    run(async {
+        let rig = rig_real(ProtocolVersion::V35).await;
+        // El foco ya está en blanco: no hay push, pero el pedido está cumplido.
+        drive(rig.device.set_dps(dps(json!({"21": "white"})), true))
+            .await
+            .expect("ya estaba así");
+        assert!(rig.device.health().connected);
+        assert_eq!(rig.device.health().disconnects_last_hour, 0);
+    });
+}

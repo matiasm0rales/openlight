@@ -70,12 +70,20 @@ impl Shared {
             .map(|(dp, v)| (dp.clone(), v.clone()))
             .collect();
         if !accepted.is_empty() {
+            // Con `real_firmware` el foco no reporta un estado que no cambió (modelo pesimista:
+            // no se sabe si el real lo haría).
+            let unchanged = self.real_firmware && {
+                let current = lock(&self.dps);
+                accepted.iter().all(|(dp, v)| current.get(dp) == Some(v))
+            };
             lock(&self.dps).extend(accepted.clone());
             if record {
                 lock(&self.writes).push(accepted.clone());
             }
             // Sin conexiones no hay receptores: no es un error.
-            let _ = self.changes.send(accepted.clone());
+            if !unchanged {
+                let _ = self.changes.send(accepted.clone());
+            }
         }
         self.notify.notify_waiters();
         accepted

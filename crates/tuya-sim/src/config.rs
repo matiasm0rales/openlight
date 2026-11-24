@@ -38,7 +38,8 @@ pub struct SimConfig {
     pub faults: Faults,
     /// Imita el firmware real (medido con un W509Z2 en 3.5): numera todos sus frames con un
     /// contador propio, sin repetir el `seqno` del cliente, y contesta `CONTROL`/`CONTROL_NEW`
-    /// solo con un push de `STATUS`, sin ack. Apagado por defecto: así contesta tinytuya en sus
+    /// solo con un push de `STATUS`, sin ack (y sin push si los valores no cambiaron: modelo pesimista).
+    /// Apagado por defecto: así contesta tinytuya en sus
     /// pruebas.
     pub real_firmware: bool,
 }

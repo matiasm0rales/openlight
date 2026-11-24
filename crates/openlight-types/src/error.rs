@@ -25,6 +25,10 @@ pub enum ErrorCode {
     NoDisplay,
     /// No se encontró el foco en la red.
     DeviceNotFound,
+    /// El foco no apareció en la búsqueda de la red local (no se puede saber su versión ni su IP).
+    DeviceNotFoundOnLan,
+    /// No se pudo escuchar la red local para buscar focos (puerto ocupado, permiso o firewall).
+    LanScanFailed,
     /// El foco rechazó la clave (914).
     DeviceKeyRejected,
     /// El foco no responde.
@@ -65,13 +69,15 @@ pub enum ErrorCode {
 
 impl ErrorCode {
     /// Todos los códigos (para verificar que cada uno tenga sus textos).
-    pub const ALL: [Self; 24] = [
+    pub const ALL: [Self; 26] = [
         Self::ScreenPermissionDenied,
         Self::LocalNetworkDenied,
         Self::FirewallBlocked,
         Self::CaptureUnsupported,
         Self::NoDisplay,
         Self::DeviceNotFound,
+        Self::DeviceNotFoundOnLan,
+        Self::LanScanFailed,
         Self::DeviceKeyRejected,
         Self::DeviceTimeout,
         Self::DeviceBusy,

@@ -6,6 +6,9 @@
 //! - `DP_QUERY`/`DP_QUERY_NEW` se contesta con todos los DPs, sin encabezado de versión.
 //! - `HEART_BEAT` se contesta con un frame vacío.
 //! - `UPDATEDPS` se contesta con un ack vacío y un push con los DPs pedidos que existan.
+//! - Con `real_firmware` (medido con un W509Z2 en 3.5) el foco numera todos sus frames con un
+//!   contador propio, sin repetir el `seqno` del cliente, y a `CONTROL`/`CONTROL_NEW` contesta
+//!   solo con el push de `STATUS`, sin ack.
 //! - En 3.4/3.5, nada funciona hasta completar la negociación (cmd 3 → 4 → 5). El cmd 5 no se
 //!   contesta: tinytuya lo manda con `_send_receive_quick(step3, None)`.
 
@@ -110,7 +113,8 @@ pub(crate) async fn run(
         } else {
             Phase::Ready
         },
-        push_seq: 0,
+        // Un contador propio y ya avanzado, como el del foco real (17510 en la medición).
+        push_seq: if shared.real_firmware { 17_500 } else { 0 },
         opened,
         shared: shared.clone(),
     };
@@ -236,10 +240,16 @@ impl Conn {
         true
     }
 
-    fn reply(&self, req: &Msg, cmd: u32, payload: Vec<u8>, header: bool) -> Out {
+    fn reply(&mut self, req: &Msg, cmd: u32, payload: Vec<u8>, header: bool) -> Out {
+        let seqno = if self.shared.real_firmware {
+            self.push_seq += 1;
+            self.push_seq
+        } else {
+            req.seqno
+        };
         Out {
             msg: Msg {
-                seqno: req.seqno,
+                seqno,
                 cmd,
                 retcode: Some(0),
                 payload,
@@ -248,7 +258,7 @@ impl Conn {
         }
     }
 
-    fn ack(&self, req: &Msg) -> Out {
+    fn ack(&mut self, req: &Msg) -> Out {
         self.reply(req, req.cmd, Vec::new(), false)
     }
 
@@ -337,6 +347,10 @@ impl Conn {
                 let requested = control_dps(&msg.payload);
                 // El push sale por `changes` hacia todas las conexiones, esta incluida.
                 self.shared.apply(&requested, true);
+                if self.shared.real_firmware {
+                    // El foco real no confirma: el push con el estado nuevo es la respuesta.
+                    return Flow::Continue(Vec::new());
+                }
                 Flow::Continue(vec![self.ack(&msg)])
             }
             cmd::UPDATEDPS => {

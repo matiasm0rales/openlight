@@ -228,6 +228,11 @@ impl Rig {
         self.sim.reset_stats();
     }
 
+    /// Lo que quedó guardado como estado original.
+    pub fn store_original(&self) -> Option<Dps> {
+        self.store.load(&self.id).original
+    }
+
     /// Escrituras que recibió el foco, juntas por DP (último valor de cada uno, en orden).
     pub fn writes(&self) -> Vec<Dps> {
         self.sim.writes()

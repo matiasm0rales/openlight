@@ -54,7 +54,11 @@ impl Backend {
         let config = self.config()?;
         let mut specs = Vec::new();
         let mut handles = Vec::new();
-        for record in self.records()?.into_iter().filter(|r| !r.zones.is_empty()) {
+        let wanted = self
+            .records()?
+            .into_iter()
+            .filter(|r| !r.zones.is_empty() && !self.is_excluded(&r.id));
+        for record in wanted {
             let handle = match self.spawn_device(&record) {
                 Ok(handle) => handle,
                 Err(error) => {
@@ -154,6 +158,11 @@ impl Backend {
         Ok(SessionState::Idle)
     }
 
+    /// Si hay una sesión en marcha.
+    pub(crate) async fn session_running(&self) -> bool {
+        self.session.lock().await.is_some()
+    }
+
     /// Si la sesión en marcha está usando ese foco.
     pub(crate) async fn session_uses(&self, device: &DeviceId) -> bool {
         self.session
@@ -166,12 +175,31 @@ impl Backend {
     /// Al cerrar la app: detiene la sesión y cancela la calibración, así los focos no quedan con
     /// el color del ambiente.
     pub async fn shutdown(&self) {
+        use std::sync::atomic::Ordering;
+        self.shutdown_state.store(1, Ordering::SeqCst);
         if let Err(error) = self.calibration_cancel().await {
             tracing::warn!(%error, "no se pudo cancelar la calibración al salir");
         }
         if let Err(error) = self.session_stop().await {
             tracing::warn!(%error, "no se pudo detener la sesión al salir");
         }
+        self.shutdown_state.store(2, Ordering::SeqCst);
+    }
+
+    /// Si ya se restauraron los focos al salir.
+    pub fn is_shut_down(&self) -> bool {
+        self.shutdown_state
+            .load(std::sync::atomic::Ordering::SeqCst)
+            == 2
+    }
+
+    /// Marca que alguien va a correr `shutdown`. `true` si lo marcó esta llamada (la que tiene
+    /// que correrlo); `false` si otra ya lo está haciendo o ya terminó.
+    pub fn begin_shutdown(&self) -> bool {
+        use std::sync::atomic::Ordering;
+        self.shutdown_state
+            .compare_exchange(0, 1, Ordering::SeqCst, Ordering::SeqCst)
+            .is_ok()
     }
 }
 

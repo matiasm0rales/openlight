@@ -279,6 +279,21 @@ impl TuyaCloud for RejectingCloud {
     }
 }
 
+/// Otro backend sobre la misma carpeta de datos y el mismo llavero: como reabrir la app.
+pub fn reopen(h: &Harness) -> Arc<Backend> {
+    Backend::new(BackendParts {
+        data_dir: h.backend.data_dir().to_path_buf(),
+        secrets: h.secrets.clone(),
+        events: Arc::new(MemorySink::new()),
+        sources: Arc::new(|| unreachable!("reopen no captura")),
+        cloud: Arc::new(|_| Err(CloudError::Network("sin red".into()))),
+        scanner: Arc::new(FixedScanner(Vec::new())),
+        locator: Arc::new(NoLocator),
+        options: BackendOptions::default(),
+    })
+    .unwrap()
+}
+
 impl Harness {
     /// Eventos emitidos hasta ahora que cumplen `pick`.
     pub fn events_where<T>(&self, pick: impl Fn(&AppEvent) -> Option<T>) -> Vec<T> {

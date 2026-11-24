@@ -12,8 +12,10 @@ pub mod errors;
 pub mod events;
 pub mod ipc;
 pub mod permissions;
+pub mod shell;
 pub mod state;
 pub mod tray;
+pub mod tray_backend;
 pub mod windows;
 
 /// Arranca la app.
@@ -41,10 +43,9 @@ pub fn run() {
             let sink = Arc::new(events::TauriSink(app.handle().clone()));
             let backend = state::Backend::new(state::BackendParts::production(data_dir, sink))
                 .map_err(|e| format!("no se pudo iniciar el backend: {e}"))?;
-            app.manage(backend);
-            // TODO(I-0): reemplazar el backend falso por uno sobre el estado real de la app
-            // (`tray::TrayBackend`) y llamar a `tray::refresh` cuando cambie la sesión.
-            tray::install(app.handle(), Arc::new(tray::FakeTrayBackend::demo()))?;
+            backend.set_shell(Arc::new(shell::TauriShell(app.handle().clone())));
+            app.manage(backend.clone());
+            tray::install(app.handle(), Arc::new(tray_backend::AppTray::new(backend)))?;
             // Arrancó solo al iniciar sesión: queda en el tray, sin abrir la ventana.
             if autostart::started_by_autostart() {
                 windows::hide_main(app.handle())?;
@@ -54,11 +55,28 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error al iniciar OpenLight")
         .run(|app, event| {
-            // Salir restaura los focos: sin esto quedarían con el color del ambiente
-            if let tauri::RunEvent::Exit = event
-                && let Some(backend) = app.try_state::<std::sync::Arc<state::Backend>>()
-            {
-                tauri::async_runtime::block_on(backend.shutdown());
+            // Salir restaura los focos (Cmd+Q, "Salir" del tray, cerrar la sesión del sistema):
+            // sin esto quedarían con el color del ambiente.
+            let Some(backend) = app.try_state::<Arc<state::Backend>>() else {
+                return;
+            };
+            let backend = Arc::clone(&backend);
+            match event {
+                tauri::RunEvent::ExitRequested { api, .. } if !backend.is_shut_down() => {
+                    api.prevent_exit();
+                    if backend.begin_shutdown() {
+                        let app = app.clone();
+                        tauri::async_runtime::spawn(async move {
+                            backend.shutdown().await;
+                            app.exit(0);
+                        });
+                    }
+                }
+                // Último recurso si el cierre llegó sin pasar por ExitRequested
+                tauri::RunEvent::Exit if !backend.is_shut_down() => {
+                    tauri::async_runtime::block_on(backend.shutdown());
+                }
+                _ => {}
             }
         });
 }

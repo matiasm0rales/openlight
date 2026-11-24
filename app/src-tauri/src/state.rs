@@ -5,8 +5,9 @@
 //! las de verdad (`lib.rs`) y las pruebas arman las falsas (`tests/`). Los comandos de `ipc.rs`
 //! solo llaman a los métodos de `Backend`, que están repartidos por tema en `cmd/`.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::net::IpAddr;
+use std::sync::atomic::AtomicU8;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 
@@ -181,6 +182,12 @@ pub struct Backend {
     /// `Store` ordena cada escritura, pero no la transacción entera (dos cambios seguidos de un
     /// slider se pisarían).
     pub(crate) edit: Mutex<()>,
+    /// Efectos sobre las ventanas y el tray (no hay nada en las pruebas).
+    pub(crate) shell: Mutex<Option<Arc<dyn crate::shell::Shell>>>,
+    /// Focos que el usuario sacó del efecto desde el tray.
+    pub(crate) excluded: Mutex<HashSet<DeviceId>>,
+    /// 0 = en marcha, 1 = cerrando, 2 = ya cerró (`shutdown`).
+    pub(crate) shutdown_state: AtomicU8,
     pub(crate) cache: Mutex<Cache>,
     pub(crate) session: AsyncMutex<Option<ActiveSession>>,
     pub(crate) session_state: Mutex<SessionState>,
@@ -204,6 +211,9 @@ impl Backend {
             locks: DeviceLocks::new(),
             power: PowerEvents::new(),
             edit: Mutex::new(()),
+            shell: Mutex::new(None),
+            excluded: Mutex::new(HashSet::new()),
+            shutdown_state: AtomicU8::new(0),
             cache: Mutex::default(),
             session: AsyncMutex::new(None),
             session_state: Mutex::new(SessionState::Idle),
@@ -211,6 +221,10 @@ impl Backend {
             calibration: AsyncMutex::new(None),
         });
         backend.seed_profiles()?;
+        *backend
+            .excluded
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner) = backend.load_excluded();
         Ok(backend)
     }
 
@@ -243,10 +257,35 @@ impl Backend {
     }
 
     pub(crate) fn set_session_state(&self, state: SessionState) {
-        *self
-            .session_state
+        let changed = std::mem::replace(
+            &mut *self
+                .session_state
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner),
+            state,
+        ) != state;
+        if changed {
+            self.notify_changed();
+        }
+    }
+
+    /// Conecta la shell de la app (ventanas y tray).
+    pub fn set_shell(&self, shell: Arc<dyn crate::shell::Shell>) {
+        *self.shell.lock().unwrap_or_else(PoisonError::into_inner) = Some(shell);
+    }
+
+    pub(crate) fn shell(&self) -> Option<Arc<dyn crate::shell::Shell>> {
+        self.shell
             .lock()
-            .unwrap_or_else(PoisonError::into_inner) = state;
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone()
+    }
+
+    /// Avisa a la shell que cambió algo que el tray muestra.
+    pub(crate) fn notify_changed(&self) {
+        if let Some(shell) = self.shell() {
+            shell.changed();
+        }
     }
 
     // ---------- lecturas comunes ----------

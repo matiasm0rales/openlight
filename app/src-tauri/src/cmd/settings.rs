@@ -128,6 +128,7 @@ impl Backend {
         };
         config.profiles.push(profile.clone());
         self.store.save_config(&config)?;
+        self.notify_changed();
         Ok(profile)
     }
 
@@ -153,6 +154,7 @@ impl Backend {
         stored.shortcut = profile.shortcut.filter(|s| !s.trim().is_empty());
         let saved = stored.clone();
         self.store.save_config(&config)?;
+        self.notify_changed();
         Ok(saved)
     }
 
@@ -173,6 +175,7 @@ impl Backend {
             config.active_profile = None;
         }
         self.store.save_config(&config)?;
+        self.notify_changed();
         Ok(())
     }
 
@@ -187,6 +190,7 @@ impl Backend {
         }
         config.active_profile = id;
         self.store.save_config(&config)?;
+        self.notify_changed();
         Ok(())
     }
 }

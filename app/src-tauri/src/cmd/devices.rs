@@ -99,6 +99,7 @@ impl Backend {
         }
         self.store.save_devices(&records)?;
         self.release_manual(&id);
+        self.notify_changed();
         Ok(self.configured(&record))
     }
 
@@ -136,6 +137,7 @@ impl Backend {
         let record = record.clone();
         self.store.save_devices(&records)?;
         self.release_manual(&record.id);
+        self.notify_changed();
         Ok(self.configured(&record))
     }
 
@@ -157,6 +159,7 @@ impl Backend {
         self.store.update_state(|state| {
             state.devices.remove(&device);
         })?;
+        self.notify_changed();
         Ok(())
     }
 

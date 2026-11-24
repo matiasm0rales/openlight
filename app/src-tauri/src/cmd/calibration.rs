@@ -125,7 +125,6 @@ impl Backend {
             .await
             .map_err(|e| device_error(&device, &e))?;
 
-        // TODO(I1): abrir ventana de calibración a pantalla completa en `display` (la hace I1b).
         let run = CalibrationRun {
             device,
             display,
@@ -134,6 +133,14 @@ impl Backend {
             handle,
             _guard: guard,
         };
+        // La ventana a pantalla completa en el monitor elegido (la shell de la app); sin ella la
+        // calibración no sirve, así que si no abre se deja todo como estaba.
+        if let Some(shell) = self.shell()
+            && let Err(detail) = shell.open_calibration(&run.display)
+        {
+            self.close_calibration(run).await;
+            return Err(crate::errors::internal(detail));
+        }
         run.show(0);
         let state = run.state();
         *slot = Some(run);
@@ -210,6 +217,9 @@ impl Backend {
 
     /// Devuelve el foco a su estado original y suelta el candado.
     async fn close_calibration(&self, run: CalibrationRun) {
+        if let Some(shell) = self.shell() {
+            shell.close_calibration();
+        }
         let CalibrationRun { device, handle, .. } = run;
         let wait = self.options.restore_timeout;
         match tokio::time::timeout(wait, handle.restore()).await {

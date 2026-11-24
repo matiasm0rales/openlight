@@ -3,8 +3,8 @@
 
 use openlight_types::DisplayId;
 use tauri::{
-    AppHandle, Manager, Monitor, PhysicalPosition, PhysicalSize, Position, Runtime, Size,
-    WebviewUrl, WebviewWindowBuilder, Window, WindowEvent,
+    AppHandle, LogicalPosition, Manager, Monitor, PhysicalPosition, PhysicalSize, Position,
+    Runtime, Size, WebviewUrl, WebviewWindowBuilder, Window, WindowEvent,
 };
 
 /// Etiqueta de la ventana principal (la de `tauri.conf.json`).
@@ -155,24 +155,39 @@ fn open_calibration_in<R: Runtime>(app: &AppHandle<R>, display: &DisplayId) -> t
             WebviewWindowBuilder::new(app, CALIBRATION, WebviewUrl::App(CALIBRATION_ROUTE.into()))
                 .title("OpenLight")
                 .decorations(false)
-                .resizable(false)
                 .visible(false)
                 .build()?
         }
     };
     // La ventana va primero al monitor elegido y recién ahí pasa a pantalla completa: la
     // pantalla completa se hace en el monitor donde está la ventana.
-    window.set_position(Position::Physical(PhysicalPosition::new(
-        monitor.position().x,
-        monitor.position().y,
-    )))?;
+    window.set_position(position_on(&monitor))?;
     window.set_size(Size::Physical(PhysicalSize::new(
         monitor.size().width,
         monitor.size().height,
     )))?;
-    window.set_fullscreen(true)?;
     window.show()?;
+    window.set_fullscreen(true)?;
     window.set_focus()
+}
+
+/// Posición de la esquina del monitor, en la unidad que cada sistema interpreta bien.
+///
+/// macOS convierte una posición física con el factor de escala del monitor donde está la ventana
+/// *ahora*, no el de destino: al pasar de un monitor de escala 1 a uno Retina la ventana termina
+/// al doble de distancia. Con coordenadas lógicas (puntos, las de `CGDisplayBounds`) no hay
+/// conversión que equivocar. En Windows y Linux, en cambio, lo seguro son los píxeles físicos.
+fn position_on(monitor: &Monitor) -> Position {
+    let (x, y) = (monitor.position().x, monitor.position().y);
+    if cfg!(target_os = "macos") {
+        let scale = monitor.scale_factor();
+        Position::Logical(LogicalPosition::new(
+            f64::from(x) / scale,
+            f64::from(y) / scale,
+        ))
+    } else {
+        Position::Physical(PhysicalPosition::new(x, y))
+    }
 }
 
 /// Cierra la ventana de calibración (si no está abierta, no hace nada).

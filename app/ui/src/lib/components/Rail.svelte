@@ -4,6 +4,8 @@
   import { i18n, locales, setLocale, t, type Locale } from "../i18n/index.svelte";
   import { applyTheme, theme, type Theme } from "../theme.svelte";
   import Icon, { type IconName } from "./Icon.svelte";
+  import logoDark from "../../assets/logo-dark.svg";
+  import logoLight from "../../assets/logo-light.svg";
 
   const items: { name: RouteName; icon: IconName }[] = [
     { name: "dashboard", icon: "home" },
@@ -22,8 +24,8 @@
 
 <nav class="rail" aria-label={t("nav.label")}>
   <div class="brand">
-    <span class="logo" aria-hidden="true"></span>
-    <span class="word">Open<em>Light</em></span>
+    <img class="logo light" src={logoLight} alt="OpenLight" />
+    <img class="logo dark" src={logoDark} alt="OpenLight" />
   </div>
 
   <button type="button" class="session" class:on={running} onclick={toggleSession} disabled={app.busy.session} aria-pressed={running}>
@@ -80,43 +82,28 @@
     gap: 0.65rem;
     padding: 0 0.5rem;
   }
-  /* Logo: una pantalla 16:9 vacía con el resplandor multicolor de un Ambilight detrás. */
+  /* El logo trae dos versiones: la oscura para tema oscuro y la clara para tema claro. */
   .logo {
-    position: relative;
-    width: 33px;
-    height: 18.6px;
-    flex: none;
-    border-radius: 2px;
-    isolation: isolate;
-    border: 1.9px solid var(--text);
-    margin-right: 0.15rem;
+    height: 36px;
+    width: auto;
+    max-width: 100%;
   }
-  /* El interior queda vacío: tapa el resplandor para que solo se vea alrededor. */
-  .logo::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: 1px;
-    background: var(--surface);
+  .logo.dark {
+    display: none;
   }
-  .logo::before {
-    content: "";
-    position: absolute;
-    inset: -7.5px -8px;
-    z-index: -1;
-    border-radius: 6px;
-    background: linear-gradient(100deg, #ff1f3d, #ffc400 28%, #00e060 52%, #0a6cff 78%, #9d3dff);
-    filter: blur(4.5px) saturate(1.125);
-    opacity: 1;
+  :global(:root[data-theme="dark"]) .logo.light {
+    display: none;
   }
-  .word {
-    font: 700 1.2rem/1 var(--font-display);
-    letter-spacing: -0.03em;
+  :global(:root[data-theme="dark"]) .logo.dark {
+    display: block;
   }
-  .word em {
-    font-style: normal;
-    font-weight: 500;
-    color: var(--muted);
+  @media (prefers-color-scheme: dark) {
+    :global(:root:not([data-theme="light"])) .logo.light {
+      display: none;
+    }
+    :global(:root:not([data-theme="light"])) .logo.dark {
+      display: block;
+    }
   }
   .session {
     display: grid;

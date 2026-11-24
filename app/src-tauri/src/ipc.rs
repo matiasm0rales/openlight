@@ -151,24 +151,22 @@ pub async fn renew_key(app: App<'_>, device: DeviceId) -> CmdResult<()> {
 /// Monitores disponibles.
 #[tauri::command]
 #[specta::specta]
-pub async fn displays_list() -> CmdResult<Vec<DisplayInfo>> {
-    Ok(Vec::new())
+pub async fn displays_list(app: App<'_>) -> CmdResult<Vec<DisplayInfo>> {
+    app.displays_list()
 }
 
 /// Vista previa de un monitor.
 #[tauri::command]
 #[specta::specta]
-pub async fn display_preview(display: DisplayId) -> CmdResult<PreviewImage> {
-    let _ = display;
-    todo("display_preview")
+pub async fn display_preview(app: App<'_>, display: DisplayId) -> CmdResult<PreviewImage> {
+    app.display_preview(display).await
 }
 
 /// Define las zonas que sigue un foco.
 #[tauri::command]
 #[specta::specta]
-pub async fn zones_set(device: DeviceId, zones: Vec<Zone>) -> CmdResult<()> {
-    let _ = (device, zones);
-    todo("zones_set")
+pub async fn zones_set(app: App<'_>, device: DeviceId, zones: Vec<Zone>) -> CmdResult<()> {
+    app.zones_set(device, zones)
 }
 
 // ---------- Ajustes y perfiles ----------

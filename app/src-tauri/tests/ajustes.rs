@@ -116,3 +116,51 @@ async fn un_perfil_activo_pisa_los_globales_y_los_de_fabrica_no_se_borran() {
     b.profiles_delete(mine.id).unwrap();
     assert_eq!(b.settings_get().unwrap().active_profile, None);
 }
+
+#[tokio::test]
+async fn cambios_de_ajustes_al_mismo_tiempo_no_se_pisan() {
+    // Un slider manda cambios seguidos: cada uno lee, modifica y escribe la configuración entera
+    let h = harness(Setup {
+        sims: 0,
+        lan: false,
+    })
+    .await;
+    let ids = [
+        (SettingId::Saturation, 1.1),
+        (SettingId::BrightnessMin, 0.1),
+        (SettingId::BrightnessMax, 0.9),
+        (SettingId::SmoothingMs, 100.0),
+        (SettingId::CaptureFps, 30.0),
+        (SettingId::MaxSendsPerS, 5.0),
+        (SettingId::HueStickiness, 2.0),
+        (SettingId::DarkScreen, 0.2),
+    ];
+    for _ in 0..10 {
+        let threads: Vec<_> = ids
+            .iter()
+            .map(|&(id, value)| {
+                let backend = h.backend.clone();
+                std::thread::spawn(move || {
+                    backend
+                        .settings_set(SettingScope::Global, id, num(value))
+                        .unwrap();
+                })
+            })
+            .collect();
+        for t in threads {
+            t.join().unwrap();
+        }
+        let global = h.backend.settings_get().unwrap().global;
+        for (id, value) in ids {
+            assert!(
+                (global.get(id).as_number().unwrap() - value).abs() < 1e-6,
+                "{id:?} se perdió"
+            );
+        }
+        for (id, _) in ids {
+            h.backend
+                .settings_reset(SettingScope::Global, Some(id))
+                .unwrap();
+        }
+    }
+}

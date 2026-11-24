@@ -44,6 +44,7 @@ impl Backend {
             .set(&SecretKey::CloudAccessId, &Secret::new(access_id))?;
         self.secrets
             .set(&SecretKey::CloudAccessSecret, &Secret::new(access_secret))?;
+        let _edit = self.edit_lock();
         let mut config = self.config()?;
         config.cloud_region = Some(account.region);
         self.store.save_config(&config)?;

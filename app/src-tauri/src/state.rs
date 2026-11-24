@@ -177,6 +177,10 @@ pub struct Backend {
     pub(crate) options: BackendOptions,
     pub(crate) locks: DeviceLocks,
     pub(crate) power: PowerEvents,
+    /// Serializa las lecturas-modificaciones-escrituras de `config.json` y `devices.json`: el
+    /// `Store` ordena cada escritura, pero no la transacción entera (dos cambios seguidos de un
+    /// slider se pisarían).
+    pub(crate) edit: Mutex<()>,
     pub(crate) cache: Mutex<Cache>,
     pub(crate) session: AsyncMutex<Option<ActiveSession>>,
     pub(crate) session_state: Mutex<SessionState>,
@@ -199,6 +203,7 @@ impl Backend {
             options: parts.options,
             locks: DeviceLocks::new(),
             power: PowerEvents::new(),
+            edit: Mutex::new(()),
             cache: Mutex::default(),
             session: AsyncMutex::new(None),
             session_state: Mutex::new(SessionState::Idle),
@@ -226,6 +231,11 @@ impl Backend {
     /// Avisa un error que no vino de un comando (el usuario lo ve como aviso).
     pub(crate) fn raise(&self, error: UserFacingError) {
         self.emit(AppEvent::ErrorRaised(error));
+    }
+
+    /// Toma el candado de edición de la configuración. No se mantiene a través de un `await`.
+    pub(crate) fn edit_lock(&self) -> MutexGuard<'_, ()> {
+        self.edit.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
     pub(crate) fn cache(&self) -> MutexGuard<'_, Cache> {
@@ -317,6 +327,7 @@ impl Backend {
     // ---------- perfiles de fábrica ----------
 
     fn seed_profiles(&self) -> CmdResult<()> {
+        let _edit = self.edit_lock();
         let mut config = self.config()?;
         let mut changed = false;
         for profile in factory_profiles() {

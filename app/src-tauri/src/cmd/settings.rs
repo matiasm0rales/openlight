@@ -65,6 +65,7 @@ impl Backend {
         scope: &SettingScope,
         change: impl FnOnce(&mut openlight_types::SettingsOverride),
     ) -> CmdResult<()> {
+        let _edit = self.edit_lock();
         match scope {
             SettingScope::Global => {
                 let mut config = self.config()?;
@@ -107,6 +108,7 @@ impl Backend {
         if name.is_empty() || name.chars().count() > 60 {
             return Err(invalid("profile_name", "el nombre va de 1 a 60 caracteres"));
         }
+        let _edit = self.edit_lock();
         let mut config = self.config()?;
         let values = match &from {
             Some(id) => config
@@ -133,6 +135,7 @@ impl Backend {
     /// conservan su nombre (es una clave i18n).
     pub fn profiles_update(&self, profile: Profile) -> CmdResult<Profile> {
         profile.values.validate().map_err(UserFacingError::from)?;
+        let _edit = self.edit_lock();
         let mut config = self.config()?;
         let stored = config
             .profiles
@@ -155,6 +158,7 @@ impl Backend {
 
     /// Borra un perfil propio (los de fábrica no se borran).
     pub fn profiles_delete(&self, id: ProfileId) -> CmdResult<()> {
+        let _edit = self.edit_lock();
         let mut config = self.config()?;
         let profile = config
             .profiles
@@ -174,6 +178,7 @@ impl Backend {
 
     /// Activa un perfil (`None` = solo los ajustes globales). Vale desde la próxima sesión.
     pub fn profiles_activate(&self, id: Option<ProfileId>) -> CmdResult<()> {
+        let _edit = self.edit_lock();
         let mut config = self.config()?;
         if let Some(id) = &id
             && !config.profiles.iter().any(|p| &p.id == id)

@@ -69,6 +69,7 @@ impl Backend {
             .map(|ip| ip.to_string())
             .or_else(|| lan.map(|d| d.ip));
 
+        let _edit = self.edit_lock();
         let mut records = self.records()?;
         let previous = records.iter().position(|r| r.id == id);
         let name = match request.name.trim() {
@@ -116,6 +117,7 @@ impl Backend {
     /// Cambia el nombre o la IP (`None` = buscarla sola). Vale desde la próxima conexión.
     pub fn device_update(&self, request: DeviceAddRequest) -> CmdResult<ConfiguredDevice> {
         let fixed_ip = parse_ip(request.ip.as_deref())?;
+        let _edit = self.edit_lock();
         let mut records = self.records()?;
         let record = records
             .iter_mut()
@@ -141,6 +143,7 @@ impl Backend {
     /// sesión o la calibración lo están usando.
     pub async fn device_remove(&self, device: DeviceId) -> CmdResult<()> {
         let _guard = self.locks.try_acquire(&device, Holder::Manual)?;
+        let _edit = self.edit_lock();
         let mut records = self.records()?;
         if !records.iter().any(|r| r.id == device) {
             return Err(unknown_device(&device));
@@ -192,6 +195,7 @@ impl Backend {
                 };
                 if record.capabilities.is_none() {
                     // Un foco importado sin mapeo: desde ahora se sabe lo que puede hacer
+                    let _edit = self.edit_lock();
                     let mut records = self.records()?;
                     if let Some(r) = records.iter_mut().find(|r| &r.id == id) {
                         r.capabilities = Some(info.capabilities.clone());

@@ -72,6 +72,7 @@ impl Backend {
                 format!("la zona {:?} queda fuera del monitor", bad.rect),
             ));
         }
+        let _edit = self.edit_lock();
         let mut records = self.records()?;
         let record = records
             .iter_mut()

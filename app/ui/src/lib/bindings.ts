@@ -462,6 +462,10 @@ export type ErrorCode =
 "no_display" | 
 /**  No se encontró el foco en la red. */
 "device_not_found" | 
+/**  El foco no apareció en la búsqueda de la red local (no se puede saber su versión ni su IP). */
+"device_not_found_on_lan" | 
+/**  No se pudo escuchar la red local para buscar focos (puerto ocupado, permiso o firewall). */
+"lan_scan_failed" | 
 /**  El foco rechazó la clave (914). */
 "device_key_rejected" | 
 /**  El foco no responde. */

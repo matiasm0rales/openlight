@@ -159,6 +159,14 @@
       "title": "No encuentro el foco",
       "detail": "Revisá que esté prendido y que la compu esté en la misma Wi-Fi."
     },
+    "device_not_found_on_lan": {
+      "title": "No encontré el foco en tu red",
+      "detail": "No apareció en la búsqueda, así que no sé en qué IP está ni qué versión habla. Fijate que esté prendido del interruptor y en la misma Wi-Fi que la compu, y que ningún otro programa lo esté usando (Smart Life, el script anterior). Después buscá de nuevo."
+    },
+    "lan_scan_failed": {
+      "title": "No pude escuchar la red para buscar el foco",
+      "detail": "Cerrá otros programas que usen tus focos (Smart Life, el script anterior), revisá el permiso de Red local o el firewall y buscá de nuevo. {detail}"
+    },
     "device_key_rejected": {
       "title": "El foco rechazó la clave",
       "detail": "La clave local cambió (error 914). Renovala con un clic."

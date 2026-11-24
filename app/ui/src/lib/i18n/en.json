@@ -159,6 +159,14 @@
       "title": "Can't find the light",
       "detail": "Make sure it's on and the computer is on the same Wi-Fi."
     },
+    "device_not_found_on_lan": {
+      "title": "I couldn't find the bulb on your network",
+      "detail": "It didn't show up in the search, so I don't know its IP or protocol version. Make sure it is switched on at the wall and on the same Wi-Fi as this computer, and that no other program is using it (Smart Life, the old script). Then search again."
+    },
+    "lan_scan_failed": {
+      "title": "I couldn't listen to the network to find the bulb",
+      "detail": "Close other programs that use your bulbs (Smart Life, the old script), check the Local Network permission or the firewall, and search again. {detail}"
+    },
     "device_key_rejected": {
       "title": "The light rejected the key",
       "detail": "The local key changed (error 914). Renew it with one click."

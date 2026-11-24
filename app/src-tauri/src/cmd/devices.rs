@@ -8,7 +8,8 @@ use std::time::Duration;
 use openlight_core::{DeviceGuard, DeviceRecord, Holder};
 use openlight_types::ipc::{ConfiguredDevice, DeviceAddRequest, ManualSet, TestPattern};
 use openlight_types::{
-    Capabilities, DeviceError, DeviceId, Dps, Hsv, ProtocolVersion, SendChannel, Zone, ZonePreset,
+    Capabilities, DeviceError, DeviceId, Dps, ErrorCode, FixAction, HelpTopic, Hsv,
+    ProtocolVersion, SendChannel, UserFacingError, Zone, ZonePreset,
 };
 use secrets::SecretKey;
 use serde_json::{Value, json};
@@ -37,8 +38,9 @@ impl Backend {
 
     /// Agrega un foco de la cuenta: su clave va al llavero y su mapeo define las capacidades.
     ///
-    /// La versión del protocolo sale de lo que el foco anuncia en la red (si no aparece, se
-    /// asume 3.3, como el script). Sin IP fija, la IP se busca sola.
+    /// La versión del protocolo y la IP salen, en este orden, de lo que se vio de la red, de una
+    /// búsqueda nueva y, al volver a agregar un foco, de lo que ya estaba guardado. Si nada sirve
+    /// es un error: nunca se adivina una versión (un foco 3.5 guardado como 3.3 no responde).
     pub async fn device_add(&self, request: DeviceAddRequest) -> CmdResult<ConfiguredDevice> {
         let id = request.id.clone();
         let fixed_ip = parse_ip(request.ip.as_deref())?;
@@ -55,19 +57,9 @@ impl Backend {
             .filter(Capabilities::supports_colour)
             .ok_or_else(|| device_error(&id, &DeviceError::Unsupported("color".into())))?;
 
-        let cached = self.cache().lan.get(&id).cloned();
-        let lan = match cached {
-            Some(lan) => Some(lan),
-            None => self
-                .scan_lan(self.options.lookup_scan, Some(&id))
-                .await
-                .ok()
-                .and_then(|found| found.into_iter().find(|d| d.id == id)),
-        };
-        let version = lan.as_ref().map_or(ProtocolVersion::V33, |d| d.version);
-        let ip = fixed_ip
-            .map(|ip| ip.to_string())
-            .or_else(|| lan.map(|d| d.ip));
+        let previous_record = self.records()?.into_iter().find(|r| r.id == id);
+        let (version, found_ip) = self.resolve_link(&id, previous_record.as_ref()).await?;
+        let ip = fixed_ip.map(|ip| ip.to_string()).or(found_ip);
 
         let _edit = self.edit_lock();
         let mut records = self.records()?;
@@ -101,6 +93,42 @@ impl Backend {
         self.release_manual(&id);
         self.notify_changed();
         Ok(self.configured(&record))
+    }
+
+    /// Versión del protocolo e IP de un foco: la caché de la red, una búsqueda, y si no apareció,
+    /// lo guardado de antes. Un error de la búsqueda solo se informa si no hay de dónde más sacarlo.
+    async fn resolve_link(
+        &self,
+        id: &DeviceId,
+        previous: Option<&DeviceRecord>,
+    ) -> CmdResult<(ProtocolVersion, Option<String>)> {
+        let cached = self.cache().lan.get(id).cloned();
+        if let Some(lan) = cached {
+            return Ok((lan.version, Some(lan.ip)));
+        }
+        let scan = self.scan_lan(self.options.lookup_scan, Some(id)).await;
+        let scan_error = match scan {
+            Ok(found) => {
+                if let Some(lan) = found.into_iter().find(|d| &d.id == id) {
+                    return Ok((lan.version, Some(lan.ip)));
+                }
+                None
+            }
+            Err(error) => {
+                tracing::warn!(device = %id, code = ?error.code, "falló la búsqueda del foco en la red");
+                Some(error)
+            }
+        };
+        if let Some(previous) = previous {
+            return Ok((previous.version, previous.ip.clone()));
+        }
+        Err(match scan_error {
+            Some(error) => lan_scan_failed(error),
+            None => UserFacingError::new(ErrorCode::DeviceNotFoundOnLan)
+                .with_param("device", id.0.clone())
+                .with_action(FixAction::Retry)
+                .with_action(FixAction::ShowHelp(HelpTopic::DeviceTroubleshooting)),
+        })
     }
 
     /// Todo el monitor elegido por defecto (el primero externo, y si no hay, el integrado).
@@ -330,6 +358,29 @@ impl Backend {
         }
         Ok(())
     }
+}
+
+/// La búsqueda en la red no pudo ni escuchar: "buscar de nuevo" primero, y lo que arregla cada
+/// causa (cerrar otros programas, el permiso de Red local o el firewall) después.
+fn lan_scan_failed(cause: UserFacingError) -> UserFacingError {
+    let mut error = UserFacingError::new(ErrorCode::LanScanFailed)
+        .with_param("cause", cause.code.as_str())
+        .with_action(FixAction::Retry);
+    if let Some(detail) = cause.params.get("detail") {
+        error = error.with_param("detail", detail.clone());
+    }
+    for action in cause.actions {
+        if action != FixAction::Retry {
+            error = error.with_action(action);
+        }
+    }
+    if !error
+        .actions
+        .contains(&FixAction::ShowHelp(HelpTopic::DeviceTroubleshooting))
+    {
+        error = error.with_action(FixAction::ShowHelp(HelpTopic::DeviceTroubleshooting));
+    }
+    error
 }
 
 fn parse_ip(ip: Option<&str>) -> CmdResult<Option<IpAddr>> {

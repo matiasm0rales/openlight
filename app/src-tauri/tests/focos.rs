@@ -10,7 +10,10 @@ use common::{FAKE_ACCESS_ID, FAKE_ACCESS_SECRET, Harness, Setup, eventually, har
 use openlight_types::ipc::{
     CloudCredentialsInput, DeviceAddRequest, ManualSet, SettingScope, TestPattern,
 };
-use openlight_types::{DeviceId, ErrorCode, Hsv, ProtocolVersion, Region, SettingId, SettingValue};
+use openlight_types::{
+    DeviceId, ErrorCode, FixAction, HelpTopic, Hsv, ProtocolVersion, Region, SettingId,
+    SettingValue,
+};
 use secrets::{SecretKey, SecretStore};
 use serde_json::json;
 
@@ -295,4 +298,125 @@ async fn renovar_la_clave_baja_la_nueva_y_quitar_borra_todo() {
     );
     let error = h.backend.device_remove(id).await.unwrap_err();
     assert_eq!(error.code, ErrorCode::DeviceNotFound);
+}
+
+// ---------- versión e IP al agregar: nunca se adivinan ----------
+
+use common::ScanMode;
+use openlight_types::ipc::DiscoveredDevice;
+
+fn lan(version: ProtocolVersion, ip: &str) -> ScanMode {
+    ScanMode::Found(vec![DiscoveredDevice {
+        id: sim_id(1),
+        ip: ip.into(),
+        version,
+        product_key: None,
+    }])
+}
+
+#[tokio::test]
+async fn si_la_busqueda_no_puede_escuchar_la_red_no_se_guarda_un_foco_a_ciegas() {
+    let h = harness(Setup::default()).await;
+    with_cloud(&h).await;
+    h.scan.set(ScanMode::Fails);
+    let error = h
+        .backend
+        .device_add(request(sim_id(1), Some("127.0.0.1")))
+        .await
+        .unwrap_err();
+    assert_eq!(error.code, ErrorCode::LanScanFailed);
+    // Buscar de nuevo primero, y la ayuda para cerrar otros programas
+    assert_eq!(error.actions[0], FixAction::Retry);
+    assert!(
+        error
+            .actions
+            .contains(&FixAction::ShowHelp(HelpTopic::DeviceTroubleshooting))
+    );
+    assert_eq!(error.params["detail"], "puerto UDP en uso");
+    assert!(
+        h.backend.devices_list().unwrap().is_empty(),
+        "no quedó nada guardado"
+    );
+    assert_eq!(
+        h.secrets
+            .get(&SecretKey::DeviceLocalKey(sim_id(1)))
+            .unwrap(),
+        None
+    );
+}
+
+#[tokio::test]
+async fn si_el_foco_no_aparece_en_la_red_es_un_error_y_no_se_asume_3_3() {
+    let h = harness(Setup::default()).await;
+    with_cloud(&h).await;
+    h.scan.set(ScanMode::Empty);
+    for ip in [None, Some("127.0.0.1")] {
+        let error = h
+            .backend
+            .device_add(request(sim_id(1), ip))
+            .await
+            .unwrap_err();
+        assert_eq!(error.code, ErrorCode::DeviceNotFoundOnLan);
+        assert!(error.actions.contains(&FixAction::Retry));
+    }
+    assert!(h.backend.devices_list().unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn volver_a_agregar_conserva_la_version_y_la_ip_aunque_la_red_no_responda() {
+    let h = harness(Setup::default()).await;
+    with_cloud(&h).await;
+    // La primera vez el foco anuncia 3.4 en otra IP
+    h.scan.set(lan(ProtocolVersion::V34, "192.0.2.50"));
+    let first = h
+        .backend
+        .device_add(request(sim_id(1), None))
+        .await
+        .unwrap();
+    assert_eq!(first.version, ProtocolVersion::V34);
+    assert_eq!(first.ip.as_deref(), Some("192.0.2.50"));
+
+    // Re-agregar con la búsqueda rota, y después con la red vacía: queda lo de antes
+    for mode in [ScanMode::Fails, ScanMode::Empty] {
+        h.scan.set(mode);
+        // otra instancia de la app: sin caché de la red
+        let again = common::reopen_with(&h)
+            .device_add(request(sim_id(1), None))
+            .await;
+        let again = again.unwrap();
+        assert_eq!(again.version, ProtocolVersion::V34, "no vuelve a 3.3");
+        assert_eq!(again.ip.as_deref(), Some("192.0.2.50"));
+    }
+
+    // Y si ahora sí aparece, manda lo que anuncia (el foco pudo cambiar de IP)
+    h.scan.set(lan(ProtocolVersion::V35, "192.0.2.51"));
+    let moved = common::reopen_with(&h)
+        .device_add(request(sim_id(1), None))
+        .await
+        .unwrap();
+    assert_eq!(moved.version, ProtocolVersion::V35);
+    assert_eq!(moved.ip.as_deref(), Some("192.0.2.51"));
+}
+
+#[tokio::test]
+async fn actualizar_nombre_o_ip_no_toca_la_version() {
+    let h = harness(Setup::default()).await;
+    with_cloud(&h).await;
+    h.scan.set(lan(ProtocolVersion::V35, "127.0.0.1"));
+    let id = sim_id(1);
+    h.backend
+        .device_add(request(id.clone(), None))
+        .await
+        .unwrap();
+    for ip in [Some("192.0.2.9".to_owned()), None] {
+        let updated = h
+            .backend
+            .device_update(DeviceAddRequest {
+                id: id.clone(),
+                name: "Otro nombre".into(),
+                ip,
+            })
+            .unwrap();
+        assert_eq!(updated.version, ProtocolVersion::V35);
+    }
 }

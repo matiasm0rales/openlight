@@ -160,8 +160,9 @@ fn write_zip(
         add(name, &bytes)?;
     }
     add("logs/recientes.txt", recent.as_bytes())?;
-    if let Some(dir) = log_dir {
-        let mut files: Vec<_> = std::fs::read_dir(dir)?
+    // Sin carpeta de logs todavía (la app nunca llegó a escribir), no hay archivos que agregar
+    if let Some(entries) = log_dir.and_then(|dir| std::fs::read_dir(dir).ok()) {
+        let mut files: Vec<_> = entries
             .filter_map(Result::ok)
             .map(|e| e.path())
             .filter(|p| is_log_file(p))

@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { detect, localeFromTag } from "./index.svelte";
 import es from "./es.json";
 import en from "./en.json";
 
@@ -67,4 +68,40 @@ describe("i18n: cobertura de la UI", () => {
       expect(faltan).toEqual([]);
     });
   }
+});
+
+describe("idioma por defecto", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("el español en cualquier variante sale en español", () => {
+    for (const tag of ["es", "es-AR", "es-419", "es-ES", "es_MX", "ES-ar"]) expect(localeFromTag(tag)).toBe("es");
+  });
+
+  it("el inglés en cualquier variante sale en inglés", () => {
+    for (const tag of ["en", "en-US", "en-GB", "en_AU", "EN-us"]) expect(localeFromTag(tag)).toBe("en");
+  });
+
+  it("un idioma que la app no traduce sale en español, como el resto del producto", () => {
+    for (const tag of ["pt-BR", "fr-FR", "de", "zh-Hans-CN", "ja", "", undefined, null]) expect(localeFromTag(tag)).toBe("es");
+  });
+
+  it("no confunde un código que solo empieza con «en» o «es»", () => {
+    expect(localeFromTag("enm")).toBe("es");
+    expect(localeFromTag("est-EE")).toBe("es");
+  });
+
+  it("detect() usa el idioma del sistema cuando no hay nada guardado", () => {
+    vi.stubGlobal("navigator", { language: "es-419" });
+    expect(detect()).toBe("es");
+    vi.stubGlobal("navigator", { language: "en-US" });
+    expect(detect()).toBe("en");
+    vi.stubGlobal("navigator", { language: "pt-BR" });
+    expect(detect()).toBe("es");
+  });
+
+  it("detect() respeta la elección guardada por encima del sistema", () => {
+    vi.stubGlobal("navigator", { language: "en-US" });
+    vi.stubGlobal("localStorage", { getItem: () => "es" });
+    expect(detect()).toBe("es");
+  });
 });

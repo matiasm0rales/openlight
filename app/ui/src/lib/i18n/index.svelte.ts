@@ -8,15 +8,25 @@ type Tree = { [k: string]: string | Tree };
 const LOCALES: Record<Locale, Tree> = { es: es as Tree, en: en as Tree };
 const STORAGE_KEY = "openlight.locale";
 
-function detect(): Locale {
+/**
+ * Idioma de una etiqueta BCP-47 (`es-AR`, `es-419`, `en_US`, `pt-BR`): inglés solo si la etiqueta es
+ * inglés (`en`, `en-US`...); español en cualquier otro caso, incluido un idioma que la app no
+ * traduce. Quien no sabe inglés tiene que poder terminar el asistente.
+ */
+export function localeFromTag(tag: string | undefined | null): Locale {
+  const lang = (tag ?? "").toLowerCase().split(/[-_]/)[0];
+  return lang === "en" ? "en" : "es";
+}
+
+/** Idioma elegido y guardado; si no hay, el del sistema. */
+export function detect(): Locale {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved === "es" || saved === "en") return saved;
   } catch {
     // sin localStorage (pruebas, modo privado): se usa el idioma del sistema
   }
-  const nav = typeof navigator !== "undefined" ? navigator.language : "es";
-  return nav.toLowerCase().startsWith("es") ? "es" : "en";
+  return localeFromTag(typeof navigator !== "undefined" ? navigator.language : undefined);
 }
 
 export const i18n = $state<{ locale: Locale }>({ locale: detect() });

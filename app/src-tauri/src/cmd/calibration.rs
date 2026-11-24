@@ -14,3 +14,11 @@ pub(crate) struct CalibrationRun {
     pub handle: DeviceHandle,
     pub _guard: DeviceGuard,
 }
+
+impl crate::state::Backend {
+    /// Cierra la calibración sin guardar (se completa en el commit de calibración).
+    pub async fn calibration_cancel(&self) -> crate::errors::CmdResult<()> {
+        self.calibration.lock().await.take();
+        Ok(())
+    }
+}

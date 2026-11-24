@@ -6,4 +6,5 @@ pub mod cloud;
 pub mod devices;
 pub mod displays;
 pub mod onboarding;
+pub mod session;
 pub mod settings;

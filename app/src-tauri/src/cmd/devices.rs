@@ -316,6 +316,11 @@ impl Backend {
             &entry.device.local_key,
         )?;
         self.release_manual(&device);
+        // El actor de la sesión tiene la clave vieja: se reinicia con la nueva
+        if self.session_uses(&device).await {
+            self.session_stop().await?;
+            self.session_start().await?;
+        }
         Ok(())
     }
 }

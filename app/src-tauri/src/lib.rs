@@ -31,6 +31,14 @@ pub fn run() {
             app.manage(backend);
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error al iniciar OpenLight");
+        .build(tauri::generate_context!())
+        .expect("error al iniciar OpenLight")
+        .run(|app, event| {
+            // Salir restaura los focos: sin esto quedarían con el color del ambiente
+            if let tauri::RunEvent::Exit = event
+                && let Some(backend) = app.try_state::<std::sync::Arc<state::Backend>>()
+            {
+                tauri::async_runtime::block_on(backend.shutdown());
+            }
+        });
 }

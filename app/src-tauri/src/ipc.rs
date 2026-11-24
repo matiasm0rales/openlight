@@ -245,22 +245,22 @@ pub async fn profiles_activate(app: App<'_>, id: Option<ProfileId>) -> CmdResult
 /// Estado actual de la sesión (después llegan los cambios por `session://state`).
 #[tauri::command]
 #[specta::specta]
-pub async fn session_state() -> CmdResult<SessionState> {
-    Ok(SessionState::Idle)
+pub async fn session_state(app: App<'_>) -> CmdResult<SessionState> {
+    Ok(app.session_state())
 }
 
 /// Arranca el efecto.
 #[tauri::command]
 #[specta::specta]
-pub async fn session_start() -> CmdResult<SessionState> {
-    todo("session_start")
+pub async fn session_start(app: App<'_>) -> CmdResult<SessionState> {
+    app.session_start().await
 }
 
 /// Detiene el efecto y devuelve los focos a su estado.
 #[tauri::command]
 #[specta::specta]
-pub async fn session_stop() -> CmdResult<SessionState> {
-    Ok(SessionState::Idle)
+pub async fn session_stop(app: App<'_>) -> CmdResult<SessionState> {
+    app.session_stop().await
 }
 
 // ---------- Calibración ----------
@@ -414,12 +414,5 @@ mod tests {
             assert!(ts.contains(cmd), "falta {cmd} en bindings.ts");
         }
         assert!(ts.contains("session://state"));
-    }
-
-    #[test]
-    fn los_stubs_devuelven_errores_con_accion() {
-        let e = tauri::async_runtime::block_on(session_start()).unwrap_err();
-        assert_eq!(e.code, ErrorCode::NotImplemented);
-        assert!(!e.actions.is_empty());
     }
 }

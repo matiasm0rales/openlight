@@ -64,6 +64,13 @@
     return [c.dp_colour && "colour", c.dp_bright && "white", c.dp_temp && "temperature", c.dp_control && "realtime", c.modes.includes("scene") && "scenes"].filter(Boolean) as string[];
   }
 
+  // "Buscar de nuevo" en un error de agregar: se escucha la red otra vez (así el backend ve el foco
+  // aunque la primera búsqueda haya fallado) y se repite el agregado de los que faltan.
+  async function retryAdd() {
+    await scan();
+    await next();
+  }
+
   export async function next(): Promise<boolean> {
     addErrors = [];
     for (const id of selected) {
@@ -125,7 +132,7 @@
     </details>
   {/if}
 
-  {#each addErrors as e, i (i)}<ErrorCard error={e} />{/each}
+  {#each addErrors as e, i (i)}<ErrorCard error={e} retry={retryAdd} retryLabel={t("onboarding.choose_devices.rescan")} />{/each}
 {/if}
 
 <style>

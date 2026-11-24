@@ -269,34 +269,38 @@ pub async fn session_stop(app: App<'_>) -> CmdResult<SessionState> {
 #[tauri::command]
 #[specta::specta]
 pub async fn calibration_start(
+    app: App<'_>,
     device: DeviceId,
     display: DisplayId,
     quick: bool,
 ) -> CmdResult<CalibrationState> {
-    let _ = (device, display, quick);
-    todo("calibration_start")
+    app.calibration_start(device, display, quick).await
 }
 
-/// Ajusta el tono `index` y mueve el foco en vivo.
+/// Ajusta el tono `index` y mueve el foco en vivo (`None` = dejar ese valor como está).
 #[tauri::command]
 #[specta::specta]
-pub async fn calibration_set(index: u32, tono_deg: f32, sat: f32) -> CmdResult<CalibrationState> {
-    let _ = (index, tono_deg, sat);
-    todo("calibration_set")
+pub async fn calibration_set(
+    app: App<'_>,
+    index: u32,
+    tono_deg: Option<f32>,
+    sat: Option<f32>,
+) -> CmdResult<CalibrationState> {
+    app.calibration_set(index, tono_deg, sat).await
 }
 
 /// Guarda la tabla del foco y cierra la calibración.
 #[tauri::command]
 #[specta::specta]
-pub async fn calibration_save() -> CmdResult<()> {
-    todo("calibration_save")
+pub async fn calibration_save(app: App<'_>) -> CmdResult<()> {
+    app.calibration_save().await
 }
 
 /// Cierra la calibración sin guardar.
 #[tauri::command]
 #[specta::specta]
-pub async fn calibration_cancel() -> CmdResult<()> {
-    todo("calibration_cancel")
+pub async fn calibration_cancel(app: App<'_>) -> CmdResult<()> {
+    app.calibration_cancel().await
 }
 
 // ---------- Importar y diagnóstico ----------

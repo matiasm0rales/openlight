@@ -29,7 +29,8 @@
     display: flex;
     padding: 4px;
     border-radius: 999px;
-    background: var(--surface-2);
+    /* La barra de pasos es --bg-deep: sobre --surface-2 la píldora no se distinguiría. */
+    background: var(--surface);
   }
   .seg button {
     flex: 1;

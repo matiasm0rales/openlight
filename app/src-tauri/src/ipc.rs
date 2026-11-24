@@ -308,9 +308,8 @@ pub async fn calibration_cancel(app: App<'_>) -> CmdResult<()> {
 /// Importa el setup del script Python desde una carpeta.
 #[tauri::command]
 #[specta::specta]
-pub async fn import_legacy(folder: String) -> CmdResult<ImportReport> {
-    let _ = folder;
-    todo("import_legacy")
+pub async fn import_legacy(app: App<'_>, folder: String) -> CmdResult<ImportReport> {
+    app.import_legacy(folder).await
 }
 
 /// Últimas líneas del log (las más nuevas al final), para el visor del diagnóstico.

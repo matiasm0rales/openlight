@@ -5,6 +5,7 @@ pub mod calibration;
 pub mod cloud;
 pub mod devices;
 pub mod displays;
+pub mod legacy;
 pub mod onboarding;
 pub mod session;
 pub mod settings;

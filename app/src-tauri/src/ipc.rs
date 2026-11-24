@@ -30,10 +30,6 @@ pub use crate::errors::CmdResult;
 /// El estado de la app, tal como lo reciben los comandos.
 pub type App<'a> = State<'a, Arc<Backend>>;
 
-fn todo<T>(command: &str) -> CmdResult<T> {
-    Err(UserFacingError::not_implemented(command))
-}
-
 // ---------- Asistente y permisos ----------
 
 /// Progreso del asistente inicial.
@@ -314,17 +310,15 @@ pub async fn import_legacy(app: App<'_>, folder: String) -> CmdResult<ImportRepo
 /// Últimas líneas del log (las más nuevas al final), para el visor del diagnóstico.
 #[tauri::command]
 #[specta::specta]
-pub async fn diagnostics_log(limit: Option<u32>) -> CmdResult<Vec<LogLine>> {
-    let _ = limit;
-    Ok(Vec::new())
+pub async fn diagnostics_log(app: App<'_>, limit: Option<u32>) -> CmdResult<Vec<LogLine>> {
+    Ok(app.diagnostics_log(limit))
 }
 
 /// Exporta un zip de diagnóstico sin secretos y devuelve su ruta.
 #[tauri::command]
 #[specta::specta]
-pub async fn diagnostics_export(destination: Option<String>) -> CmdResult<String> {
-    let _ = destination;
-    todo("diagnostics_export")
+pub async fn diagnostics_export(app: App<'_>, destination: Option<String>) -> CmdResult<String> {
+    app.diagnostics_export(destination).await
 }
 
 // ---------- Registro ----------

@@ -24,6 +24,7 @@ pub(crate) struct Shared {
     pub local_key: [u8; 16],
     pub mapping: DpMapping,
     pub suite: Arc<dyn Suite>,
+    pub real_firmware: bool,
     dps: Mutex<Dps>,
     stats: Mutex<SimStats>,
     writes: Mutex<Vec<Dps>>,
@@ -69,12 +70,20 @@ impl Shared {
             .map(|(dp, v)| (dp.clone(), v.clone()))
             .collect();
         if !accepted.is_empty() {
+            // Con `real_firmware` el foco no reporta un estado que no cambió (modelo pesimista:
+            // no se sabe si el real lo haría).
+            let unchanged = self.real_firmware && {
+                let current = lock(&self.dps);
+                accepted.iter().all(|(dp, v)| current.get(dp) == Some(v))
+            };
             lock(&self.dps).extend(accepted.clone());
             if record {
                 lock(&self.writes).push(accepted.clone());
             }
             // Sin conexiones no hay receptores: no es un error.
-            let _ = self.changes.send(accepted.clone());
+            if !unchanged {
+                let _ = self.changes.send(accepted.clone());
+            }
         }
         self.notify.notify_waiters();
         accepted
@@ -125,6 +134,7 @@ pub async fn start_with(config: SimConfig, suite: Arc<dyn Suite>) -> io::Result<
         local_key: config.local_key,
         mapping,
         suite,
+        real_firmware: config.real_firmware,
         dps: Mutex::new(dps),
         stats: Mutex::new(SimStats::default()),
         writes: Mutex::new(Vec::new()),

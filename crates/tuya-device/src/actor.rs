@@ -612,7 +612,23 @@ impl Actor {
             // Se cortó hace poco: un intento antes de rendirse.
             self.try_reconnect().await?;
         }
-        self.request(cmd::CONTROL, Some(PayloadData::from(original)))
+        // Solo se escribe lo que cambió: el foco real confirma un control con el push del estado
+        // nuevo, y si no cambia nada puede no mandar ninguno (y la espera daría timeout).
+        let current = self
+            .request(cmd::DP_QUERY, None)
+            .await?
+            .as_ref()
+            .and_then(dps_of)
+            .ok_or_else(|| DeviceError::Protocol("la consulta no trajo DPs".into()))?;
+        let changed: Dps = original
+            .iter()
+            .filter(|(dp, value)| current.get(*dp) != Some(*value))
+            .map(|(dp, value)| (dp.clone(), value.clone()))
+            .collect();
+        if changed.is_empty() {
+            return Ok(());
+        }
+        self.request(cmd::CONTROL, Some(PayloadData::from(&changed)))
             .await
             .map(drop)
     }

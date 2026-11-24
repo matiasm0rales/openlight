@@ -361,3 +361,77 @@ async fn broadcasts_udp_y_req_devinfo() {
         .unwrap();
     assert!(suite.udp_decode(&buf[..n]).is_some());
 }
+
+/// Un foco con el comportamiento medido en el W509Z2 real.
+fn real(v: ProtocolVersion) -> SimConfig {
+    SimConfig::new(v).real_firmware(true)
+}
+
+#[tokio::test]
+async fn firmware_real_numera_con_su_propio_contador() {
+    for v in ProtocolVersion::ALL {
+        let sim = start(real(v)).await;
+        let mut c = Client::connect(&sim).await.unwrap();
+        // El cliente ya mandó frames con seqno 1 y 2 (negociación); el foco no los repite.
+        c.send(
+            if v.uses_session_key() {
+                cmd::DP_QUERY_NEW
+            } else {
+                cmd::DP_QUERY
+            },
+            if v.uses_session_key() {
+                b"{}".to_vec()
+            } else {
+                br#"{"gwId":"x","devId":"x","uid":"x","t":"0"}"#.to_vec()
+            },
+        )
+        .await
+        .unwrap();
+        let Read::Msg(estado) = c.recv_payload(T).await else {
+            panic!("{v}: sin respuesta");
+        };
+        assert!(estado.seqno >= 17_500, "{v}: seqno {}", estado.seqno);
+        let primero = estado.seqno;
+        // Un latido: sigue el mismo contador.
+        let Read::Msg(latido) = c.heartbeat().await else {
+            panic!("{v}: sin latido");
+        };
+        assert_eq!(latido.seqno, primero + 1, "{v}");
+        sim.shutdown().await;
+    }
+}
+
+#[tokio::test]
+async fn firmware_real_contesta_control_solo_con_el_push_de_status() {
+    for v in ProtocolVersion::ALL {
+        let sim = start(real(v)).await;
+        let mut c = Client::connect(&sim).await.unwrap();
+        c.set_nowait(json!({"22": 500})).await.unwrap();
+        // Nada de ack: el primer frame es el push de STATUS, con el estado nuevo.
+        let Read::Msg(push) = c.recv(T).await else {
+            panic!("{v}: sin push");
+        };
+        assert_eq!(push.cmd, cmd::STATUS, "{v}");
+        assert!(push.seqno >= 17_500, "{v}");
+        assert_eq!(sim.dp("22"), Some(json!(500)));
+        // Y no viene nada más.
+        assert_eq!(
+            c.recv(Duration::from_millis(150)).await,
+            Read::Timeout,
+            "{v}"
+        );
+        sim.shutdown().await;
+    }
+}
+
+#[tokio::test]
+async fn por_defecto_sigue_repitiendo_el_seqno_y_confirmando() {
+    let sim = start(cfg(V35)).await;
+    let mut c = Client::connect(&sim).await.unwrap();
+    c.set_nowait(json!({"22": 500})).await.unwrap();
+    let Read::Msg(ack) = c.recv(T).await else {
+        panic!("sin ack");
+    };
+    assert_eq!((ack.cmd, ack.payload.is_empty()), (cmd::CONTROL_NEW, true));
+    assert!(ack.seqno < 100, "repite el seqno del cliente");
+}

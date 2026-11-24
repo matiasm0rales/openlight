@@ -36,6 +36,12 @@ pub struct SimConfig {
     pub broadcast: Option<BroadcastConfig>,
     /// Fallas activas desde el arranque.
     pub faults: Faults,
+    /// Imita el firmware real (medido con un W509Z2 en 3.5): numera todos sus frames con un
+    /// contador propio, sin repetir el `seqno` del cliente, y contesta `CONTROL`/`CONTROL_NEW`
+    /// solo con un push de `STATUS`, sin ack (y sin push si los valores no cambiaron: modelo pesimista).
+    /// Apagado por defecto: así contesta tinytuya en sus
+    /// pruebas.
+    pub real_firmware: bool,
 }
 
 impl Default for SimConfig {
@@ -50,6 +56,7 @@ impl Default for SimConfig {
             product_key: "openlightsimprod".into(),
             broadcast: None,
             faults: Faults::default(),
+            real_firmware: false,
         }
     }
 }
@@ -108,6 +115,12 @@ impl SimConfig {
     /// Fallas activas desde el arranque.
     pub fn faults(mut self, faults: Faults) -> Self {
         self.faults = faults;
+        self
+    }
+
+    /// Imita el firmware real: `seqno` propio y `CONTROL` sin ack (ver [`SimConfig::real_firmware`]).
+    pub fn real_firmware(mut self, on: bool) -> Self {
+        self.real_firmware = on;
         self
     }
 }

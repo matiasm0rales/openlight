@@ -9,6 +9,7 @@
   import { t } from "../lib/i18n/index.svelte";
   import { ONBOARDING_STEPS } from "../lib/wizard.svelte";
   import Icon from "../lib/components/Icon.svelte";
+  import LanguageSwitch from "../lib/components/LanguageSwitch.svelte";
   import Welcome from "./onboarding/Welcome.svelte";
   import Permissions from "./onboarding/Permissions.svelte";
   import TuyaAccount from "./onboarding/TuyaAccount.svelte";
@@ -115,7 +116,10 @@
         </li>
       {/each}
     </ol>
-    <button type="button" class="btn ghost small pause" onclick={pause}><Icon name="back" size={16} />{t("onboarding.pause")}</button>
+    <div class="foot">
+      <LanguageSwitch />
+      <button type="button" class="btn ghost small pause" onclick={pause}><Icon name="back" size={16} />{t("onboarding.pause")}</button>
+    </div>
   </aside>
 
   <section class="content" aria-labelledby="step-title">
@@ -244,9 +248,14 @@
     border-color: var(--accent);
     box-shadow: 0 0 0 4px var(--accent-soft);
   }
-  .pause {
+  .foot {
     grid-column: 1 / -1;
-    justify-self: start;
+    display: grid;
+    gap: 0.9rem;
+    justify-items: start;
+  }
+  .foot > :global(.lang) {
+    justify-self: stretch;
   }
   .content {
     display: grid;

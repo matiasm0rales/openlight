@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "calibration",
+  "description": "Ventana de calibración a pantalla completa: solo escucha y emite eventos. Los comandos de la app (calibration_*) no necesitan permiso y la ventana se abre y se cierra desde el backend.",
+  "windows": ["calibration"],
+  "permissions": ["core:event:default"]
+}

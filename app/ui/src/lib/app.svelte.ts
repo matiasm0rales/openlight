@@ -176,5 +176,8 @@ export async function init(): Promise<void> {
   if (session.ok) app.session = session.value;
   await Promise.all([refreshOnboarding(), refreshDevices(), refreshSettings()]);
   app.ready = true;
-  if (app.onboarding && app.onboarding.step !== "done" && !location.hash.startsWith("#/tray")) go("onboarding");
+  // Las rutas que abre la app nativa en su propia ventana (calibración a pantalla completa) no se
+  // desvían al asistente aunque falte terminarlo: la calibración es justo el paso 10.
+  const propia = ["#/tray", "#/calibrate"].some((r) => location.hash.startsWith(r));
+  if (app.onboarding && app.onboarding.step !== "done" && !propia) go("onboarding");
 }

@@ -31,8 +31,12 @@
   }
 
   const relevant = $derived((perms ?? []).filter((p) => p.state !== "not_applicable"));
+  // El portal de Wayland no se puede conceder de antemano: el selector de pantalla aparece al
+  // empezar a capturar, así que "todavía no se pidió" no bloquea el asistente (se avisa igual).
+  const ok = (p: PermissionStatus_Serialize) =>
+    p.state === "granted" || (p.kind === "screen_cast_portal" && p.state === "not_determined");
   $effect(() => {
-    valid = perms !== null && relevant.every((p) => p.state === "granted");
+    valid = perms !== null && relevant.every(ok);
   });
   const needsRestart = $derived(relevant.some((p) => p.needs_restart));
 </script>

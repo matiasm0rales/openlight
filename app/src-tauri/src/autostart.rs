@@ -10,17 +10,20 @@
 use openlight_types::{ErrorCode, UserFacingError};
 use tauri::plugin::TauriPlugin;
 use tauri::{AppHandle, Runtime};
-use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
+#[cfg(target_os = "macos")]
+use tauri_plugin_autostart::MacosLauncher;
+use tauri_plugin_autostart::ManagerExt;
 
 /// Argumento con el que el sistema lanza la app al iniciar sesión.
 pub const LAUNCH_ARG: &str = "--minimized";
 
 /// El plugin, listo para `Builder::plugin`.
 pub fn plugin<R: Runtime>() -> TauriPlugin<R> {
-    tauri_plugin_autostart::Builder::new()
-        .macos_launcher(MacosLauncher::LaunchAgent)
-        .arg(LAUNCH_ARG)
-        .build()
+    let builder = tauri_plugin_autostart::Builder::new().arg(LAUNCH_ARG);
+    // Solo existe en macOS (en los demás sistemas el plugin no tiene alternativas).
+    #[cfg(target_os = "macos")]
+    let builder = builder.macos_launcher(MacosLauncher::LaunchAgent);
+    builder.build()
 }
 
 /// Si está activado "abrir al iniciar sesión".

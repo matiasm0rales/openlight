@@ -11,6 +11,7 @@ pub mod cmd;
 pub mod errors;
 pub mod events;
 pub mod ipc;
+pub mod logging;
 pub mod permissions;
 pub mod shell;
 pub mod state;
@@ -40,6 +41,7 @@ pub fn run() {
         .setup(move |app| {
             specta.mount_events(app);
             let data_dir = state::data_dir(app.handle())?;
+            app.manage(logging::init(&logging::log_dir(app.handle(), &data_dir)?));
             let sink = Arc::new(events::TauriSink(app.handle().clone()));
             let backend = state::Backend::new(state::BackendParts::production(data_dir, sink))
                 .map_err(|e| format!("no se pudo iniciar el backend: {e}"))?;

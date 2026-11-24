@@ -4,12 +4,15 @@
 //! `openlight-core`.
 
 pub mod bridge;
+pub mod cmd;
 pub mod errors;
 pub mod events;
 pub mod ipc;
+pub mod state;
 
 /// Arranca la app.
 pub fn run() {
+    use tauri::Manager;
     let specta = ipc::specta_builder();
 
     #[cfg(debug_assertions)]
@@ -21,6 +24,11 @@ pub fn run() {
         .invoke_handler(specta.invoke_handler())
         .setup(move |app| {
             specta.mount_events(app);
+            let data_dir = state::data_dir(app.handle())?;
+            let sink = std::sync::Arc::new(events::TauriSink(app.handle().clone()));
+            let backend = state::Backend::new(state::BackendParts::production(data_dir, sink))
+                .map_err(|e| format!("no se pudo iniciar el backend: {e}"))?;
+            app.manage(backend);
             Ok(())
         })
         .run(tauri::generate_context!())

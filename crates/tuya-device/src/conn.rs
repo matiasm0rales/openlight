@@ -22,8 +22,8 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::time::{Instant, timeout, timeout_at};
 use tuya_proto::{
-    ClientSession, DecodedFrame, Key, MessagePayload, PayloadData, PayloadRequest, ProtoError,
-    RetcodeMode, StreamDecoder, StreamError, cmd,
+    ClientSession, DecodedFrame, Key, MessagePayload, OrderedDps, PayloadData, PayloadRequest,
+    ProtoError, RetcodeMode, StreamDecoder, StreamError, cmd,
 };
 
 use crate::health::Counters;
@@ -284,8 +284,17 @@ impl Conn {
     /// Manda un comando y espera su respuesta (`_send_receive`). Todo lo que llega mientras
     /// tanto (pushes de `STATUS`, acks viejos, latidos) se pasa a `other`.
     ///
-    /// La respuesta es el frame del mismo comando con el mismo `seqno`; en las consultas
-    /// (`DP_QUERY`), que traen datos, vale también cualquier respuesta con contenido.
+    /// Qué cuenta como respuesta depende del comando, y **no** se exige el mismo `seqno`: el
+    /// W509Z2 real numera sus frames con un contador propio (medido con tinytuya).
+    ///
+    /// | comando | respuesta |
+    /// |---|---|
+    /// | consulta (`DP_QUERY`) | un frame de ese comando con DPs |
+    /// | control (`CONTROL`) | un push `STATUS` cuyos DPs incluyen los que se mandaron, con esos valores (lo único que contesta el foco real), o el ack del mismo comando y `seqno` (lo que contesta el simulador de tinytuya) |
+    /// | latido y demás | un frame del mismo comando |
+    ///
+    /// Un push que no trae los DPs mandados (el de un envío anterior sin espera, o un cambio
+    /// de afuera) no cuenta: se pasa a `other` y se sigue esperando.
     ///
     /// # Errors
     /// [`DeviceError::Timeout`] si no llega en `io_timeout`; [`DeviceError::KeyRejected`] si
@@ -296,14 +305,22 @@ impl Conn {
         data: Option<PayloadData>,
         mut other: impl FnMut(&Incoming),
     ) -> Result<Option<Value>, DeviceError> {
+        let sent_dps = match (&data, command) {
+            (Some(PayloadData::Dps(items)), cmd::CONTROL | cmd::CONTROL_NEW) => Some(items.clone()),
+            _ => None,
+        };
         let sent = self.send(command, data).await?;
         let expects_data = matches!(command, cmd::DP_QUERY | cmd::DP_QUERY_NEW);
         let deadline = Instant::now() + self.io_timeout;
         loop {
             for incoming in self.drain() {
-                let is_reply = incoming.cmd == sent.reply_cmd
-                    && (incoming.seqno == sent.seqno
-                        || (expects_data && matches!(incoming.body, Body::Json(_))));
+                let is_reply = match &sent_dps {
+                    Some(dps) => is_control_reply(&incoming, &sent, dps),
+                    None => {
+                        incoming.cmd == sent.reply_cmd
+                            && (!expects_data || matches!(incoming.body, Body::Json(_)))
+                    }
+                };
                 if !is_reply {
                     other(&incoming);
                     continue;
@@ -326,6 +343,23 @@ impl Conn {
                 Ok(Ok(_)) => {}
             }
         }
+    }
+}
+
+/// Si `incoming` contesta a un control que mandó `sent_dps` con el frame `sent`.
+fn is_control_reply(incoming: &Incoming, sent: &Sent, sent_dps: &OrderedDps) -> bool {
+    match incoming.cmd {
+        // El push de estado del foco real: vale si trae lo que se pidió.
+        cmd::STATUS => match &incoming.body {
+            Body::Json(value) => dps_of(value).is_some_and(|dps| {
+                sent_dps
+                    .iter()
+                    .all(|(dp, wanted)| dps.get(dp).is_some_and(|got| got == wanted))
+            }),
+            _ => false,
+        },
+        // El ack del mismo comando, con el seqno que mandamos.
+        command => command == sent.reply_cmd && incoming.seqno == sent.seqno,
     }
 }
 
@@ -475,6 +509,81 @@ mod tests {
             }
         };
         assert_eq!(eof, DeviceError::Disconnected(DisconnectReason::PeerClosed));
+    }
+
+    async fn sim_real(version: ProtocolVersion) -> SimHandle {
+        tuya_sim::start(SimConfig::new(version).ephemeral().real_firmware(true))
+            .await
+            .expect("arranca el simulador")
+    }
+
+    // El W509Z2 real numera sus frames con un contador propio y a un control contesta solo con
+    // el push de STATUS (medido con tinytuya en la prueba I2).
+    #[tokio::test]
+    async fn con_el_firmware_real_el_push_confirma_el_control() {
+        for version in ProtocolVersion::ALL {
+            let sim = sim_real(version).await;
+            let mut conn = open(&sim)
+                .await
+                .unwrap_or_else(|e| panic!("{version}: {e}"));
+
+            let status = conn
+                .request(cmd::DP_QUERY, None, |_| {})
+                .await
+                .unwrap_or_else(|e| panic!("{version}: {e}"))
+                .expect("la consulta trae datos");
+            assert_eq!(dps_of(&status).unwrap()["21"], json!("colour"), "{version}");
+
+            let ack = conn
+                .request(cmd::CONTROL, Some(dps_json(json!({"21": "white"}))), |_| {})
+                .await
+                .unwrap_or_else(|e| panic!("{version}: set con espera: {e}"));
+            // La respuesta es el push, con el estado nuevo.
+            let push = ack.expect("el push trae los DPs");
+            assert_eq!(dps_of(&push).unwrap()["21"], json!("white"), "{version}");
+            assert_eq!(sim.dp("21"), Some(json!("white")), "{version}");
+
+            conn.request(cmd::HEART_BEAT, None, |_| {})
+                .await
+                .unwrap_or_else(|e| panic!("{version}: latido: {e}"));
+        }
+    }
+
+    #[tokio::test]
+    async fn un_push_de_otro_envio_no_confirma_el_control() {
+        let sim = sim_real(ProtocolVersion::V35).await;
+        let mut conn = open(&sim).await.unwrap();
+        // Un envío sin espera (la prueba RGB) deja su push en camino...
+        conn.send(cmd::CONTROL, Some(dps_json(json!({"22": 300}))))
+            .await
+            .unwrap();
+        // ...y el control con espera que viene después no lo toma por suyo.
+        let mut others = Vec::new();
+        let reply = conn
+            .request(cmd::CONTROL, Some(dps_json(json!({"22": 400}))), |i| {
+                others.push(i.clone());
+            })
+            .await
+            .unwrap()
+            .expect("push");
+        assert_eq!(dps_of(&reply).unwrap()["22"], json!(400));
+        assert!(
+            others.iter().any(|i| matches!(&i.body,
+                Body::Json(v) if dps_of(v).is_some_and(|d| d["22"] == json!(300)))),
+            "el push viejo se pasó a `other`: {others:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn un_control_que_nadie_contesta_da_timeout() {
+        let sim = sim_real(ProtocolVersion::V33).await;
+        let mut conn = open(&sim).await.unwrap();
+        conn.io_timeout = Duration::from_millis(100);
+        sim.update_faults(|f| f.mute = true);
+        let result = conn
+            .request(cmd::CONTROL, Some(dps_json(json!({"22": 400}))), |_| {})
+            .await;
+        assert_eq!(result, Err(DeviceError::Timeout));
     }
 
     #[tokio::test]

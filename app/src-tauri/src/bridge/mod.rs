@@ -9,3 +9,4 @@
 //! | [`lan::UdpScanner`] | búsqueda de focos en la red sobre `tuya-discovery` |
 
 pub mod driver;
+pub mod state_store;

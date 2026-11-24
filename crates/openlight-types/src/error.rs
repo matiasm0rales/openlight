@@ -47,6 +47,10 @@ pub enum ErrorCode {
     CloudTrialExpired,
     /// Sin conexión a internet o la API no responde.
     CloudNetwork,
+    /// Falta guardar el Access ID y el Access Secret (paso 6 del asistente).
+    CloudNoCredentials,
+    /// Ningún foco tiene zonas: no hay qué seguir en la pantalla.
+    NoZones,
     /// La carpeta a importar no tiene un setup válido.
     ImportInvalid,
     /// Ajuste fuera de rango o desconocido.
@@ -61,7 +65,7 @@ pub enum ErrorCode {
 
 impl ErrorCode {
     /// Todos los códigos (para verificar que cada uno tenga sus textos).
-    pub const ALL: [Self; 22] = [
+    pub const ALL: [Self; 24] = [
         Self::ScreenPermissionDenied,
         Self::LocalNetworkDenied,
         Self::FirewallBlocked,
@@ -79,6 +83,8 @@ impl ErrorCode {
         Self::CloudServiceNotAuthorized,
         Self::CloudTrialExpired,
         Self::CloudNetwork,
+        Self::CloudNoCredentials,
+        Self::NoZones,
         Self::ImportInvalid,
         Self::InvalidSetting,
         Self::Storage,

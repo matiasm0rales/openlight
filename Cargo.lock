@@ -3490,8 +3490,15 @@ dependencies = [
 name = "openlight"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
+ "base64 0.22.1",
+ "capture",
+ "color-engine",
  "objc2-core-graphics",
+ "openlight-core",
  "openlight-types",
+ "png",
+ "secrets",
  "serde",
  "serde_json",
  "specta",
@@ -3504,6 +3511,13 @@ dependencies = [
  "tauri-plugin-single-instance",
  "tauri-plugin-updater",
  "tauri-specta",
+ "tempfile",
+ "tokio",
+ "tracing",
+ "tuya-cloud",
+ "tuya-device",
+ "tuya-discovery",
+ "tuya-sim",
 ]
 
 [[package]]

@@ -43,7 +43,7 @@ export const commands = {
 	zonesSet: (device: DeviceId, zones: Zone[], options?: InvokeOptions) => __TAURI_INVOKE<null>("zones_set", { device, zones }, options),
 	/**  Catálogo y valores de los ajustes. */
 	settingsGet: (options?: InvokeOptions) => __TAURI_INVOKE<SettingsSnapshot_Serialize>("settings_get", undefined, options),
-	/**  Cambia un ajuste (validado contra el catálogo). */
+	/**  Cambia un ajuste (validado contra el catálogo). Vale desde la próxima sesión. */
 	settingsSet: (scope: SettingScope, id: SettingId, value: SettingValue, options?: InvokeOptions) => __TAURI_INVOKE<SettingsSnapshot_Serialize>("settings_set", { scope, id, value }, options),
 	/**  Vuelve un ajuste (o todos, con `id = None`) a su valor por defecto. */
 	settingsReset: (scope: SettingScope, id: SettingId | null, options?: InvokeOptions) => __TAURI_INVOKE<SettingsSnapshot_Serialize>("settings_reset", { scope, id }, options),
@@ -65,7 +65,7 @@ export const commands = {
 	sessionStop: (options?: InvokeOptions) => __TAURI_INVOKE<SessionState>("session_stop", undefined, options),
 	/**  Abre la calibración a pantalla completa en `display` (`quick` = 6 tonos en vez de 12). */
 	calibrationStart: (device: DeviceId, display: DisplayId, quick: boolean, options?: InvokeOptions) => __TAURI_INVOKE<CalibrationState>("calibration_start", { device, display, quick }, options),
-	/**  Ajusta el tono `index` y mueve el foco en vivo. */
+	/**  Ajusta el tono `index` y mueve el foco en vivo (`None` = dejar ese valor como está). */
 	calibrationSet: (index: number, tonoDeg: number | null, sat: number | null, options?: InvokeOptions) => __TAURI_INVOKE<CalibrationState>("calibration_set", { index, tonoDeg, sat }, options),
 	/**  Guarda la tabla del foco y cierra la calibración. */
 	calibrationSave: (options?: InvokeOptions) => __TAURI_INVOKE<null>("calibration_save", undefined, options),
@@ -484,6 +484,10 @@ export type ErrorCode =
 "cloud_trial_expired" | 
 /**  Sin conexión a internet o la API no responde. */
 "cloud_network" | 
+/**  Falta guardar el Access ID y el Access Secret (paso 6 del asistente). */
+"cloud_no_credentials" | 
+/**  Ningún foco tiene zonas: no hay qué seguir en la pantalla. */
+"no_zones" | 
 /**  La carpeta a importar no tiene un setup válido. */
 "import_invalid" | 
 /**  Ajuste fuera de rango o desconocido. */

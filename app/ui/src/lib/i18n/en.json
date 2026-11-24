@@ -203,6 +203,14 @@
       "title": "Can't reach Tuya",
       "detail": "Check your internet connection."
     },
+    "cloud_no_credentials": {
+      "title": "Tuya credentials are missing",
+      "detail": "You haven't saved the Access ID and Access Secret yet. Paste them in the credentials step and try again."
+    },
+    "no_zones": {
+      "title": "No bulb has a zone",
+      "detail": "Choose which part of the screen each bulb follows before starting."
+    },
     "import_invalid": {
       "title": "Couldn't import that folder",
       "detail": "No valid devices.json was found."
@@ -735,7 +743,14 @@
   },
   "import": {
     "warning": {
-      "calibration_single_device": "calibracion.json was for a single bulb: it was applied to the first one. Calibrate the other from the dashboard."
+      "calibration_single_device": "calibracion.json was for a single bulb: it was applied to the first one. Calibrate the other from the dashboard.",
+      "version_assumed": "I couldn't find a bulb's protocol version and assumed 3.3. If it doesn't respond, try it again from Devices.",
+      "no_key": "A bulb had no local key. Renew it with one click from Devices (your Tuya account is needed).",
+      "mapping_invalid": "I couldn't read a bulb's data (its DPs). They will be detected when it connects.",
+      "calibration_unassigned": "I found a calibration but I don't know which bulb it belongs to. Calibrate each bulb from the dashboard.",
+      "calibration_invalid": "I couldn't read calibracion.json, so I ignored it. You can calibrate again from the dashboard.",
+      "skipped_non_light": "I skipped devices that are not lights (plugs, sensors).",
+      "ip_invalid": "An IP from the old setup is not valid and was ignored: it will be found automatically."
     }
   }
 }

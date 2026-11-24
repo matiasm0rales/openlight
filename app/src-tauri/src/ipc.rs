@@ -16,12 +16,19 @@ use openlight_types::ipc::{
 };
 use openlight_types::{
     CloudAccount, DeviceId, DisplayId, DisplayInfo, ErrorCode, Profile, ProfileId, SessionState,
-    SettingId, SettingValue, Settings, SystemPane, UserFacingError, Zone, catalog,
+    SettingId, SettingValue, SystemPane, UserFacingError, Zone,
 };
+use std::sync::Arc;
+
+use tauri::State;
 use tauri_specta::{Builder, collect_commands};
 
-/// Resultado de todos los comandos: los errores siempre llegan listos para mostrar.
-pub type CmdResult<T> = Result<T, UserFacingError>;
+use crate::state::Backend;
+
+pub use crate::errors::CmdResult;
+
+/// El estado de la app, tal como lo reciben los comandos.
+pub type App<'a> = State<'a, Arc<Backend>>;
 
 fn todo<T>(command: &str) -> CmdResult<T> {
     Err(UserFacingError::not_implemented(command))
@@ -32,24 +39,19 @@ fn todo<T>(command: &str) -> CmdResult<T> {
 /// Progreso del asistente inicial.
 #[tauri::command]
 #[specta::specta]
-pub async fn onboarding_state() -> CmdResult<OnboardingState> {
-    Ok(OnboardingState {
-        step: OnboardingStep::Welcome,
-        completed: Vec::new(),
-        has_credentials: false,
-        devices: Vec::new(),
-    })
+pub async fn onboarding_state(app: App<'_>) -> CmdResult<OnboardingState> {
+    app.onboarding_state()
 }
 
 /// Guarda el progreso del asistente (para pausar y retomar).
 #[tauri::command]
 #[specta::specta]
 pub async fn onboarding_save(
+    app: App<'_>,
     step: OnboardingStep,
     completed: Vec<OnboardingStep>,
 ) -> CmdResult<OnboardingState> {
-    let _ = (step, completed);
-    todo("onboarding_save")
+    app.onboarding_save(step, completed)
 }
 
 /// Estado de los permisos del sistema que necesita la app en este SO.
@@ -71,24 +73,25 @@ pub async fn open_system_settings(pane: SystemPane) -> CmdResult<()> {
 /// Valida Access ID / Access Secret y guarda las credenciales en el llavero.
 #[tauri::command]
 #[specta::specta]
-pub async fn cloud_validate(credentials: CloudCredentialsInput) -> CmdResult<CloudAccount> {
-    let _ = credentials;
-    todo("cloud_validate")
+pub async fn cloud_validate(
+    app: App<'_>,
+    credentials: CloudCredentialsInput,
+) -> CmdResult<CloudAccount> {
+    app.cloud_validate(credentials).await
 }
 
 /// Lista los dispositivos de la cuenta, cruzados con lo encontrado en la red local.
 #[tauri::command]
 #[specta::specta]
-pub async fn cloud_list_devices() -> CmdResult<Vec<CloudDeviceInfo>> {
-    todo("cloud_list_devices")
+pub async fn cloud_list_devices(app: App<'_>) -> CmdResult<Vec<CloudDeviceInfo>> {
+    app.cloud_list_devices().await
 }
 
 /// Busca focos en la red local durante `timeout_s` segundos (también emite `discovery://found`).
 #[tauri::command]
 #[specta::specta]
-pub async fn discover_lan(timeout_s: f32) -> CmdResult<Vec<DiscoveredDevice>> {
-    let _ = timeout_s;
-    todo("discover_lan")
+pub async fn discover_lan(app: App<'_>, timeout_s: f32) -> CmdResult<Vec<DiscoveredDevice>> {
+    app.discover_lan(timeout_s).await
 }
 
 // ---------- Dispositivos ----------
@@ -96,56 +99,50 @@ pub async fn discover_lan(timeout_s: f32) -> CmdResult<Vec<DiscoveredDevice>> {
 /// Focos configurados.
 #[tauri::command]
 #[specta::specta]
-pub async fn devices_list() -> CmdResult<Vec<ConfiguredDevice>> {
-    Ok(Vec::new())
+pub async fn devices_list(app: App<'_>) -> CmdResult<Vec<ConfiguredDevice>> {
+    app.devices_list()
 }
 
 /// Agrega un foco.
 #[tauri::command]
 #[specta::specta]
-pub async fn device_add(request: DeviceAddRequest) -> CmdResult<ConfiguredDevice> {
-    let _ = request;
-    todo("device_add")
+pub async fn device_add(app: App<'_>, request: DeviceAddRequest) -> CmdResult<ConfiguredDevice> {
+    app.device_add(request).await
 }
 
 /// Cambia el nombre o la IP de un foco (`ip = None` = buscarla automáticamente).
 #[tauri::command]
 #[specta::specta]
-pub async fn device_update(request: DeviceAddRequest) -> CmdResult<ConfiguredDevice> {
-    let _ = request;
-    todo("device_update")
+pub async fn device_update(app: App<'_>, request: DeviceAddRequest) -> CmdResult<ConfiguredDevice> {
+    app.device_update(request)
 }
 
 /// Quita un foco (y su clave del llavero).
 #[tauri::command]
 #[specta::specta]
-pub async fn device_remove(device: DeviceId) -> CmdResult<()> {
-    let _ = device;
-    todo("device_remove")
+pub async fn device_remove(app: App<'_>, device: DeviceId) -> CmdResult<()> {
+    app.device_remove(device).await
 }
 
 /// Corre un patrón de prueba en un foco.
 #[tauri::command]
 #[specta::specta]
-pub async fn device_test(device: DeviceId, pattern: TestPattern) -> CmdResult<()> {
-    let _ = (device, pattern);
-    todo("device_test")
+pub async fn device_test(app: App<'_>, device: DeviceId, pattern: TestPattern) -> CmdResult<()> {
+    app.device_test(device, pattern).await
 }
 
 /// Control manual de un foco.
 #[tauri::command]
 #[specta::specta]
-pub async fn device_manual(device: DeviceId, set: ManualSet) -> CmdResult<()> {
-    let _ = (device, set);
-    todo("device_manual")
+pub async fn device_manual(app: App<'_>, device: DeviceId, set: ManualSet) -> CmdResult<()> {
+    app.device_manual(device, set).await
 }
 
 /// Renueva la clave local con las credenciales guardadas (un clic; también lo ofrece el 914).
 #[tauri::command]
 #[specta::specta]
-pub async fn renew_key(device: DeviceId) -> CmdResult<()> {
-    let _ = device;
-    todo("renew_key")
+pub async fn renew_key(app: App<'_>, device: DeviceId) -> CmdResult<()> {
+    app.renew_key(device).await
 }
 
 // ---------- Pantallas y zonas ----------
@@ -153,106 +150,93 @@ pub async fn renew_key(device: DeviceId) -> CmdResult<()> {
 /// Monitores disponibles.
 #[tauri::command]
 #[specta::specta]
-pub async fn displays_list() -> CmdResult<Vec<DisplayInfo>> {
-    Ok(Vec::new())
+pub async fn displays_list(app: App<'_>) -> CmdResult<Vec<DisplayInfo>> {
+    app.displays_list()
 }
 
 /// Vista previa de un monitor.
 #[tauri::command]
 #[specta::specta]
-pub async fn display_preview(display: DisplayId) -> CmdResult<PreviewImage> {
-    let _ = display;
-    todo("display_preview")
+pub async fn display_preview(app: App<'_>, display: DisplayId) -> CmdResult<PreviewImage> {
+    app.display_preview(display).await
 }
 
 /// Define las zonas que sigue un foco.
 #[tauri::command]
 #[specta::specta]
-pub async fn zones_set(device: DeviceId, zones: Vec<Zone>) -> CmdResult<()> {
-    let _ = (device, zones);
-    todo("zones_set")
+pub async fn zones_set(app: App<'_>, device: DeviceId, zones: Vec<Zone>) -> CmdResult<()> {
+    app.zones_set(device, zones)
 }
 
 // ---------- Ajustes y perfiles ----------
 
-fn default_snapshot() -> SettingsSnapshot {
-    SettingsSnapshot {
-        catalog: catalog().to_vec(),
-        effective: Settings::default(),
-        global: Settings::default(),
-        devices: Vec::new(),
-        active_profile: None,
-    }
-}
-
 /// Catálogo y valores de los ajustes.
 #[tauri::command]
 #[specta::specta]
-pub async fn settings_get() -> CmdResult<SettingsSnapshot> {
-    Ok(default_snapshot())
+pub async fn settings_get(app: App<'_>) -> CmdResult<SettingsSnapshot> {
+    app.settings_get()
 }
 
-/// Cambia un ajuste (validado contra el catálogo).
+/// Cambia un ajuste (validado contra el catálogo). Vale desde la próxima sesión.
 #[tauri::command]
 #[specta::specta]
 pub async fn settings_set(
+    app: App<'_>,
     scope: SettingScope,
     id: SettingId,
     value: SettingValue,
 ) -> CmdResult<SettingsSnapshot> {
-    id.def().validate(&value)?;
-    let _ = scope;
-    todo("settings_set")
+    app.settings_set(scope, id, value)
 }
 
 /// Vuelve un ajuste (o todos, con `id = None`) a su valor por defecto.
 #[tauri::command]
 #[specta::specta]
 pub async fn settings_reset(
+    app: App<'_>,
     scope: SettingScope,
     id: Option<SettingId>,
 ) -> CmdResult<SettingsSnapshot> {
-    let _ = (scope, id);
-    todo("settings_reset")
+    app.settings_reset(scope, id)
 }
 
 /// Perfiles.
 #[tauri::command]
 #[specta::specta]
-pub async fn profiles_list() -> CmdResult<Vec<Profile>> {
-    Ok(Vec::new())
+pub async fn profiles_list(app: App<'_>) -> CmdResult<Vec<Profile>> {
+    app.profiles_list()
 }
 
 /// Crea un perfil, vacío o copiando otro.
 #[tauri::command]
 #[specta::specta]
-pub async fn profiles_create(name: String, from: Option<ProfileId>) -> CmdResult<Profile> {
-    let _ = (name, from);
-    todo("profiles_create")
+pub async fn profiles_create(
+    app: App<'_>,
+    name: String,
+    from: Option<ProfileId>,
+) -> CmdResult<Profile> {
+    app.profiles_create(name, from)
 }
 
 /// Guarda un perfil (nombre, valores, atajo).
 #[tauri::command]
 #[specta::specta]
-pub async fn profiles_update(profile: Profile) -> CmdResult<Profile> {
-    let _ = profile;
-    todo("profiles_update")
+pub async fn profiles_update(app: App<'_>, profile: Profile) -> CmdResult<Profile> {
+    app.profiles_update(profile)
 }
 
 /// Borra un perfil propio.
 #[tauri::command]
 #[specta::specta]
-pub async fn profiles_delete(id: ProfileId) -> CmdResult<()> {
-    let _ = id;
-    todo("profiles_delete")
+pub async fn profiles_delete(app: App<'_>, id: ProfileId) -> CmdResult<()> {
+    app.profiles_delete(id)
 }
 
 /// Activa un perfil (`None` = solo los ajustes globales).
 #[tauri::command]
 #[specta::specta]
-pub async fn profiles_activate(id: Option<ProfileId>) -> CmdResult<()> {
-    let _ = id;
-    todo("profiles_activate")
+pub async fn profiles_activate(app: App<'_>, id: Option<ProfileId>) -> CmdResult<()> {
+    app.profiles_activate(id)
 }
 
 // ---------- Sesión ----------
@@ -260,22 +244,22 @@ pub async fn profiles_activate(id: Option<ProfileId>) -> CmdResult<()> {
 /// Estado actual de la sesión (después llegan los cambios por `session://state`).
 #[tauri::command]
 #[specta::specta]
-pub async fn session_state() -> CmdResult<SessionState> {
-    Ok(SessionState::Idle)
+pub async fn session_state(app: App<'_>) -> CmdResult<SessionState> {
+    Ok(app.session_state())
 }
 
 /// Arranca el efecto.
 #[tauri::command]
 #[specta::specta]
-pub async fn session_start() -> CmdResult<SessionState> {
-    todo("session_start")
+pub async fn session_start(app: App<'_>) -> CmdResult<SessionState> {
+    app.session_start().await
 }
 
 /// Detiene el efecto y devuelve los focos a su estado.
 #[tauri::command]
 #[specta::specta]
-pub async fn session_stop() -> CmdResult<SessionState> {
-    Ok(SessionState::Idle)
+pub async fn session_stop(app: App<'_>) -> CmdResult<SessionState> {
+    app.session_stop().await
 }
 
 // ---------- Calibración ----------
@@ -284,34 +268,38 @@ pub async fn session_stop() -> CmdResult<SessionState> {
 #[tauri::command]
 #[specta::specta]
 pub async fn calibration_start(
+    app: App<'_>,
     device: DeviceId,
     display: DisplayId,
     quick: bool,
 ) -> CmdResult<CalibrationState> {
-    let _ = (device, display, quick);
-    todo("calibration_start")
+    app.calibration_start(device, display, quick).await
 }
 
-/// Ajusta el tono `index` y mueve el foco en vivo.
+/// Ajusta el tono `index` y mueve el foco en vivo (`None` = dejar ese valor como está).
 #[tauri::command]
 #[specta::specta]
-pub async fn calibration_set(index: u32, tono_deg: f32, sat: f32) -> CmdResult<CalibrationState> {
-    let _ = (index, tono_deg, sat);
-    todo("calibration_set")
+pub async fn calibration_set(
+    app: App<'_>,
+    index: u32,
+    tono_deg: Option<f32>,
+    sat: Option<f32>,
+) -> CmdResult<CalibrationState> {
+    app.calibration_set(index, tono_deg, sat).await
 }
 
 /// Guarda la tabla del foco y cierra la calibración.
 #[tauri::command]
 #[specta::specta]
-pub async fn calibration_save() -> CmdResult<()> {
-    todo("calibration_save")
+pub async fn calibration_save(app: App<'_>) -> CmdResult<()> {
+    app.calibration_save().await
 }
 
 /// Cierra la calibración sin guardar.
 #[tauri::command]
 #[specta::specta]
-pub async fn calibration_cancel() -> CmdResult<()> {
-    todo("calibration_cancel")
+pub async fn calibration_cancel(app: App<'_>) -> CmdResult<()> {
+    app.calibration_cancel().await
 }
 
 // ---------- Importar y diagnóstico ----------
@@ -319,9 +307,8 @@ pub async fn calibration_cancel() -> CmdResult<()> {
 /// Importa el setup del script Python desde una carpeta.
 #[tauri::command]
 #[specta::specta]
-pub async fn import_legacy(folder: String) -> CmdResult<ImportReport> {
-    let _ = folder;
-    todo("import_legacy")
+pub async fn import_legacy(app: App<'_>, folder: String) -> CmdResult<ImportReport> {
+    app.import_legacy(folder).await
 }
 
 /// Últimas líneas del log (las más nuevas al final), para el visor del diagnóstico.
@@ -429,12 +416,5 @@ mod tests {
             assert!(ts.contains(cmd), "falta {cmd} en bindings.ts");
         }
         assert!(ts.contains("session://state"));
-    }
-
-    #[test]
-    fn los_stubs_devuelven_errores_con_accion() {
-        let e = tauri::async_runtime::block_on(session_start()).unwrap_err();
-        assert_eq!(e.code, ErrorCode::NotImplemented);
-        assert!(!e.actions.is_empty());
     }
 }

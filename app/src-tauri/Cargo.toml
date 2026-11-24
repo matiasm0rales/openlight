@@ -27,6 +27,19 @@ tauri = { workspace = true, features = ["tray-icon", "image-png"] }
 tauri-specta.workspace = true
 tauri-plugin-opener.workspace = true
 tauri-plugin-updater = "2.14.1"
+# I1a: backend real (comandos IPC, estado y adaptadores)
+openlight-core = { path = "../../crates/openlight-core" }
+secrets = { path = "../../crates/secrets" }
+capture = { path = "../../crates/capture" }
+color-engine = { path = "../../crates/color-engine" }
+tuya-cloud = { path = "../../crates/tuya-cloud" }
+tuya-device = { path = "../../crates/tuya-device" }
+tuya-discovery = { path = "../../crates/tuya-discovery" }
+async-trait.workspace = true
+tokio = { workspace = true, features = ["rt", "time", "macros", "sync"] }
+tracing = "0.1.44"
+png = "0.18.1"
+base64 = "0.22.1"
 tauri-plugin-autostart = "2.7.0"
 sys-locale = "0.3.2"
 tauri-plugin-single-instance = "2.5.5"
@@ -35,6 +48,11 @@ tauri-plugin-single-instance = "2.5.5"
 # Grabación de pantalla (CGPreflight/CGRequestScreenCaptureAccess) y posición de cada monitor
 # (CGDisplayBounds): API segura, sin `unsafe`.
 objc2-core-graphics = { version = "0.3.2", default-features = false, features = ["std", "CGWindow", "CGDirectDisplay"] }
+
+[dev-dependencies]
+tuya-sim = { path = "../../crates/tuya-sim" }
+tempfile = "3.27.0"
+tokio = { workspace = true, features = ["rt", "time", "macros", "sync", "rt-multi-thread"] }
 
 [lints.rust]
 unsafe_code = "deny"

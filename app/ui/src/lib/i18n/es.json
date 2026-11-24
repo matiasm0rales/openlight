@@ -203,6 +203,14 @@
       "title": "Sin conexión con Tuya",
       "detail": "Revisá tu conexión a internet."
     },
+    "cloud_no_credentials": {
+      "title": "Faltan las credenciales de Tuya",
+      "detail": "Todavía no guardaste el Access ID y el Access Secret. Pegalos en el paso de credenciales y probá de nuevo."
+    },
+    "no_zones": {
+      "title": "Ningún foco tiene zona",
+      "detail": "Elegí qué parte de la pantalla sigue cada foco antes de arrancar."
+    },
     "import_invalid": {
       "title": "No pude importar esa carpeta",
       "detail": "No encontré un devices.json válido."
@@ -735,7 +743,14 @@
   },
   "import": {
     "warning": {
-      "calibration_single_device": "calibracion.json era de un solo foco: se aplicó al primero. Calibrá el otro desde el panel."
+      "calibration_single_device": "calibracion.json era de un solo foco: se aplicó al primero. Calibrá el otro desde el panel.",
+      "version_assumed": "No encontré la versión del protocolo de algún foco y asumí 3.3. Si no responde, probalo de nuevo desde Dispositivos.",
+      "no_key": "Un foco no traía su clave local. Renovala con un clic desde Dispositivos (hace falta tu cuenta de Tuya).",
+      "mapping_invalid": "No pude leer los datos de un foco (sus DPs). Se van a detectar al conectarlo.",
+      "calibration_unassigned": "Encontré una calibración pero no sé de qué foco es. Calibrá cada foco desde el panel.",
+      "calibration_invalid": "No pude leer calibracion.json, así que lo ignoré. Podés calibrar de nuevo desde el panel.",
+      "skipped_non_light": "Omití dispositivos que no son luces (enchufes, sensores).",
+      "ip_invalid": "Una IP del setup anterior no es válida y la ignoré: se va a buscar sola."
     }
   }
 }

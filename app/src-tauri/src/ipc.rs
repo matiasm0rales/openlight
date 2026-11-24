@@ -16,12 +16,19 @@ use openlight_types::ipc::{
 };
 use openlight_types::{
     CloudAccount, DeviceId, DisplayId, DisplayInfo, ErrorCode, Profile, ProfileId, SessionState,
-    SettingId, SettingValue, Settings, SystemPane, UserFacingError, Zone, catalog,
+    SettingId, SettingValue, SystemPane, UserFacingError, Zone,
 };
+use std::sync::Arc;
+
+use tauri::State;
 use tauri_specta::{Builder, collect_commands};
 
-/// Resultado de todos los comandos: los errores siempre llegan listos para mostrar.
-pub type CmdResult<T> = Result<T, UserFacingError>;
+use crate::state::Backend;
+
+pub use crate::errors::CmdResult;
+
+/// El estado de la app, tal como lo reciben los comandos.
+pub type App<'a> = State<'a, Arc<Backend>>;
 
 fn todo<T>(command: &str) -> CmdResult<T> {
     Err(UserFacingError::not_implemented(command))
@@ -32,24 +39,19 @@ fn todo<T>(command: &str) -> CmdResult<T> {
 /// Progreso del asistente inicial.
 #[tauri::command]
 #[specta::specta]
-pub async fn onboarding_state() -> CmdResult<OnboardingState> {
-    Ok(OnboardingState {
-        step: OnboardingStep::Welcome,
-        completed: Vec::new(),
-        has_credentials: false,
-        devices: Vec::new(),
-    })
+pub async fn onboarding_state(app: App<'_>) -> CmdResult<OnboardingState> {
+    app.onboarding_state()
 }
 
 /// Guarda el progreso del asistente (para pausar y retomar).
 #[tauri::command]
 #[specta::specta]
 pub async fn onboarding_save(
+    app: App<'_>,
     step: OnboardingStep,
     completed: Vec<OnboardingStep>,
 ) -> CmdResult<OnboardingState> {
-    let _ = (step, completed);
-    todo("onboarding_save")
+    app.onboarding_save(step, completed)
 }
 
 /// Estado de los permisos del sistema que necesita la app en este SO.
@@ -176,84 +178,73 @@ pub async fn zones_set(device: DeviceId, zones: Vec<Zone>) -> CmdResult<()> {
 
 // ---------- Ajustes y perfiles ----------
 
-fn default_snapshot() -> SettingsSnapshot {
-    SettingsSnapshot {
-        catalog: catalog().to_vec(),
-        effective: Settings::default(),
-        global: Settings::default(),
-        devices: Vec::new(),
-        active_profile: None,
-    }
-}
-
 /// Catálogo y valores de los ajustes.
 #[tauri::command]
 #[specta::specta]
-pub async fn settings_get() -> CmdResult<SettingsSnapshot> {
-    Ok(default_snapshot())
+pub async fn settings_get(app: App<'_>) -> CmdResult<SettingsSnapshot> {
+    app.settings_get()
 }
 
-/// Cambia un ajuste (validado contra el catálogo).
+/// Cambia un ajuste (validado contra el catálogo). Vale desde la próxima sesión.
 #[tauri::command]
 #[specta::specta]
 pub async fn settings_set(
+    app: App<'_>,
     scope: SettingScope,
     id: SettingId,
     value: SettingValue,
 ) -> CmdResult<SettingsSnapshot> {
-    id.def().validate(&value)?;
-    let _ = scope;
-    todo("settings_set")
+    app.settings_set(scope, id, value)
 }
 
 /// Vuelve un ajuste (o todos, con `id = None`) a su valor por defecto.
 #[tauri::command]
 #[specta::specta]
 pub async fn settings_reset(
+    app: App<'_>,
     scope: SettingScope,
     id: Option<SettingId>,
 ) -> CmdResult<SettingsSnapshot> {
-    let _ = (scope, id);
-    todo("settings_reset")
+    app.settings_reset(scope, id)
 }
 
 /// Perfiles.
 #[tauri::command]
 #[specta::specta]
-pub async fn profiles_list() -> CmdResult<Vec<Profile>> {
-    Ok(Vec::new())
+pub async fn profiles_list(app: App<'_>) -> CmdResult<Vec<Profile>> {
+    app.profiles_list()
 }
 
 /// Crea un perfil, vacío o copiando otro.
 #[tauri::command]
 #[specta::specta]
-pub async fn profiles_create(name: String, from: Option<ProfileId>) -> CmdResult<Profile> {
-    let _ = (name, from);
-    todo("profiles_create")
+pub async fn profiles_create(
+    app: App<'_>,
+    name: String,
+    from: Option<ProfileId>,
+) -> CmdResult<Profile> {
+    app.profiles_create(name, from)
 }
 
 /// Guarda un perfil (nombre, valores, atajo).
 #[tauri::command]
 #[specta::specta]
-pub async fn profiles_update(profile: Profile) -> CmdResult<Profile> {
-    let _ = profile;
-    todo("profiles_update")
+pub async fn profiles_update(app: App<'_>, profile: Profile) -> CmdResult<Profile> {
+    app.profiles_update(profile)
 }
 
 /// Borra un perfil propio.
 #[tauri::command]
 #[specta::specta]
-pub async fn profiles_delete(id: ProfileId) -> CmdResult<()> {
-    let _ = id;
-    todo("profiles_delete")
+pub async fn profiles_delete(app: App<'_>, id: ProfileId) -> CmdResult<()> {
+    app.profiles_delete(id)
 }
 
 /// Activa un perfil (`None` = solo los ajustes globales).
 #[tauri::command]
 #[specta::specta]
-pub async fn profiles_activate(id: Option<ProfileId>) -> CmdResult<()> {
-    let _ = id;
-    todo("profiles_activate")
+pub async fn profiles_activate(app: App<'_>, id: Option<ProfileId>) -> CmdResult<()> {
+    app.profiles_activate(id)
 }
 
 // ---------- Sesión ----------

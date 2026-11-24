@@ -10,9 +10,7 @@ use std::net::IpAddr;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 
-use openlight_core::{
-    Config, DeviceLocks, DeviceRecord, PowerEvents, SourceFactory, Store,
-};
+use openlight_core::{Config, DeviceLocks, DeviceRecord, PowerEvents, SourceFactory, Store};
 use openlight_types::ipc::{ConfiguredDevice, DiscoveredDevice};
 use openlight_types::{
     Capabilities, CloudCredentials, CloudDevice, CloudError, ColourFormat, DeviceCreds, DeviceId,
@@ -272,7 +270,10 @@ impl Backend {
             id: record.id.clone(),
             local_key: self.local_key(&record.id)?,
             version: record.version,
-            ip: record.ip.as_deref().and_then(|ip| ip.parse::<IpAddr>().ok()),
+            ip: record
+                .ip
+                .as_deref()
+                .and_then(|ip| ip.parse::<IpAddr>().ok()),
         };
         let mut config = DeviceConfig::new(creds)
             .channel(settings.send_channel)

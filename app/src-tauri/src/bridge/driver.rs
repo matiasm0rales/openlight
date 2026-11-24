@@ -104,13 +104,21 @@ mod tests {
 
         driver.prepare().await.unwrap();
         assert!(driver.health().connected);
-        assert_eq!(sim.dp(&mode).unwrap(), "colour", "prepare deja el modo color");
+        assert_eq!(
+            sim.dp(&mode).unwrap(),
+            "colour",
+            "prepare deja el modo color"
+        );
 
         driver.send_hsv(Hsv::new(0.33, 1.0, 1.0)).await.unwrap();
         until(|| sim.dp(&colour).unwrap() != original_colour).await;
 
         assert!(driver.restore().await.unwrap());
-        assert_eq!(sim.dp(&mode).unwrap(), original_mode, "vuelve al modo original");
+        assert_eq!(
+            sim.dp(&mode).unwrap(),
+            original_mode,
+            "vuelve al modo original"
+        );
         assert!(driver.health().connected, "la pausa no corta la conexión");
 
         // Volver de la pausa solo necesita `activate`: no vuelve a guardar el original

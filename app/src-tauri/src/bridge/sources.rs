@@ -3,9 +3,7 @@
 use std::sync::Arc;
 
 use openlight_core::SourceFactory;
-use openlight_types::{
-    CaptureError, DisplayId, DisplayInfo, Frame, PermissionState, ScreenSource,
-};
+use openlight_types::{CaptureError, DisplayId, DisplayInfo, Frame, PermissionState, ScreenSource};
 use tokio::sync::watch;
 
 /// La fuente de pantalla del sistema operativo (ScreenCaptureKit, Graphics Capture o X11/Wayland).

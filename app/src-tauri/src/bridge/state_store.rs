@@ -27,7 +27,10 @@ impl StateStore for CoreStateStore {
                 .devices
                 .get(id)
                 .map(|d| SavedState {
-                    ip: d.last_ip.as_deref().and_then(|ip| ip.parse::<IpAddr>().ok()),
+                    ip: d
+                        .last_ip
+                        .as_deref()
+                        .and_then(|ip| ip.parse::<IpAddr>().ok()),
                     original: d.original.clone(),
                 })
                 .unwrap_or_default(),
@@ -79,7 +82,10 @@ mod tests {
         assert_eq!(adapter.load(&dev("a")), saved);
         // Es lo mismo que ve el resto de la app
         let state = store.load_state().unwrap();
-        assert_eq!(state.devices[&dev("a")].last_ip.as_deref(), Some("192.0.2.7"));
+        assert_eq!(
+            state.devices[&dev("a")].last_ip.as_deref(),
+            Some("192.0.2.7")
+        );
 
         // Restaurar borra el original pero recuerda la IP
         adapter.save(

@@ -1,0 +1,296 @@
+//! Arnés de las pruebas de integración: el backend de verdad con todo lo de afuera falso.
+//!
+//! - llavero en memoria (`MemoryStore`): **nunca** el real;
+//! - carpeta de datos temporal;
+//! - focos: uno o más `tuya-sim` en loopback, con clave falsa;
+//! - nube falsa que devuelve esos focos;
+//! - captura falsa con un "video" sintético cuyo color se cambia desde la prueba;
+//! - eventos a un `MemorySink`.
+#![allow(dead_code, missing_docs)]
+
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex, PoisonError};
+use std::time::Duration;
+
+use async_trait::async_trait;
+use openlight_lib::bridge::lan::FixedScanner;
+use openlight_lib::events::{AppEvent, MemorySink};
+use openlight_lib::state::{Backend, BackendOptions, BackendParts};
+use openlight_types::ipc::DiscoveredDevice;
+use openlight_types::{
+    CaptureError, CloudAccount, CloudCredentials, CloudDevice, CloudError, DeviceId, DisplayId,
+    DisplayInfo, DpMapping, Frame, PermissionState, ProtocolVersion, Region, ScreenSource, Secret,
+    TuyaCloud,
+};
+use secrets::MemoryStore;
+use tokio::sync::watch;
+use tokio::task::JoinHandle;
+use tuya_device::NoLocator;
+use tuya_sim::{SimConfig, SimHandle};
+
+/// Access ID y Access Secret falsos que acepta la nube falsa.
+pub const FAKE_ACCESS_ID: &str = "fake-access-id";
+pub const FAKE_ACCESS_SECRET: &str = "fake-access-secret";
+
+/// El monitor falso.
+pub const DISPLAY: &str = "fake-display-1";
+
+/// Color del "video" sintético (BGRA, sin transparencia).
+#[derive(Clone, Default)]
+pub struct Screen(Arc<Mutex<[u8; 3]>>);
+
+impl Screen {
+    /// Pone toda la pantalla de un color RGB.
+    pub fn paint(&self, rgb: [u8; 3]) {
+        *self.0.lock().unwrap_or_else(PoisonError::into_inner) = rgb;
+    }
+
+    fn rgb(&self) -> [u8; 3] {
+        *self.0.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+}
+
+/// Una captura falsa: publica cuadros del color de [`Screen`] a 20 por segundo.
+struct FakeSource {
+    screen: Screen,
+    task: Option<JoinHandle<()>>,
+}
+
+impl ScreenSource for FakeSource {
+    fn displays(&self) -> Result<Vec<DisplayInfo>, CaptureError> {
+        Ok(vec![DisplayInfo {
+            id: DisplayId(DISPLAY.into()),
+            name: "Monitor falso".into(),
+            width: 1920,
+            height: 1080,
+            builtin: false,
+            primary: true,
+        }])
+    }
+
+    fn start(
+        &mut self,
+        display: DisplayId,
+        target: (u32, u32),
+        fps: f32,
+    ) -> Result<watch::Receiver<Option<Frame>>, CaptureError> {
+        if display.0 != DISPLAY {
+            return Err(CaptureError::DisplayNotFound(display));
+        }
+        let (tx, rx) = watch::channel(None);
+        let screen = self.screen.clone();
+        let period = Duration::from_secs_f32(1.0 / fps.max(1.0));
+        self.task = Some(tokio::spawn(async move {
+            let mut ticker = tokio::time::interval(period);
+            loop {
+                ticker.tick().await;
+                let [r, g, b] = screen.rgb();
+                let pixels = (target.0 * target.1) as usize;
+                let bgra: Vec<u8> = std::iter::repeat_n([b, g, r, 255], pixels)
+                    .flatten()
+                    .collect();
+                let frame = Frame::new(target.0, target.1, bgra).expect("cuadro válido");
+                if tx.send(Some(frame)).is_err() {
+                    return;
+                }
+            }
+        }));
+        Ok(rx)
+    }
+
+    fn stop(&mut self) {
+        if let Some(task) = self.task.take() {
+            task.abort();
+        }
+    }
+
+    fn permission(&self) -> PermissionState {
+        PermissionState::Granted
+    }
+
+    fn request_permission(&self) -> PermissionState {
+        PermissionState::Granted
+    }
+}
+
+/// Una nube falsa con los focos que se le den.
+pub struct FakeCloud {
+    pub devices: Vec<CloudDevice>,
+    pub mapping: DpMapping,
+    pub region: Region,
+}
+
+#[async_trait]
+impl TuyaCloud for FakeCloud {
+    async fn validate(&self) -> Result<CloudAccount, CloudError> {
+        Ok(CloudAccount {
+            uid: "fake-uid".into(),
+            region: self.region,
+        })
+    }
+
+    async fn devices(&self) -> Result<Vec<CloudDevice>, CloudError> {
+        Ok(self.devices.clone())
+    }
+
+    async fn mapping(&self, _device: &DeviceId) -> Result<DpMapping, CloudError> {
+        Ok(self.mapping.clone())
+    }
+}
+
+/// Todo lo armado.
+pub struct Harness {
+    pub backend: Arc<Backend>,
+    pub events: MemorySink,
+    pub secrets: Arc<MemoryStore>,
+    pub screen: Screen,
+    pub dir: tempfile::TempDir,
+    pub sims: Vec<SimHandle>,
+}
+
+/// Opciones del arnés.
+pub struct Setup {
+    /// Cuántos focos simulados (ids `openlightsimdevice0001`, `...0002`).
+    pub sims: usize,
+    /// Los focos aparecen en la búsqueda de la red.
+    pub lan: bool,
+}
+
+impl Default for Setup {
+    fn default() -> Self {
+        Self { sims: 1, lan: true }
+    }
+}
+
+/// El id del foco simulado número `n` (desde 1).
+pub fn sim_id(n: usize) -> DeviceId {
+    DeviceId(format!("openlightsimdevice{n:04}"))
+}
+
+pub async fn harness(setup: Setup) -> Harness {
+    let dir = tempfile::tempdir().unwrap();
+    let events = MemorySink::new();
+    let secrets = Arc::new(MemoryStore::new());
+    let screen = Screen::default();
+
+    let mut sims = Vec::new();
+    let mut cloud_devices = Vec::new();
+    let mut lan = Vec::new();
+    let mut ports: HashMap<DeviceId, u16> = HashMap::new();
+    for n in 1..=setup.sims {
+        let sim = tuya_sim::start(
+            SimConfig::new(ProtocolVersion::V35)
+                .ephemeral()
+                .dev_id(sim_id(n).0),
+        )
+        .await
+        .unwrap();
+        ports.insert(sim_id(n), sim.port());
+        cloud_devices.push(CloudDevice {
+            id: sim_id(n),
+            name: format!("Foco falso {n}"),
+            local_key: Secret::new(String::from_utf8(sim.local_key().to_vec()).unwrap()),
+            product_id: "fakeproduct".into(),
+            category: "dj".into(),
+            model: None,
+            online: true,
+            cloud_ip: None,
+        });
+        lan.push(DiscoveredDevice {
+            id: sim_id(n),
+            ip: "127.0.0.1".into(),
+            version: ProtocolVersion::V35,
+            product_key: None,
+        });
+        sims.push(sim);
+    }
+    let mapping = sims
+        .first()
+        .map(|s| s.mapping().clone())
+        .unwrap_or_default();
+
+    let tweak_ports = ports;
+    let options = BackendOptions {
+        test_step: Duration::from_millis(80),
+        manual_idle: Duration::from_millis(400),
+        list_scan: Duration::from_millis(50),
+        lookup_scan: Duration::from_millis(50),
+        device_tweak: Some(Arc::new(move |id, config| match tweak_ports.get(id) {
+            Some(port) => config.port(*port),
+            None => config,
+        })),
+        ..BackendOptions::default()
+    };
+    let cloud_screen = screen.clone();
+    let backend = Backend::new(BackendParts {
+        data_dir: dir.path().join("datos"),
+        secrets: secrets.clone(),
+        events: Arc::new(events.clone()),
+        sources: Arc::new(move || {
+            Box::new(FakeSource {
+                screen: cloud_screen.clone(),
+                task: None,
+            })
+        }),
+        cloud: Arc::new(move |creds: CloudCredentials| {
+            if creds.access_id != FAKE_ACCESS_ID
+                || creds.access_secret.expose() != FAKE_ACCESS_SECRET
+            {
+                // Un cliente que falla al validar, como la nube con un secreto mal copiado
+                return Ok(Arc::new(RejectingCloud) as Arc<dyn TuyaCloud>);
+            }
+            Ok(Arc::new(FakeCloud {
+                devices: cloud_devices.clone(),
+                mapping: mapping.clone(),
+                region: creds.region,
+            }) as Arc<dyn TuyaCloud>)
+        }),
+        scanner: Arc::new(FixedScanner(if setup.lan { lan } else { Vec::new() })),
+        locator: Arc::new(NoLocator),
+        options,
+    })
+    .unwrap();
+
+    Harness {
+        backend,
+        events,
+        secrets,
+        screen,
+        dir,
+        sims,
+    }
+}
+
+/// Una nube que rechaza todo con "firma inválida".
+struct RejectingCloud;
+
+#[async_trait]
+impl TuyaCloud for RejectingCloud {
+    async fn validate(&self) -> Result<CloudAccount, CloudError> {
+        Err(CloudError::InvalidSignature)
+    }
+
+    async fn devices(&self) -> Result<Vec<CloudDevice>, CloudError> {
+        Err(CloudError::InvalidSignature)
+    }
+
+    async fn mapping(&self, _device: &DeviceId) -> Result<DpMapping, CloudError> {
+        Err(CloudError::InvalidSignature)
+    }
+}
+
+impl Harness {
+    /// Eventos emitidos hasta ahora que cumplen `pick`.
+    pub fn events_where<T>(&self, pick: impl Fn(&AppEvent) -> Option<T>) -> Vec<T> {
+        self.events.events().iter().filter_map(pick).collect()
+    }
+}
+
+/// Espera hasta que `cond` se cumpla (con tiempo real), o falla con `what`.
+pub async fn eventually(what: &str, limit: Duration, mut cond: impl FnMut() -> bool) {
+    let start = std::time::Instant::now();
+    while !cond() {
+        assert!(start.elapsed() < limit, "no se cumplió a tiempo: {what}");
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+}

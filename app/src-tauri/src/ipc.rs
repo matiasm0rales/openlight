@@ -74,24 +74,25 @@ pub async fn open_system_settings(pane: SystemPane) -> CmdResult<()> {
 /// Valida Access ID / Access Secret y guarda las credenciales en el llavero.
 #[tauri::command]
 #[specta::specta]
-pub async fn cloud_validate(credentials: CloudCredentialsInput) -> CmdResult<CloudAccount> {
-    let _ = credentials;
-    todo("cloud_validate")
+pub async fn cloud_validate(
+    app: App<'_>,
+    credentials: CloudCredentialsInput,
+) -> CmdResult<CloudAccount> {
+    app.cloud_validate(credentials).await
 }
 
 /// Lista los dispositivos de la cuenta, cruzados con lo encontrado en la red local.
 #[tauri::command]
 #[specta::specta]
-pub async fn cloud_list_devices() -> CmdResult<Vec<CloudDeviceInfo>> {
-    todo("cloud_list_devices")
+pub async fn cloud_list_devices(app: App<'_>) -> CmdResult<Vec<CloudDeviceInfo>> {
+    app.cloud_list_devices().await
 }
 
 /// Busca focos en la red local durante `timeout_s` segundos (también emite `discovery://found`).
 #[tauri::command]
 #[specta::specta]
-pub async fn discover_lan(timeout_s: f32) -> CmdResult<Vec<DiscoveredDevice>> {
-    let _ = timeout_s;
-    todo("discover_lan")
+pub async fn discover_lan(app: App<'_>, timeout_s: f32) -> CmdResult<Vec<DiscoveredDevice>> {
+    app.discover_lan(timeout_s).await
 }
 
 // ---------- Dispositivos ----------

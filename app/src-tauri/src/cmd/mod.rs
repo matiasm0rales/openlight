@@ -2,5 +2,6 @@
 //! [`crate::state::Backend`]; los comandos de `ipc.rs` solo los llaman.
 
 pub mod calibration;
+pub mod cloud;
 pub mod onboarding;
 pub mod settings;

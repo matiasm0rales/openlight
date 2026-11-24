@@ -13,7 +13,7 @@ use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
 use async_trait::async_trait;
-use openlight_lib::bridge::lan::FixedScanner;
+use openlight_lib::bridge::lan::{FixedScanner, LanScanner};
 use openlight_lib::events::{AppEvent, MemorySink};
 use openlight_lib::state::{Backend, BackendOptions, BackendParts};
 use openlight_types::ipc::DiscoveredDevice;
@@ -138,8 +138,56 @@ impl TuyaCloud for FakeCloud {
     }
 }
 
+/// Qué ve la búsqueda en la red.
+#[derive(Clone)]
+pub enum ScanMode {
+    /// Estos focos.
+    Found(Vec<DiscoveredDevice>),
+    /// Nada: la red está vacía.
+    Empty,
+    /// No se puede ni escuchar (como un puerto ocupado por otro programa).
+    Fails,
+}
+
+/// Un escáner que se cambia en caliente desde la prueba.
+#[derive(Clone)]
+pub struct Scan(Arc<Mutex<ScanMode>>);
+
+impl Scan {
+    pub fn set(&self, mode: ScanMode) {
+        *self.0.lock().unwrap_or_else(PoisonError::into_inner) = mode;
+    }
+}
+
+#[async_trait]
+impl LanScanner for Scan {
+    async fn scan(
+        &self,
+        window: Duration,
+        until: Option<&DeviceId>,
+        found: &(dyn Fn(DiscoveredDevice) + Send + Sync),
+    ) -> Result<Vec<DiscoveredDevice>, openlight_types::UserFacingError> {
+        let mode = self
+            .0
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone();
+        match mode {
+            ScanMode::Found(devices) => FixedScanner(devices).scan(window, until, found).await,
+            ScanMode::Empty => Ok(Vec::new()),
+            ScanMode::Fails => Err(openlight_types::UserFacingError::new(
+                openlight_types::ErrorCode::FirewallBlocked,
+            )
+            .with_param("detail", "puerto UDP en uso")
+            .with_action(openlight_types::FixAction::Retry)),
+        }
+    }
+}
+
 /// Todo lo armado.
 pub struct Harness {
+    pub scan: Scan,
+    pub cloud_factory: openlight_lib::state::CloudFactory,
     pub backend: Arc<Backend>,
     pub events: MemorySink,
     pub secrets: Arc<MemoryStore>,
@@ -221,18 +269,14 @@ pub async fn harness(setup: Setup) -> Harness {
         })),
         ..BackendOptions::default()
     };
+    let scan = Scan(Arc::new(Mutex::new(if setup.lan {
+        ScanMode::Found(lan.clone())
+    } else {
+        ScanMode::Empty
+    })));
     let cloud_screen = screen.clone();
-    let backend = Backend::new(BackendParts {
-        data_dir: dir.path().join("datos"),
-        secrets: secrets.clone(),
-        events: Arc::new(events.clone()),
-        sources: Arc::new(move || {
-            Box::new(FakeSource {
-                screen: cloud_screen.clone(),
-                task: None,
-            })
-        }),
-        cloud: Arc::new(move |creds: CloudCredentials| {
+    let cloud_factory: openlight_lib::state::CloudFactory =
+        Arc::new(move |creds: CloudCredentials| {
             if creds.access_id != FAKE_ACCESS_ID
                 || creds.access_secret.expose() != FAKE_ACCESS_SECRET
             {
@@ -244,14 +288,27 @@ pub async fn harness(setup: Setup) -> Harness {
                 mapping: mapping.clone(),
                 region: creds.region,
             }) as Arc<dyn TuyaCloud>)
+        });
+    let backend = Backend::new(BackendParts {
+        data_dir: dir.path().join("datos"),
+        secrets: secrets.clone(),
+        events: Arc::new(events.clone()),
+        sources: Arc::new(move || {
+            Box::new(FakeSource {
+                screen: cloud_screen.clone(),
+                task: None,
+            })
         }),
-        scanner: Arc::new(FixedScanner(if setup.lan { lan } else { Vec::new() })),
+        cloud: cloud_factory.clone(),
+        scanner: Arc::new(scan.clone()),
         locator: Arc::new(NoLocator),
         options,
     })
     .unwrap();
 
     Harness {
+        scan,
+        cloud_factory,
         backend,
         events,
         secrets,
@@ -288,6 +345,22 @@ pub fn reopen(h: &Harness) -> Arc<Backend> {
         sources: Arc::new(|| unreachable!("reopen no captura")),
         cloud: Arc::new(|_| Err(CloudError::Network("sin red".into()))),
         scanner: Arc::new(FixedScanner(Vec::new())),
+        locator: Arc::new(NoLocator),
+        options: BackendOptions::default(),
+    })
+    .unwrap()
+}
+
+/// Como [`reopen`] pero con el mismo escáner, la misma nube y las mismas credenciales: la app
+/// reabierta, con la caché de la red vacía.
+pub fn reopen_with(h: &Harness) -> Arc<Backend> {
+    Backend::new(BackendParts {
+        data_dir: h.backend.data_dir().to_path_buf(),
+        secrets: h.secrets.clone(),
+        events: Arc::new(MemorySink::new()),
+        sources: Arc::new(|| unreachable!("reopen no captura")),
+        cloud: h.cloud_factory.clone(),
+        scanner: Arc::new(h.scan.clone()),
         locator: Arc::new(NoLocator),
         options: BackendOptions::default(),
     })

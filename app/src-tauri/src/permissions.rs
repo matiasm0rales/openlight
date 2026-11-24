@@ -300,14 +300,20 @@ use win as platform;
 mod windows_firewall {
     use super::*;
 
-    /// Qué dicen las reglas de entrada del firewall sobre este ejecutable.
+    /// Puertos UDP del discovery de los focos.
+    const DISCOVERY_PORTS: [u16; 2] = [6666, 6667];
+
+    /// Qué dicen las reglas de entrada del firewall sobre este ejecutable y el discovery.
     ///
-    /// `json` es la salida de `ConvertTo-Json` sobre `Select-Object Enabled, Action`: una lista de
-    /// objetos. PowerShell escribe los enums como número (`Action`: 2 = Allow, 4 = Block;
-    /// `Enabled`: 1 = True) y, según la versión o el idioma del sistema, a veces como texto. Se
-    /// aceptan las dos formas para no depender del idioma.
+    /// `json` es la salida de `ConvertTo-Json` sobre objetos con `Enabled`, `Action`, `Protocol`
+    /// y `LocalPort`. PowerShell escribe los enums como número (`Action`: 2 = Allow, 4 = Block;
+    /// `Enabled`: 1 = True) y, según la versión o el idioma, a veces como texto; se aceptan las
+    /// dos formas. Un campo ausente cuenta como "cualquiera".
     ///
-    /// Una regla de bloqueo activa gana sobre una de permiso (el firewall hace lo mismo).
+    /// - Una regla de bloqueo activa que alcanza **alguno** de los puertos UDP 6666/6667: Denegado.
+    /// - Reglas de permiso activas que, juntas, cubren **los dos** puertos en UDP: Concedido. Una
+    ///   regla de permiso solo para TCP, o para otros puertos, no cuenta.
+    /// - Cualquier otro caso: no se sabe.
     pub(super) fn state_from_rules(json: &str) -> PermissionState {
         let Ok(value) = serde_json::from_str::<serde_json::Value>(json) else {
             return PermissionState::NotDetermined;
@@ -317,18 +323,23 @@ mod windows_firewall {
             single @ serde_json::Value::Object(_) => vec![single],
             _ => Vec::new(),
         };
-        let mut allowed = false;
+        let mut allowed = [false; 2];
         for rule in &rules {
-            if !is_enabled(&rule["Enabled"]) {
+            if !is_enabled(&rule["Enabled"]) || !covers_udp(&rule["Protocol"]) {
                 continue;
             }
+            let ports = DISCOVERY_PORTS.map(|p| covers_port(&rule["LocalPort"], p));
             match action(&rule["Action"]) {
-                Some(Action::Block) => return PermissionState::Denied,
-                Some(Action::Allow) => allowed = true,
-                None => {}
+                Some(Action::Block) if ports.iter().any(|&c| c) => return PermissionState::Denied,
+                Some(Action::Allow) => {
+                    for (permitido, cubierto) in allowed.iter_mut().zip(ports) {
+                        *permitido |= cubierto;
+                    }
+                }
+                _ => {}
             }
         }
-        if allowed {
+        if allowed.iter().all(|&c| c) {
             PermissionState::Granted
         } else {
             PermissionState::NotDetermined
@@ -362,43 +373,149 @@ mod windows_firewall {
         }
     }
 
+    /// Si la regla aplica a UDP: protocolo ausente, `Any`, `UDP` o el número 17.
+    fn covers_udp(v: &serde_json::Value) -> bool {
+        match v {
+            serde_json::Value::Null => true,
+            serde_json::Value::Number(n) => n.as_i64() == Some(17),
+            serde_json::Value::String(s) => {
+                let s = s.trim();
+                s.is_empty()
+                    || s.eq_ignore_ascii_case("any")
+                    || s.eq_ignore_ascii_case("udp")
+                    || s == "17"
+            }
+            _ => false,
+        }
+    }
+
+    /// Si el puerto local de la regla incluye `port`. El campo es `Any`, un puerto, un rango
+    /// (`6000-7000`) o una lista separada por comas (a veces ya como arreglo JSON); los nombres
+    /// especiales (`RPC`, `Teredo`...) no cubren ningún puerto de los nuestros.
+    fn covers_port(v: &serde_json::Value, port: u16) -> bool {
+        let text = match v {
+            serde_json::Value::Null => return true,
+            serde_json::Value::Number(n) => n.to_string(),
+            serde_json::Value::String(s) => s.clone(),
+            serde_json::Value::Array(items) => items
+                .iter()
+                .map(|i| i.as_str().map_or_else(|| i.to_string(), str::to_owned))
+                .collect::<Vec<_>>()
+                .join(","),
+            _ => return false,
+        };
+        text.split(',').map(str::trim).any(|token| {
+            if token.is_empty() || token.eq_ignore_ascii_case("any") {
+                return true;
+            }
+            match token.split_once('-') {
+                Some((a, b)) => matches!(
+                    (a.trim().parse::<u16>(), b.trim().parse::<u16>()),
+                    (Ok(a), Ok(b)) if (a..=b).contains(&port)
+                ),
+                None => token.parse::<u16>() == Ok(port),
+            }
+        })
+    }
+
     #[cfg(test)]
     mod tests {
         use super::*;
 
-        #[test]
-        fn sin_reglas_no_se_sabe() {
-            assert_eq!(state_from_rules("[]"), PermissionState::NotDetermined);
-            assert_eq!(state_from_rules(""), PermissionState::NotDetermined);
-            assert_eq!(state_from_rules("basura"), PermissionState::NotDetermined);
+        fn estado(json: &str) -> PermissionState {
+            state_from_rules(json)
         }
 
         #[test]
-        fn regla_de_permiso_activa_es_concedido() {
-            let json = r#"[{"Enabled":1,"Action":2},{"Enabled":1,"Action":2}]"#;
-            assert_eq!(state_from_rules(json), PermissionState::Granted);
+        fn sin_reglas_no_se_sabe() {
+            assert_eq!(estado("[]"), PermissionState::NotDetermined);
+            assert_eq!(estado(""), PermissionState::NotDetermined);
+            assert_eq!(estado("basura"), PermissionState::NotDetermined);
+        }
+
+        #[test]
+        fn regla_de_permiso_para_cualquier_puerto_es_concedido() {
+            let json = r#"[{"Enabled":1,"Action":2,"Protocol":"Any","LocalPort":"Any"}]"#;
+            assert_eq!(estado(json), PermissionState::Granted);
+            // Campos ausentes = cualquiera.
+            assert_eq!(
+                estado(r#"[{"Enabled":1,"Action":2}]"#),
+                PermissionState::Granted
+            );
         }
 
         #[test]
         fn regla_de_bloqueo_activa_gana() {
             let json = r#"[{"Enabled":1,"Action":2},{"Enabled":1,"Action":4}]"#;
-            assert_eq!(state_from_rules(json), PermissionState::Denied);
+            assert_eq!(estado(json), PermissionState::Denied);
         }
 
         #[test]
         fn reglas_desactivadas_no_cuentan() {
             let json = r#"[{"Enabled":0,"Action":4},{"Enabled":1,"Action":2}]"#;
-            assert_eq!(state_from_rules(json), PermissionState::Granted);
-            let json = r#"[{"Enabled":0,"Action":4}]"#;
-            assert_eq!(state_from_rules(json), PermissionState::NotDetermined);
+            assert_eq!(estado(json), PermissionState::Granted);
+            assert_eq!(
+                estado(r#"[{"Enabled":0,"Action":4}]"#),
+                PermissionState::NotDetermined
+            );
         }
 
         #[test]
         fn acepta_un_solo_objeto_y_enums_como_texto() {
             let un_objeto = r#"{"Enabled":1,"Action":4}"#;
-            assert_eq!(state_from_rules(un_objeto), PermissionState::Denied);
-            let texto = r#"[{"Enabled":"True","Action":"Allow"}]"#;
-            assert_eq!(state_from_rules(texto), PermissionState::Granted);
+            assert_eq!(estado(un_objeto), PermissionState::Denied);
+            let texto = r#"[{"Enabled":"True","Action":"Allow","Protocol":"UDP"}]"#;
+            assert_eq!(estado(texto), PermissionState::Granted);
+        }
+
+        #[test]
+        fn permiso_solo_para_tcp_no_alcanza() {
+            let json = r#"[{"Enabled":1,"Action":2,"Protocol":"TCP","LocalPort":"Any"}]"#;
+            assert_eq!(estado(json), PermissionState::NotDetermined);
+            let numero = r#"[{"Enabled":1,"Action":2,"Protocol":6,"LocalPort":"Any"}]"#;
+            assert_eq!(estado(numero), PermissionState::NotDetermined);
+        }
+
+        #[test]
+        fn permiso_para_otros_puertos_no_alcanza() {
+            let json = r#"[{"Enabled":1,"Action":2,"Protocol":"UDP","LocalPort":"5353"}]"#;
+            assert_eq!(estado(json), PermissionState::NotDetermined);
+        }
+
+        #[test]
+        fn permiso_de_un_solo_puerto_no_alcanza_pero_dos_reglas_si() {
+            let uno = r#"[{"Enabled":1,"Action":2,"Protocol":"UDP","LocalPort":"6666"}]"#;
+            assert_eq!(estado(uno), PermissionState::NotDetermined);
+            let dos = r#"[{"Enabled":1,"Action":2,"Protocol":"UDP","LocalPort":"6666"},
+                          {"Enabled":1,"Action":2,"Protocol":"UDP","LocalPort":"6667"}]"#;
+            assert_eq!(estado(dos), PermissionState::Granted);
+        }
+
+        #[test]
+        fn rangos_y_listas_de_puertos() {
+            let rango = r#"[{"Enabled":1,"Action":2,"Protocol":"UDP","LocalPort":"6000-7000"}]"#;
+            assert_eq!(estado(rango), PermissionState::Granted);
+            let lista = r#"[{"Enabled":1,"Action":2,"Protocol":"UDP","LocalPort":"6666, 6667"}]"#;
+            assert_eq!(estado(lista), PermissionState::Granted);
+            let arreglo =
+                r#"[{"Enabled":1,"Action":2,"Protocol":"UDP","LocalPort":["6666","6667"]}]"#;
+            assert_eq!(estado(arreglo), PermissionState::Granted);
+        }
+
+        #[test]
+        fn bloqueo_de_otro_protocolo_o_puerto_no_cuenta() {
+            let tcp = r#"[{"Enabled":1,"Action":4,"Protocol":"TCP","LocalPort":"Any"}]"#;
+            assert_eq!(estado(tcp), PermissionState::NotDetermined);
+            let otro = r#"[{"Enabled":1,"Action":4,"Protocol":"UDP","LocalPort":"80"}]"#;
+            assert_eq!(estado(otro), PermissionState::NotDetermined);
+            let uno = r#"[{"Enabled":1,"Action":4,"Protocol":"UDP","LocalPort":"6667"}]"#;
+            assert_eq!(estado(uno), PermissionState::Denied);
+        }
+
+        #[test]
+        fn nombres_especiales_de_puerto_no_cubren_los_nuestros() {
+            let json = r#"[{"Enabled":1,"Action":2,"Protocol":"UDP","LocalPort":"RPC"}]"#;
+            assert_eq!(estado(json), PermissionState::NotDetermined);
         }
     }
 }
@@ -414,11 +531,15 @@ mod win {
     /// No abre una consola al lanzar PowerShell.
     const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
-    /// Reglas de entrada que mencionan este ejecutable. El ejecutable va por variable de entorno
-    /// para no tener que escapar la ruta dentro del script.
+    /// Reglas de entrada que mencionan este ejecutable, con su protocolo y puertos locales (los
+    /// filtros de puerto son un objeto aparte de la regla). El ejecutable va por variable de
+    /// entorno para no tener que escapar la ruta dentro del script.
     const SCRIPT: &str = "$ErrorActionPreference = 'SilentlyContinue'; \
         $r = Get-NetFirewallApplicationFilter -Program $env:OPENLIGHT_EXE | Get-NetFirewallRule \
-        | Where-Object { $_.Direction -eq 'Inbound' } | Select-Object Enabled, Action; \
+        | Where-Object { $_.Direction -eq 'Inbound' } | ForEach-Object { \
+        $p = $_ | Get-NetFirewallPortFilter; \
+        [pscustomobject]@{ Enabled = $_.Enabled; Action = $_.Action; \
+        Protocol = \"$($p.Protocol)\"; LocalPort = ($p.LocalPort -join ',') } }; \
         if ($r) { ConvertTo-Json -InputObject @($r) -Compress } else { '[]' }";
 
     pub(super) fn check() -> Vec<PermissionStatus> {
@@ -462,6 +583,8 @@ use linux as platform;
 /// escritorio lo permite, recuerda la elección.
 #[cfg(any(target_os = "linux", test))]
 mod linux_session {
+    use super::*;
+
     /// Si la sesión gráfica es Wayland, según `XDG_SESSION_TYPE` y `WAYLAND_DISPLAY`.
     ///
     /// `XDG_SESSION_TYPE` manda; sin él, hay Wayland si existe el socket `WAYLAND_DISPLAY`.
@@ -473,9 +596,34 @@ mod linux_session {
         }
     }
 
+    /// El permiso del portal tal como lo ve la UI.
+    pub(super) fn portal_status(state: PermissionState) -> PermissionStatus {
+        status(
+            PermissionKind::ScreenCastPortal,
+            state,
+            Some(SystemPane::ScreenCastPortal),
+            false,
+        )
+    }
+
     #[cfg(test)]
     mod tests {
         use super::*;
+
+        #[test]
+        fn el_portal_informa_lo_que_dice_la_captura() {
+            for state in [
+                PermissionState::NotDetermined,
+                PermissionState::Granted,
+                PermissionState::Denied,
+            ] {
+                let s = portal_status(state);
+                assert_eq!(s.kind, PermissionKind::ScreenCastPortal);
+                assert_eq!(s.state, state);
+                assert_eq!(s.pane, Some(SystemPane::ScreenCastPortal));
+                assert!(!s.needs_restart);
+            }
+        }
 
         #[test]
         fn xdg_session_type_manda() {
@@ -496,7 +644,7 @@ mod linux_session {
 
 #[cfg(target_os = "linux")]
 mod linux {
-    use super::linux_session::is_wayland;
+    use super::linux_session::{is_wayland, portal_status};
     use super::*;
 
     pub(super) fn check() -> Vec<PermissionStatus> {
@@ -507,15 +655,7 @@ mod linux {
         if !wayland {
             return Vec::new();
         }
-        // El portal no tiene una consulta de "¿ya me dieron permiso?": el selector aparece al
-        // empezar a capturar. Se informa como "todavía no se pidió" y el aviso explica qué va
-        // a pasar. Cuando la captura ya corrió con éxito, el estado real lo da `capture`.
-        vec![status(
-            PermissionKind::ScreenCastPortal,
-            PermissionState::NotDetermined,
-            Some(SystemPane::ScreenCastPortal),
-            false,
-        )]
+        vec![portal_status(PermissionState::NotDetermined)]
     }
 
     pub(super) fn request_screen_recording() -> PermissionState {

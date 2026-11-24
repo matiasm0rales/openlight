@@ -95,7 +95,9 @@ fn preview_height(info: &DisplayInfo, width: u32) -> u32 {
 fn frame_to_png(frame: &Frame) -> Result<Vec<u8>, String> {
     let rgba: Vec<u8> = frame
         .bgra
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .flat_map(|px| [px[2], px[1], px[0], 255])
         .collect();
     let mut out = Vec::new();

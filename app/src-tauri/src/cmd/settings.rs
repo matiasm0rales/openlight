@@ -132,10 +132,7 @@ impl Backend {
     /// Guarda nombre, valores y atajo. El id y si es de fábrica no cambian; los de fábrica
     /// conservan su nombre (es una clave i18n).
     pub fn profiles_update(&self, profile: Profile) -> CmdResult<Profile> {
-        profile
-            .values
-            .validate()
-            .map_err(|e| UserFacingError::from(e))?;
+        profile.values.validate().map_err(UserFacingError::from)?;
         let mut config = self.config()?;
         let stored = config
             .profiles

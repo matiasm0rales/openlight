@@ -13,5 +13,10 @@ fn main() {
         println!("cargo:rustc-link-arg=/MANIFESTINPUT:{}", manifest.display());
         println!("cargo:rustc-link-arg=/WX");
     }
+    if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("macos") {
+        // `capture` trae un puente en Swift (ScreenCaptureKit) que necesita el runtime de Swift del
+        // sistema; sin este rpath ni la app ni sus pruebas arrancan (dyld: libswift_Concurrency).
+        println!("cargo:rustc-link-arg=-Wl,-rpath,/usr/lib/swift");
+    }
     tauri_build::try_build(attributes).expect("falló tauri-build");
 }

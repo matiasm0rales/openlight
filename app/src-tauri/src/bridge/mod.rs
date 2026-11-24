@@ -10,3 +10,4 @@
 
 pub mod driver;
 pub mod state_store;
+pub mod sources;

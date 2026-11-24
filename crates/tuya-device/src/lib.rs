@@ -28,8 +28,10 @@
 //! - **Restauración:** al arrancar se guarda el estado original (y se persiste: si el programa
 //!   muere sin restaurar, vale lo guardado); [`DeviceHandle::return_to_original`] pausa y
 //!   [`DeviceHandle::restore`] sale.
-//! - **IP:** la guardada primero y, si falla o da 914, discovery UDP. Con IP fija
-//!   ([`IpMode::Fixed`]) nunca se busca otra.
+//! - **IP y versión:** la guardada primero y, si falla o da 914, discovery UDP. Con IP fija
+//!   ([`IpMode::Fixed`]) nunca se busca otra. Si el foco anuncia otra versión del protocolo
+//!   que la configurada (un registro 3.3 para un foco 3.5), el actor usa la anunciada, la
+//!   guarda con la IP ([`SavedState::version`]) y la informa en [`StartInfo::version`].
 //!
 //! # Ejemplo
 //!

@@ -6,7 +6,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use openlight_types::{
     Capabilities, DeviceError, DeviceId, DeviceSessionState, DisconnectReason, Dps, Hsv,
-    LightDevice, LinkHealth,
+    LightDevice, LinkHealth, ProtocolVersion,
 };
 use tokio::sync::{mpsc, oneshot, watch};
 
@@ -22,6 +22,9 @@ type Reply<T> = oneshot::Sender<Result<T, DeviceError>>;
 pub struct StartInfo {
     /// IP con la que se conectó.
     pub ip: IpAddr,
+    /// Versión del protocolo con la que se conectó: la configurada o, si el foco anunciaba
+    /// otra por discovery, esa.
+    pub version: ProtocolVersion,
     /// Capacidades (las de la configuración o las deducidas de `status()`).
     pub capabilities: Capabilities,
     /// Estado al que se vuelve al restaurar, ya guardado en el [`crate::StateStore`].

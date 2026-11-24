@@ -41,6 +41,7 @@ fn tras_un_cierre_sucio_recupera_el_original_guardado() {
             &rig.id,
             &SavedState {
                 ip: None,
+                version: None,
                 original: Some(estado_blanco()),
             },
         );

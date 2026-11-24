@@ -22,7 +22,7 @@ use std::sync::Arc;
 
 use openlight_types::{
     Capabilities, DeviceError, DeviceSessionState, DisconnectReason, Dps, ErrorCode, Hsv,
-    LinkHealth,
+    LinkHealth, ProtocolVersion,
 };
 use serde_json::{Value, json};
 use tokio::sync::{mpsc, watch};
@@ -31,7 +31,7 @@ use tuya_proto::{Key, PayloadData, cmd, key_from_str};
 
 use crate::CapabilitiesExt;
 use crate::colour::colour_write;
-use crate::config::{DeviceConfig, IpMode, Locator};
+use crate::config::{DeviceConfig, IpMode, Located, Locator};
 use crate::conn::{Conn, ConnParams, Incoming, dps_of};
 use crate::handle::{Cmd, DeviceSnapshot, StartInfo};
 use crate::health::{Counters, HealthTracker, reason_of};
@@ -50,6 +50,10 @@ pub(crate) struct Actor {
 
     caps: Option<Capabilities>,
     ip: Option<IpAddr>,
+    /// Versión del protocolo con la que se habla ahora: la configurada, o la que anunció el foco.
+    version: ProtocolVersion,
+    /// La versión que anunció el foco, si difiere de la configurada. Se guarda con la IP.
+    announced: Option<ProtocolVersion>,
     original: Option<Dps>,
     conn: Option<Conn>,
     /// El foco ya se encontró y se lo mantiene conectado.
@@ -105,11 +109,18 @@ impl Actor {
             tracing::warn!(error = %e, "la clave local no es válida");
             DeviceError::KeyRejected
         });
-        // `config.json` manda; si no hay IP, vale la última que funcionó.
-        let ip = match cfg.ip_mode {
-            IpMode::Fixed => cfg.creds.ip,
-            IpMode::Auto => cfg.creds.ip.or_else(|| store.load(&cfg.creds.id).ip),
+        // `config.json` manda; si no hay IP, vale la última que funcionó. Con IP automática,
+        // también vale la versión que anunció el foco la última vez (el registro puede tener
+        // otra: no se corrige solo).
+        let saved = store.load(&cfg.creds.id);
+        let (ip, announced) = match cfg.ip_mode {
+            IpMode::Fixed => (cfg.creds.ip, None),
+            IpMode::Auto => (
+                cfg.creds.ip.or(saved.ip),
+                saved.version.filter(|v| *v != cfg.creds.version),
+            ),
         };
+        let version = announced.unwrap_or(cfg.creds.version);
         Self {
             cfg,
             key,
@@ -122,6 +133,8 @@ impl Actor {
             health: HealthTracker::default(),
             caps: None,
             ip,
+            version,
+            announced,
             original: None,
             conn: None,
             started: false,
@@ -270,19 +283,41 @@ impl Actor {
 
     /// IP a la que conectar: la que se tiene o, en modo automático, la que encuentre discovery.
     async fn resolve_ip(&mut self) -> Option<IpAddr> {
-        if self.ip.is_none() && self.cfg.ip_mode == IpMode::Auto {
-            self.ip = self.locator.locate(&self.cfg.creds.id).await;
+        if self.ip.is_none()
+            && self.cfg.ip_mode == IpMode::Auto
+            && let Some(found) = self.locator.locate(&self.cfg.creds.id).await
+        {
+            self.adopt(found);
         }
         self.ip
     }
 
-    /// En modo automático, después de un fallo: la IP guardada pudo cambiar, se pregunta a
-    /// discovery. Si no encuentra nada, se sigue con la que había.
+    /// En modo automático, después de un fallo: la IP guardada pudo cambiar y el foco pudo
+    /// anunciar otra versión del protocolo (un registro guardado como 3.3 para un foco 3.5 da
+    /// timeout o respuestas que no se descifran). Se pregunta a discovery; si no encuentra
+    /// nada, se sigue con lo que había.
     async fn refresh_ip(&mut self) {
         if self.cfg.ip_mode == IpMode::Auto
-            && let Some(ip) = self.locator.locate(&self.cfg.creds.id).await
+            && let Some(found) = self.locator.locate(&self.cfg.creds.id).await
         {
-            self.ip = Some(ip);
+            self.adopt(found);
+        }
+    }
+
+    /// Toma lo que encontró discovery: la IP y, si el foco anuncia otra versión, esa versión
+    /// (como `auto_ip` de tinytuya).
+    fn adopt(&mut self, found: Located) {
+        self.ip = Some(found.ip);
+        if let Some(version) = found.version {
+            if version != self.version {
+                tracing::info!(
+                    from = %self.version,
+                    to = %version,
+                    "el foco anuncia otra versión del protocolo: se usa esa"
+                );
+            }
+            self.version = version;
+            self.announced = (version != self.cfg.creds.version).then_some(version);
         }
     }
 
@@ -291,7 +326,7 @@ impl Actor {
         let key = self.key.clone()?;
         let ip = self.resolve_ip().await.ok_or(DeviceError::NotFound)?;
         let params = ConnParams {
-            version: self.cfg.creds.version,
+            version: self.version,
             key,
             dev_id: self.cfg.creds.id.0.clone(),
             io_timeout: self.cfg.timings.io_timeout,
@@ -328,6 +363,7 @@ impl Actor {
         {
             return Ok(StartInfo {
                 ip,
+                version: self.version,
                 capabilities: caps,
                 original,
             });
@@ -392,6 +428,7 @@ impl Actor {
             &self.cfg.creds.id,
             &SavedState {
                 ip: Some(ip),
+                version: self.announced,
                 original: Some(original.clone()),
             },
         );
@@ -399,6 +436,7 @@ impl Actor {
         self.original = Some(original.clone());
         Ok(StartInfo {
             ip,
+            version: self.version,
             capabilities,
             original,
         })
@@ -488,12 +526,14 @@ impl Actor {
         self.last_attempt = now;
     }
 
-    /// Guarda la IP que funcionó, sin pisar lo demás (`guardar_estado(ip=...)`).
-    fn save_ip(&self) {
+    /// Guarda la IP (y la versión anunciada) con la que se conectó, sin pisar lo demás
+    /// (`guardar_estado(ip=...)`).
+    fn save_link(&self) {
         if let Some(ip) = self.ip {
             let mut saved = self.store.load(&self.cfg.creds.id);
-            if saved.ip != Some(ip) {
+            if saved.ip != Some(ip) || saved.version != self.announced {
                 saved.ip = Some(ip);
+                saved.version = self.announced;
                 self.store.save(&self.cfg.creds.id, &saved);
             }
         }
@@ -534,7 +574,7 @@ impl Actor {
         self.failures = 0;
         self.reset_timers();
         self.health.connected();
-        self.save_ip();
+        self.save_link();
         self.state = if self.active {
             DeviceSessionState::Active
         } else {

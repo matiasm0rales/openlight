@@ -3,7 +3,6 @@
 //! Es lo que hace tinytuya cuando el dispositivo se crea con `"Auto"` o `auto_ip` y la IP deja
 //! de servir (`find_device`): escucha los broadcasts de los focos hasta ver el que tiene el id.
 
-use std::net::IpAddr;
 use std::time::Duration;
 
 use async_trait::async_trait;
@@ -12,7 +11,7 @@ use tokio::sync::mpsc;
 use tokio::time::sleep;
 use tuya_discovery::{ScanConfig, listen};
 
-use crate::config::Locator;
+use crate::config::{Located, Locator};
 
 /// Cuánto escucha cada búsqueda por defecto. Los focos anuncian cada pocos segundos y la app
 /// manda un `REQ_DEVINFO` cada 6 s (que contestan los 3.5).
@@ -45,7 +44,7 @@ impl Default for UdpLocator {
 
 #[async_trait]
 impl Locator for UdpLocator {
-    async fn locate(&self, id: &DeviceId) -> Option<IpAddr> {
+    async fn locate(&self, id: &DeviceId) -> Option<Located> {
         let (tx, mut rx) = mpsc::channel(32);
         let listener = listen(&self.config, tx);
         tokio::pin!(listener);
@@ -63,7 +62,8 @@ impl Locator for UdpLocator {
                 Some(found) = rx.recv() => {
                     if found.id == *id {
                         match found.ip.parse() {
-                            Ok(ip) => return Some(ip),
+                            // La versión sale del anuncio: es la que habla el foco ahora.
+                            Ok(ip) => return Some(Located::with_version(ip, found.version)),
                             Err(e) => tracing::debug!(ip = %found.ip, error = %e, "IP anunciada inválida"),
                         }
                     }
@@ -122,8 +122,13 @@ mod tests {
         // Como en tinytuya, la IP es la de origen del datagrama (acá, el loopback).
         for version in [ProtocolVersion::V33, ProtocolVersion::V35] {
             let (sim, locator) = escenario(version).await;
-            let ip = locator.locate(sim.dev_id()).await;
-            assert_eq!(ip, Some(Ipv4Addr::LOCALHOST.into()), "{version}");
+            let found = locator.locate(sim.dev_id()).await;
+            // Y la versión es la que anuncia el foco.
+            assert_eq!(
+                found,
+                Some(Located::with_version(Ipv4Addr::LOCALHOST.into(), version)),
+                "{version}"
+            );
         }
     }
 

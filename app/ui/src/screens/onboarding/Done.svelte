@@ -66,7 +66,7 @@
     height: 56px;
     border-radius: 50%;
     background: radial-gradient(circle at 35% 30%, #fff6, transparent 40%), conic-gradient(from 90deg, #ff6a4b, #ffb547, #6be3a4, #59b8ff, #b07cff, #ff6a4b);
-    box-shadow: 0 0 40px -4px var(--accent);
+    box-shadow: 0 0 56px -2px var(--rgb-b);
     animation: rise 700ms var(--ease) both;
   }
   .row {

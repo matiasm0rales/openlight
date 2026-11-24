@@ -96,12 +96,13 @@
 <style>
   .device {
     display: grid;
-    gap: 1rem;
-    padding: 1.2rem 1.3rem;
-    transition: border-color 300ms;
+    gap: 1.1rem;
+    padding: 1.5rem;
+    overflow: hidden;
+    transition: box-shadow 300ms;
   }
   .device[data-state="error"] {
-    border-color: color-mix(in srgb, var(--danger) 40%, var(--line));
+    box-shadow: var(--shadow), 0 0 0 2px color-mix(in srgb, var(--danger) 45%, transparent);
   }
   header {
     display: flex;
@@ -118,9 +119,11 @@
   .stage {
     display: grid;
     grid-template-columns: auto 1fr;
-    gap: 1.6rem;
+    gap: 1.8rem;
     align-items: center;
-    padding: 0.6rem 0.2rem;
+    padding: 1.2rem 1.4rem;
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
   }
   .stats {
     margin: 0;
@@ -132,9 +135,7 @@
     grid-column: 1 / -1;
   }
   dt {
-    font: 500 0.7rem var(--font-mono);
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
+    font: 600 0.8rem var(--font-body);
     color: var(--muted);
   }
   dd {
@@ -150,7 +151,7 @@
   }
   .legend span {
     display: inline-flex;
-    gap: 0.4rem;
+    gap: 0.5rem;
     align-items: center;
   }
   .legend i {
@@ -176,13 +177,11 @@
   }
   .bright output {
     text-align: right;
-    color: var(--accent);
+    color: var(--text);
   }
   footer {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.4rem;
-    padding-top: 0.8rem;
-    border-top: 1px solid var(--line);
+    gap: 0.5rem;
   }
 </style>

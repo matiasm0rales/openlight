@@ -41,11 +41,13 @@ pub fn run() {
         .setup(move |app| {
             specta.mount_events(app);
             let data_dir = state::data_dir(app.handle())?;
-            app.manage(logging::init(&logging::log_dir(app.handle(), &data_dir)?));
+            let log = logging::init(&logging::log_dir(app.handle(), &data_dir)?);
             let sink = Arc::new(events::TauriSink(app.handle().clone()));
             let backend = state::Backend::new(state::BackendParts::production(data_dir, sink))
                 .map_err(|e| format!("no se pudo iniciar el backend: {e}"))?;
             backend.set_shell(Arc::new(shell::TauriShell(app.handle().clone())));
+            backend.set_logs(log.handle());
+            app.manage(log);
             app.manage(backend.clone());
             tray::install(app.handle(), Arc::new(tray_backend::AppTray::new(backend)))?;
             // Arrancó solo al iniciar sesión: queda en el tray, sin abrir la ventana.

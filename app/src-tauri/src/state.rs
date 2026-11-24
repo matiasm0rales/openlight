@@ -182,6 +182,8 @@ pub struct Backend {
     /// `Store` ordena cada escritura, pero no la transacción entera (dos cambios seguidos de un
     /// slider se pisarían).
     pub(crate) edit: Mutex<()>,
+    /// El log de la app (no hay nada en las pruebas que no lo instalan).
+    pub(crate) logs: Mutex<Option<crate::logging::LogHandle>>,
     /// Efectos sobre las ventanas y el tray (no hay nada en las pruebas).
     pub(crate) shell: Mutex<Option<Arc<dyn crate::shell::Shell>>>,
     /// Focos que el usuario sacó del efecto desde el tray.
@@ -211,6 +213,7 @@ impl Backend {
             locks: DeviceLocks::new(),
             power: PowerEvents::new(),
             edit: Mutex::new(()),
+            logs: Mutex::new(None),
             shell: Mutex::new(None),
             excluded: Mutex::new(HashSet::new()),
             shutdown_state: AtomicU8::new(0),

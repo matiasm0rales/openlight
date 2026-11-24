@@ -4,6 +4,7 @@
 pub mod calibration;
 pub mod cloud;
 pub mod devices;
+pub mod diagnostics;
 pub mod displays;
 pub mod effect;
 pub mod legacy;

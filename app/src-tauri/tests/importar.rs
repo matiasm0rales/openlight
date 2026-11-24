@@ -142,3 +142,32 @@ fn walk(dir: &Path) -> Vec<PathBuf> {
     }
     out
 }
+
+#[test]
+fn cada_aviso_del_importador_tiene_texto_en_los_dos_idiomas() {
+    use openlight_core::import::{
+        WARN_CALIBRATION_INVALID, WARN_CALIBRATION_UNASSIGNED, WARN_IP_INVALID,
+        WARN_MAPPING_INVALID, WARN_NO_KEY, WARN_SKIPPED_NON_LIGHT, WARN_VERSION_ASSUMED,
+    };
+    for lang in ["es", "en"] {
+        let path =
+            Path::new(env!("CARGO_MANIFEST_DIR")).join(format!("../ui/src/lib/i18n/{lang}.json"));
+        let json: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(path).unwrap()).unwrap();
+        for key in [
+            WARN_VERSION_ASSUMED,
+            WARN_NO_KEY,
+            WARN_MAPPING_INVALID,
+            WARN_CALIBRATION_UNASSIGNED,
+            WARN_CALIBRATION_INVALID,
+            WARN_SKIPPED_NON_LIGHT,
+            WARN_IP_INVALID,
+        ] {
+            let text = key
+                .split('.')
+                .try_fold(&json, |node, part| node.get(part))
+                .and_then(|v| v.as_str());
+            assert!(text.is_some_and(|t| !t.is_empty()), "falta {key} en {lang}");
+        }
+    }
+}

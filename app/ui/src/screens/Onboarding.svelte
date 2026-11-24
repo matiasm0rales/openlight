@@ -188,7 +188,7 @@
     top: 0;
     width: 2px;
     background: var(--accent);
-    box-shadow: 0 0 10px var(--accent);
+    box-shadow: 0 0 12px var(--live);
     transition: height 500ms var(--ease);
   }
   ol {
@@ -242,7 +242,7 @@
   }
   li.current .dot {
     border-color: var(--accent);
-    box-shadow: 0 0 0 4px var(--accent-soft), 0 0 14px var(--accent);
+    box-shadow: 0 0 0 4px var(--accent-soft);
   }
   .pause {
     grid-column: 1 / -1;

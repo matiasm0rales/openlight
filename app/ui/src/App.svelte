@@ -26,14 +26,18 @@
   });
 
   // La ventana misma se ilumina con el color que va al primer foco (el "ambilight" de la app).
-  const ambient = $derived.by(() => {
+  const sent = $derived.by(() => {
     const first = Object.values(app.live).find((l) => l.sent);
-    return first?.sent && app.session === "active" ? hsvCss(first.sent) : "transparent";
+    return first?.sent && app.session === "active" ? first.sent : null;
   });
+  // El halo usa cualquier color; los controles (sliders, interruptores) solo uno con cuerpo, para no
+  // quedar blancos sobre blanco ni negros sobre negro.
+  const ambient = $derived(sent ? hsvCss(sent) : null);
+  const live = $derived(sent && (sent.s ?? 0) >= 0.3 && (sent.v ?? 0) >= 0.4 ? hsvCss(sent) : null);
   const fullscreen = $derived(route.name === "onboarding" || route.name === "calibrate");
 </script>
 
-<div class="shell" class:fullscreen style:--ambient={ambient}>
+<div class="shell" class:fullscreen class:idle={!ambient} style:--ambient={ambient} style:--live={live}>
   <a class="skip" href="#main">{t("common.skip_to_content")}</a>
   <div class="ambient" aria-hidden="true"></div>
   {#if !fullscreen}
@@ -78,9 +82,18 @@
     position: fixed;
     inset: -20vmax;
     pointer-events: none;
-    background: radial-gradient(60vmax 40vmax at 78% 0%, color-mix(in srgb, var(--ambient) 22%, transparent), transparent 70%);
-    transition: background 900ms var(--ease);
+    background:
+      radial-gradient(55vmax 38vmax at 82% -4%, color-mix(in srgb, var(--ambient) 34%, transparent), transparent 70%),
+      radial-gradient(40vmax 30vmax at 100% 40%, color-mix(in srgb, var(--ambient) 16%, transparent), transparent 70%);
+    transition: opacity 600ms var(--ease);
     z-index: 0;
+  }
+  /* En reposo: mezcla suave de rojo, verde y azul. */
+  .shell.idle .ambient {
+    background:
+      radial-gradient(46vmax 32vmax at 92% -6%, color-mix(in srgb, var(--rgb-r) 22%, transparent), transparent 70%),
+      radial-gradient(44vmax 32vmax at 62% -14%, color-mix(in srgb, var(--rgb-g) 18%, transparent), transparent 70%),
+      radial-gradient(48vmax 34vmax at 100% 34%, color-mix(in srgb, var(--rgb-b) 20%, transparent), transparent 70%);
   }
   main {
     position: relative;

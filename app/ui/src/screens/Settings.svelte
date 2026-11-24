@@ -358,7 +358,7 @@
     background: var(--surface-2);
   }
   .profiles li.active {
-    box-shadow: inset 3px 0 0 var(--accent);
+    box-shadow: inset 4px 0 0 var(--accent);
   }
   .pname {
     display: flex;

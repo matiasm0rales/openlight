@@ -95,7 +95,7 @@
     display: grid;
     gap: 0.6rem;
     padding: 0.9rem 1rem;
-    border-radius: var(--radius);
+    border-radius: var(--radius-md);
     background: var(--surface-2);
   }
   .note {
@@ -115,7 +115,7 @@
     gap: 0.7rem;
     align-items: center;
     padding: 0.9rem 1rem;
-    border-radius: var(--radius);
+    border-radius: var(--radius-md);
     border: 1px dashed var(--line-strong);
     font-weight: 700;
     cursor: pointer;
@@ -134,7 +134,7 @@
   }
   .art img {
     width: 100%;
-    border-radius: var(--radius);
+    border-radius: var(--radius-md);
     border: 1px solid var(--line);
     background: var(--bg-deep);
   }

@@ -69,57 +69,85 @@
     gap: 1.4rem;
     height: 100vh;
     padding: 1.4rem 1rem;
-    border-right: 1px solid var(--line);
-    background: color-mix(in srgb, var(--bg-deep) 80%, transparent);
-    backdrop-filter: blur(8px);
+    background: var(--surface);
+    border-right: 1px solid var(--card-line);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    box-shadow: var(--shadow);
   }
   .brand {
     display: flex;
     align-items: center;
-    gap: 0.6rem;
-    padding: 0 0.4rem;
+    gap: 0.65rem;
+    padding: 0 0.5rem;
   }
+  /* Logo: una pantalla 16:9 vacía con el resplandor multicolor de un Ambilight detrás. */
   .logo {
-    width: 26px;
-    height: 26px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 50% 50%, var(--accent) 0 32%, transparent 34%), conic-gradient(from 200deg, #ff6a4b, #ffb547, #f8f06a, #6be3a4, #59b8ff, #b07cff, #ff6a4b);
-    box-shadow: 0 0 18px var(--glow);
+    position: relative;
+    width: 33px;
+    height: 18.6px;
+    flex: none;
+    border-radius: 2px;
+    isolation: isolate;
+    border: 1.9px solid var(--text);
+    margin-right: 0.15rem;
+  }
+  /* El interior queda vacío: tapa el resplandor para que solo se vea alrededor. */
+  .logo::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 1px;
+    background: var(--surface);
+  }
+  .logo::before {
+    content: "";
+    position: absolute;
+    inset: -7.5px -8px;
+    z-index: -1;
+    border-radius: 6px;
+    background: linear-gradient(100deg, #ff1f3d, #ffc400 28%, #00e060 52%, #0a6cff 78%, #9d3dff);
+    filter: blur(4.5px) saturate(1.125);
+    opacity: 1;
   }
   .word {
-    font: 600 1.25rem/1 var(--font-display);
-    font-variation-settings: "SOFT" 100, "opsz" 48;
+    font: 700 1.2rem/1 var(--font-display);
+    letter-spacing: -0.03em;
   }
   .word em {
-    font-style: italic;
-    color: var(--accent);
+    font-style: normal;
+    font-weight: 500;
+    color: var(--muted);
   }
   .session {
     display: grid;
     grid-template-columns: auto 1fr;
-    gap: 0.15rem 0.6rem;
+    gap: 0.1rem 0.7rem;
     align-items: center;
-    padding: 0.75rem 0.9rem;
-    border-radius: var(--radius);
-    border: 1px solid var(--line-strong);
-    background: var(--surface);
+    padding: 0.8rem 1rem;
+    border-radius: var(--radius-md);
+    border: 0;
+    background: var(--surface-2);
     color: var(--text);
     font: 700 0.95rem var(--font-body);
     text-align: left;
     cursor: pointer;
+    transition: background var(--dur) var(--ease);
+  }
+  .session:hover {
+    background: var(--surface-3);
   }
   .session.on {
-    border-color: var(--accent);
-    background: linear-gradient(140deg, var(--accent-soft), transparent), var(--surface);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--ambient, var(--rgb-b)) 30%, var(--surface-2)), var(--surface-2));
+  }
+  .session :global(svg) {
+    color: var(--muted);
   }
   .session.on :global(svg) {
-    color: var(--accent);
+    color: var(--text);
   }
   .session .state {
     grid-column: 2;
-    font: 500 0.72rem var(--font-mono);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
+    font: 500 0.78rem var(--font-body);
     color: var(--muted);
   }
   ul {
@@ -127,26 +155,27 @@
     margin: 0;
     padding: 0;
     display: grid;
-    gap: 0.15rem;
+    gap: 0.25rem;
   }
   a {
     display: flex;
     align-items: center;
     gap: 0.7rem;
-    padding: 0.6rem 0.75rem;
-    border-radius: var(--radius-sm);
+    padding: 0.7rem 1rem;
+    border-radius: 999px;
     color: var(--muted);
     text-decoration: none;
-    font-weight: 700;
+    font-weight: 600;
+    transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
   }
   a:hover {
     color: var(--text);
     background: var(--surface-2);
   }
+  /* El ítem activo es la pastilla negra de la barra de la referencia. */
   a[aria-current="page"] {
-    color: var(--text);
-    background: var(--surface-2);
-    box-shadow: inset 3px 0 0 var(--accent);
+    color: var(--accent-ink);
+    background: var(--accent);
   }
   .prefs {
     margin-top: auto;
@@ -155,26 +184,26 @@
   }
   .seg {
     display: flex;
-    padding: 3px;
+    padding: 4px;
     border-radius: 999px;
-    border: 1px solid var(--line);
-    background: var(--surface);
+    background: var(--surface-2);
   }
   .seg button {
     flex: 1;
     display: grid;
     place-items: center;
-    min-height: 30px;
+    min-height: 32px;
     border: 0;
     border-radius: 999px;
     background: transparent;
     color: var(--muted);
-    font: 700 0.78rem var(--font-mono);
+    font: 700 0.78rem var(--font-body);
     cursor: pointer;
+    transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
   }
   .seg button[aria-pressed="true"] {
-    background: var(--surface-3);
-    color: var(--text);
+    background: var(--accent);
+    color: var(--accent-ink);
   }
   @media (max-width: 820px) {
     .rail {
@@ -183,8 +212,7 @@
       flex-direction: row;
       flex-wrap: wrap;
       align-items: center;
-      border-right: 0;
-      border-bottom: 1px solid var(--line);
+      border-radius: 0 0 var(--radius-md) var(--radius-md);
     }
     ul {
       display: flex;
@@ -197,6 +225,9 @@
       overflow: hidden;
       clip: rect(0, 0, 0, 0);
       white-space: nowrap;
+    }
+    a {
+      padding: 0.7rem;
     }
     .prefs {
       margin: 0;

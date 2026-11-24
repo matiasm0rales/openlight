@@ -1,47 +1,54 @@
 <script lang="ts">
+  import Icon from "./Icon.svelte";
+
   let { checked, label, onchange, busy = false, big = false, id }: { checked: boolean; label: string; onchange: (v: boolean) => void; busy?: boolean; big?: boolean; id?: string } = $props();
 </script>
 
 <button type="button" {id} role="switch" class="switch" class:big aria-checked={checked} aria-label={label} aria-busy={busy} disabled={busy} onclick={() => onchange(!checked)}>
-  <span class="knob" aria-hidden="true"></span>
+  <span class="knob" aria-hidden="true"><Icon name="power" size={big ? 18 : 12} /></span>
 </button>
 
 <style>
   .switch {
-    --w: 46px;
-    --h: 26px;
+    --w: 52px;
+    --h: 30px;
     position: relative;
     width: var(--w);
     height: var(--h);
     flex: none;
+    padding: 0;
     border-radius: 999px;
-    border: 1px solid var(--line-strong);
+    border: 0;
     background: var(--surface-3);
     cursor: pointer;
-    transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease);
+    transition: background var(--dur) var(--ease);
   }
   .switch.big {
-    --w: 84px;
-    --h: 44px;
+    --w: 88px;
+    --h: 48px;
   }
   .knob {
     position: absolute;
-    top: 3px;
-    left: 3px;
+    top: 4px;
+    left: 4px;
+    display: grid;
+    place-items: center;
     width: calc(var(--h) - 8px);
     height: calc(var(--h) - 8px);
     border-radius: 50%;
-    background: var(--muted);
-    transition: transform var(--dur) var(--ease), background var(--dur) var(--ease), box-shadow var(--dur);
+    background: #fff;
+    color: var(--faint);
+    box-shadow: 0 2px 6px rgb(20 22 28 / 0.25);
+    transition: transform var(--dur) var(--ease), color var(--dur) var(--ease);
   }
+  /* Encendido: pista del color del foco (o tinta en reposo) y perilla blanca con el ícono de encendido. */
   .switch[aria-checked="true"] {
-    background: var(--accent-soft);
-    border-color: var(--accent);
+    background: var(--live);
+    box-shadow: 0 8px 22px -8px var(--live);
   }
   .switch[aria-checked="true"] .knob {
     transform: translateX(calc(var(--w) - var(--h)));
-    background: var(--accent);
-    box-shadow: 0 0 18px var(--accent);
+    color: #16181d;
   }
   .switch[aria-busy="true"] .knob {
     animation: pulse 900ms infinite;

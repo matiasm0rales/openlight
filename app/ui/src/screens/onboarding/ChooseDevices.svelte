@@ -171,7 +171,7 @@
   }
   .row.on .bulb {
     color: var(--accent);
-    filter: drop-shadow(0 0 8px var(--accent));
+    
   }
   .main {
     display: grid;

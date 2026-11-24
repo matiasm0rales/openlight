@@ -232,9 +232,7 @@
     gap: 1.4rem;
   }
   h3 {
-    font: 500 0.72rem var(--font-mono);
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
+    font: 600 0.85rem var(--font-body);
     color: var(--muted);
     margin-bottom: 0.5rem;
   }

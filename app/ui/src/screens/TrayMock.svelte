@@ -98,7 +98,7 @@
     position: relative;
     min-height: 460px;
     border-radius: var(--radius);
-    border: 1px solid var(--line);
+    border: 1px solid var(--card-line);
     background: radial-gradient(120% 80% at 70% 0%, var(--accent-soft), transparent), var(--bg-deep);
     overflow: hidden;
   }
@@ -117,7 +117,7 @@
     height: 14px;
     border-radius: 50%;
     border: 2px solid var(--accent);
-    box-shadow: 0 0 8px var(--accent);
+    box-shadow: 0 0 10px var(--live);
   }
   .menu {
     position: absolute;
@@ -177,9 +177,7 @@
   }
   .group {
     padding: 0.3rem 0.6rem 0.1rem;
-    font: 500 0.7rem var(--font-mono);
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
+    font: 600 0.8rem var(--font-body);
     color: var(--muted);
   }
   .check {

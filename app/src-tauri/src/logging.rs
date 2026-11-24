@@ -63,6 +63,20 @@ pub struct LogHandle {
     pub ring: Arc<LogRing>,
     /// Carpeta de los archivos de log.
     pub dir: PathBuf,
+    /// Dónde se guarda por defecto el zip de diagnóstico.
+    pub export_dir: PathBuf,
+}
+
+/// Dónde se guarda por defecto el zip de diagnóstico: `<datos>/exports` si `OPENLIGHT_DATA_DIR`
+/// redirige los datos, y la carpeta de descargas del usuario si no (o los datos, si no hay).
+pub fn export_dir<R: tauri::Runtime>(app: &tauri::AppHandle<R>, data_dir: &Path) -> PathBuf {
+    use tauri::Manager;
+    if std::env::var_os("OPENLIGHT_DATA_DIR").is_some() {
+        return data_dir.join("exports");
+    }
+    app.path()
+        .download_dir()
+        .unwrap_or_else(|_| data_dir.to_owned())
 }
 
 /// Mantiene vivo el hilo que escribe el archivo: al soltarlo se vacía el búfer.
@@ -185,7 +199,7 @@ impl Visit for Fields {
 
 /// Instala el subscriber global. Si no se puede abrir el archivo, la app sigue sin él (y en
 /// desarrollo con stderr): un log roto nunca impide arrancar.
-pub fn init(dir: &Path) -> LogGuard {
+pub fn init(dir: &Path, export_dir: &Path) -> LogGuard {
     let ring = LogRing::new(RING_CAPACITY);
     let (file, guard) = match open_file(dir) {
         Ok(file) => {
@@ -219,6 +233,7 @@ pub fn init(dir: &Path) -> LogGuard {
         handle: LogHandle {
             ring,
             dir: dir.to_owned(),
+            export_dir: export_dir.to_owned(),
         },
     }
 }

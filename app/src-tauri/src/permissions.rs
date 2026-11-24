@@ -144,6 +144,24 @@ fn open_target(target: Target) -> Result<(), String> {
     }
 }
 
+/// Último estado del portal ScreenCast que informó la captura (Wayland).
+static PORTAL_STATE: std::sync::Mutex<PermissionState> =
+    std::sync::Mutex::new(PermissionState::NotDetermined);
+
+/// Informa el estado del portal ScreenCast de Wayland.
+///
+/// El portal no tiene una consulta de "¿ya me dieron permiso?": el único que lo sabe es el
+/// backend de captura (`capture::linux`, `ScreenSource::permission` / `request_permission`), que
+/// tiene el `restore_token`. El estado real de la app tiene que llamar a esta función cada vez que
+/// cambie (al arrancar con el token guardado, después de pedir el permiso, si lo deniegan).
+/// Mientras nadie informe nada, el portal figura como "todavía no se pidió". Fuera de Linux no
+/// tiene efecto.
+pub fn report_portal_state(state: PermissionState) {
+    if let Ok(mut actual) = PORTAL_STATE.lock() {
+        *actual = state;
+    }
+}
+
 /// Un permiso con su panel de ajustes (si lo tiene).
 fn status(
     kind: PermissionKind,
@@ -655,7 +673,10 @@ mod linux {
         if !wayland {
             return Vec::new();
         }
-        vec![portal_status(PermissionState::NotDetermined)]
+        let reportado = PORTAL_STATE
+            .lock()
+            .map_or(PermissionState::NotDetermined, |s| *s);
+        vec![portal_status(reportado)]
     }
 
     pub(super) fn request_screen_recording() -> PermissionState {

@@ -57,3 +57,41 @@ fn el_latido_nuevo_vale_enseguida() {
         assert_eq!(rig.sim.stats().connections, 1);
     });
 }
+
+#[test]
+fn el_plazo_de_conexion_muerta_nuevo_vale_enseguida() {
+    run(async {
+        // 3.3 para que un foco mudo no cuente como "clave rechazada" al reconectar.
+        let rig = Rig::new(ProtocolVersion::V33).await;
+        rig.start().await;
+        rig.device.configure(LinkSettings::from_settings(&Settings {
+            dead_after_s: 8.0,
+            ..Settings::default()
+        }));
+        rig.sim.update_faults(|f| f.mute = true);
+        pump(Duration::from_secs(7)).await;
+        assert!(rig.device.health().connected);
+        // Con 30 s (el defecto) seguiría "conectado"
+        pump(Duration::from_secs(2)).await;
+        assert!(!rig.device.health().connected);
+    });
+}
+
+#[test]
+fn la_espera_entre_reintentos_nueva_vale_enseguida() {
+    run(async {
+        let rig = Rig::new(ProtocolVersion::V35).await;
+        rig.start().await;
+        rig.device.configure(LinkSettings::from_settings(&Settings {
+            retry_every_s: 1.0,
+            ..Settings::default()
+        }));
+        rig.sim.update_faults(|f| f.occupied = true);
+        rig.sim.disconnect_all();
+        pump(Duration::from_millis(900)).await;
+        assert_eq!(rig.sim.stats().rejected, 0);
+        // Con 3 s (el defecto) todavía no habría ningún intento
+        pump(Duration::from_millis(300)).await;
+        assert_eq!(rig.sim.stats().rejected, 1);
+    });
+}

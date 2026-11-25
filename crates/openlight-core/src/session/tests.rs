@@ -19,6 +19,8 @@ use tokio::time::sleep;
 use super::*;
 use crate::pipeline::tests::{AZUL, ROJO, VERDE, display, halves, solid};
 
+mod catalogo;
+
 // ---------- Foco falso ----------
 
 #[derive(Debug, Clone, Copy, PartialEq)]

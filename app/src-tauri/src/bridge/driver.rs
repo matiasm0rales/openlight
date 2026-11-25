@@ -63,7 +63,7 @@ mod tests {
     use std::sync::Arc;
     use std::time::Duration;
 
-    use openlight_types::{Capabilities, DeviceCreds, ProtocolVersion, Secret};
+    use openlight_types::{Capabilities, DeviceCreds, ProtocolVersion, Secret, SendChannel};
     use tuya_device::{CapabilitiesExt, DeviceConfig, IpMode, MemoryStore, NoLocator, spawn};
     use tuya_sim::{SimConfig, SimHandle};
 
@@ -93,6 +93,25 @@ mod tests {
             tokio::time::sleep(Duration::from_millis(20)).await;
         }
         panic!("no se cumplió a tiempo");
+    }
+
+    #[tokio::test]
+    async fn los_ajustes_en_marcha_llegan_al_foco() {
+        let sim = tuya_sim::start(SimConfig::new(ProtocolVersion::V35).ephemeral())
+            .await
+            .unwrap();
+        let (mut driver, caps) = driver_for(&sim).await;
+        let control = caps.dp_control.clone().unwrap();
+        driver.prepare().await.unwrap();
+        let before = sim.dp(&control);
+
+        driver.apply_settings(&Settings {
+            send_channel: SendChannel::ControlDirect,
+            ..Settings::default()
+        });
+        driver.send_hsv(Hsv::new(0.33, 1.0, 1.0)).await.unwrap();
+        until(|| sim.dp(&control) != before).await;
+        sim.shutdown().await;
     }
 
     #[tokio::test]

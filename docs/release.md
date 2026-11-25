@@ -114,7 +114,9 @@ instala sin que se toque ese botón.
 
 Al tocarlo: descarga el paquete y verifica la firma, devuelve los focos a como estaban (el mismo
 camino que *Salir*), instala y vuelve a abrir la app. Si algo falla, sigue andando la versión de
-antes, el efecto se retoma si estaba prendido, y se sugiere qué hacer.
+antes, el efecto se retoma si estaba prendido, y se sugiere qué hacer. En Windows hay un caso
+aparte: si el instalador no llega a abrirse (por ejemplo, lo frena el antivirus), la app ya se había
+quitado del tray, así que se reinicia sola para no quedar inalcanzable.
 
 | Sistema | Cómo se actualiza |
 |---|---|

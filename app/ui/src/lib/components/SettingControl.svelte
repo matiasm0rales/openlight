@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from "svelte";
   // Un control generado desde un `SettingDef` del catálogo: número → slider, opción → botones.
   // No sabe nada de ajustes concretos: título, ayuda, rango, paso, unidad y default salen del catálogo.
   import type { SettingDef, SettingValue } from "../bindings";
@@ -29,9 +30,16 @@
   } = $props();
 
   let local = $state<SettingValue>(null);
-  let dragging = $state(false);
+  let dragging = false;
+  // El envío que espera su turno (ver `push`).
+  let pending: ReturnType<typeof setTimeout> | null = null;
   $effect(() => {
-    if (!dragging) local = value;
+    const next = value;
+    // Solo manda lo que llega de afuera, y no mientras se arrastra o queda un cambio sin enviar:
+    // la respuesta a uno anterior haría volver atrás al control.
+    untrack(() => {
+      if (!dragging && pending === null) local = next;
+    });
   });
 
   const id = $derived(`setting-${def.id}`);
@@ -46,15 +54,16 @@
 
   // Vista previa en vivo: se manda mientras se arrastra, como mucho cada 120 ms.
   let last = 0;
-  let pending: ReturnType<typeof setTimeout> | null = null;
   function push(v: SettingValue) {
     const now = performance.now();
     if (pending) clearTimeout(pending);
+    pending = null;
     if (now - last > 120) {
       last = now;
       onchange(v);
     } else {
       pending = setTimeout(() => {
+        pending = null;
         last = performance.now();
         onchange(v);
       }, 120);

@@ -33,6 +33,7 @@ test("cambiar, ver el valor y restaurar un ajuste", async ({ page }) => {
   await page.keyboard.press("ArrowRight");
   await expect(sat).toHaveAttribute("aria-valuetext", "×1,40");
   // Al volver a abrir (sin reiniciar el escenario del mock), el valor sigue guardado.
+  await expect.poll(() => page.evaluate(() => (window as any).__openlightMock.state.global.saturation)).toBe(1.4);
   await page.goto("/?fast=1#/settings");
   await expect(page.getByRole("slider", { name: "Realce de colores" })).toHaveAttribute("aria-valuetext", "×1,40");
   await page.getByRole("button", { name: "Restaurar Realce de colores" }).click();

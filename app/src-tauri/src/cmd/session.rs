@@ -195,24 +195,40 @@ impl Backend {
         self.shutdown_state.load(Ordering::SeqCst) == 2
     }
 
-    /// Marca que alguien va a correr `shutdown`. `true` si lo marcó esta llamada (la que tiene
-    /// que correrlo); `false` si otra ya lo está haciendo o ya terminó.
+    /// Anota un pedido de salida. `true` la primera vez: quien llama tiene que correr
+    /// `shutdown` y cerrar la app, aunque ya haya otro cierre en marcha (el de una
+    /// actualización, que no cierra nada). `false` si la salida ya estaba pedida.
     pub fn begin_shutdown(&self) -> bool {
-        self.shutdown_state
-            .compare_exchange(0, 1, Ordering::SeqCst, Ordering::SeqCst)
-            .is_ok()
+        let first = !self.quit_requested.swap(true, Ordering::SeqCst);
+        // `Err` quiere decir que ya hay un cierre en marcha o terminado: se deja como está
+        let _ = self
+            .shutdown_state
+            .compare_exchange(0, 1, Ordering::SeqCst, Ordering::SeqCst);
+        first
     }
 
     /// Antes de instalar una actualización: el mismo cierre que "Salir" ([`Backend::shutdown`]).
     /// Tiene que pasar antes de instalar porque en Windows el instalador cierra la app sin pasar
     /// por el evento de salida.
+    ///
+    /// Si se pide salir, no vuelve nunca: salir manda sobre actualizar, y sin respuesta la UI no
+    /// llega a instalar mientras la app se cierra.
     pub async fn update_prepare(&self) {
-        self.shutdown().await;
+        if !self.quit_requested.load(Ordering::SeqCst) {
+            self.shutdown().await;
+        }
+        if self.quit_requested.load(Ordering::SeqCst) {
+            std::future::pending::<()>().await;
+        }
     }
 
     /// La actualización no se instaló y la app sigue abierta: se puede volver a arrancar el
-    /// efecto y el próximo "Salir" vuelve a restaurar los focos. Un cierre en curso no se toca.
+    /// efecto y el próximo "Salir" vuelve a restaurar los focos. Un cierre en curso o una salida
+    /// pedida no se tocan.
     pub fn update_abort(&self) {
+        if self.quit_requested.load(Ordering::SeqCst) {
+            return;
+        }
         // `Err` quiere decir que no había un cierre terminado: no hay nada que deshacer
         let _ = self
             .shutdown_state

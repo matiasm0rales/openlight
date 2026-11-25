@@ -79,6 +79,8 @@ impl TrayBackend for AppTray {
     }
 
     fn restore_and_quit(&self) -> BoxFuture<()> {
+        // Ya, antes de que el futuro corra: una actualización en preparación tiene que enterarse
+        self.backend.begin_shutdown();
         let backend = self.backend.clone();
         Box::pin(async move { backend.shutdown().await })
     }

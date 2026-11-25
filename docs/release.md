@@ -41,7 +41,9 @@ Antes de la primera, hacé una sola vez [la clave del updater](#la-clave-del-upd
    ```
 
    El workflow corta enseguida si el tag no coincide con la versión de `tauri.conf.json`.
-3. Esperá a que termine. Quedan los instaladores en un **borrador** de Release, y el job
+3. Esperá a que termine. Con un tag los tres sistemas se compilan uno después del otro, para que no
+   se pisen al escribir el `latest.json`, así que tarda más que una prueba sin publicar. Quedan los
+   instaladores en un **borrador** de Release, y el job
    *Verificar latest.json* comprueba que estén las firmas de todas las plataformas. Si falla porque
    falta alguna, corré *Re-run all jobs*: reusa el mismo borrador.
 4. En el borrador, escribí las novedades en la descripción: es lo que muestra la app en

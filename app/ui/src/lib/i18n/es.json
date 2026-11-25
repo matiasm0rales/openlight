@@ -29,7 +29,7 @@
     },
     "brightness_max": {
       "title": "Brillo máximo",
-      "help": "Tope de brillo del foco con la pantalla bien clara."
+      "help": "Tope de brillo del foco con la pantalla bien clara. No apaga el foco: para eso usá «Sacar del efecto» o «Apagar»."
     },
     "smoothing_ms": {
       "title": "Suavizado",

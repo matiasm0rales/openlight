@@ -75,3 +75,25 @@ test("perfiles: crear, renombrar, asignar atajo, activar y borrar", async ({ pag
   await renamed.getByRole("button", { name: "Borrar Series de noche" }).click();
   await expect(profiles.locator("li", { hasText: "Series de noche" })).toHaveCount(0);
 });
+
+test("el brillo máximo no baja del mínimo y explica que no apaga el foco", async ({ page }) => {
+  await open(page, "configured", "settings");
+  const min = page.getByRole("slider", { name: "Brillo mínimo" });
+  const max = page.getByRole("slider", { name: "Brillo máximo" });
+  await expect(page.locator('[data-setting="brightness_max"]')).toContainText("No apaga el foco");
+
+  // El mínimo en 5 %: "Inicio" lleva el máximo ahí, no a cero.
+  await max.focus();
+  await page.keyboard.press("Home");
+  await expect(max).toHaveAttribute("aria-valuetext", "5 %");
+
+  // Y con el mínimo más alto, el máximo se frena en él.
+  await page.getByRole("button", { name: "Restaurar Brillo máximo" }).click();
+  await expect(max).toHaveAttribute("aria-valuetext", "100 %");
+  await min.fill("0.3");
+  await expect(min).toHaveAttribute("aria-valuetext", "30 %");
+  await max.focus();
+  await page.keyboard.press("Home");
+  await expect(max).toHaveAttribute("aria-valuetext", "30 %");
+  await expect(page.getByRole("alert")).toHaveCount(0);
+});

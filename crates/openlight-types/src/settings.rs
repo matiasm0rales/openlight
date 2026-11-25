@@ -328,9 +328,9 @@ static CATALOG: LazyLock<Vec<SettingDef>> = LazyLock::new(|| {
             n(0.05),
             Basic,
         ),
+        // Con 0 el foco no se apaga (nunca se le pide brillo 0): el piso es 5 %
         SettingDef::new(
             I::BrightnessMax,
-            // Con 0 el foco no se apaga (nunca se le pide brillo 0): el piso es 5 %
             number(0.05, 1.0, 0.01, U::Fraction),
             n(1.0),
             Basic,

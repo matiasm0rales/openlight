@@ -28,6 +28,13 @@ export function valueIn(snapshot: SettingsSnapshot, scope: SettingScope, id: Set
   return { value: base[id] as SettingValue, inherited: scope.kind !== "global" };
 }
 
+/** Topes que dependen de otro ajuste: el brillo máximo no baja del mínimo, ni el mínimo lo pasa. */
+export function limitsFor(snapshot: SettingsSnapshot, scope: SettingScope, id: SettingId, profiles: { id: string; values: SettingsOverride }[]): { floor?: number; ceil?: number } {
+  if (id === "brightness_max") return { floor: Number(valueIn(snapshot, scope, "brightness_min", profiles).value) };
+  if (id === "brightness_min") return { ceil: Number(valueIn(snapshot, scope, "brightness_max", profiles).value) };
+  return {};
+}
+
 export function isDefault(def: SettingDef, value: SettingValue): boolean {
   if (typeof value === "number" && typeof def.default === "number") return Math.abs(value - def.default) < 1e-9;
   return value === def.default;

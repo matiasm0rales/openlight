@@ -12,6 +12,8 @@
     value,
     inherited = false,
     canReset,
+    floor,
+    ceil,
     onchange,
     onreset,
   }: {
@@ -19,6 +21,9 @@
     value: SettingValue;
     inherited?: boolean;
     canReset?: boolean;
+    /** Topes más estrechos que el rango del catálogo (dependen de otro ajuste). */
+    floor?: number;
+    ceil?: number;
     onchange: (v: SettingValue) => void;
     onreset: () => void;
   } = $props();
@@ -58,7 +63,10 @@
 
   function onInput(e: Event) {
     dragging = true;
-    const v = clampToDef(def, Number((e.currentTarget as HTMLInputElement).value));
+    const input = e.currentTarget as HTMLInputElement;
+    const v = Math.min(ceil ?? Infinity, Math.max(floor ?? -Infinity, clampToDef(def, Number(input.value))));
+    // La perilla se frena en el tope, aunque el recorrido siga.
+    input.value = String(v);
     local = v;
     push(v);
   }

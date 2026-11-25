@@ -22,6 +22,18 @@ describe("SettingControl: un control por cada ajuste del catálogo", () => {
     unmount();
   });
 
+  it("no baja del piso ni sube del tope que le pasan", async () => {
+    const def = CATALOG.find((d) => d.id === "brightness_max")!;
+    const onchange = vi.fn();
+    render(SettingControl, { def, value: 0.8, floor: 0.4, ceil: 0.9, onchange, onreset: () => {} });
+    const slider = screen.getByRole("slider") as HTMLInputElement;
+    await fireEvent.input(slider, { target: { value: "0.1" } });
+    expect(slider.value).toBe("0.4");
+    expect(onchange).toHaveBeenLastCalledWith(0.4);
+    await fireEvent.input(slider, { target: { value: "1" } });
+    expect(slider.value).toBe("0.9");
+  });
+
   it("cambia y restaura", async () => {
     const def = CATALOG.find((d) => d.id === "color_mode")!;
     const onchange = vi.fn();

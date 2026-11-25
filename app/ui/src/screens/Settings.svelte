@@ -7,7 +7,7 @@
   import { attempt, commands } from "../lib/ipc";
   import { route } from "../lib/router.svelte";
   import { t } from "../lib/i18n/index.svelte";
-  import { LEVELS, groupByLevel, overridesFor, valueIn, visibleDefs } from "../lib/settings";
+  import { LEVELS, groupByLevel, limitsFor, overridesFor, valueIn, visibleDefs } from "../lib/settings";
   import Eclipse from "../lib/components/Eclipse.svelte";
   import Icon from "../lib/components/Icon.svelte";
   import SettingControl from "../lib/components/SettingControl.svelte";
@@ -51,7 +51,8 @@
       app.settings = r.value;
       if (scope.kind === "profile") await refreshProfiles();
       syncDevice();
-    } else raise(r.error, () => set(def, value));
+      // Un valor rechazado no se arregla reintentando: "Reintentar" solo descarta el aviso.
+    } else raise(r.error, r.error.code === "invalid_setting" ? undefined : () => set(def, value));
   }
 
   async function reset(def: SettingDef | null) {
@@ -175,7 +176,7 @@
             <div class="list">
               {#each g.defs as def (def.id)}
                 {@const v = valueIn(snapshot, scope, def.id, app.profiles)}
-                <SettingControl {def} value={v.value} inherited={v.inherited} canReset={scope.kind === "global" ? undefined : own[def.id] !== undefined} onchange={(val) => set(def, val)} onreset={() => reset(def)} />
+                <SettingControl {def} value={v.value} inherited={v.inherited} canReset={scope.kind === "global" ? undefined : own[def.id] !== undefined} {...limitsFor(snapshot, scope, def.id, app.profiles)} onchange={(val) => set(def, val)} onreset={() => reset(def)} />
               {/each}
             </div>
           </section>

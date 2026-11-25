@@ -30,12 +30,17 @@
     };
   });
 
-  // Brillo rápido = brightness_max de este foco (pisa el global).
+  // Brillo rápido = brightness_max de este foco (pisa el global). No baja de su brillo mínimo ni
+  // del piso del catálogo: para apagarlo se lo saca del efecto.
+  const LOWEST = 0.05;
   const bmax = $derived(Number(device.overrides.brightness_max ?? app.settings?.effective.brightness_max ?? 1));
+  const floor = $derived(Math.max(LOWEST, Number(device.overrides.brightness_min ?? app.settings?.effective.brightness_min ?? LOWEST)));
   let local = $state<number | null>(null);
   const shown = $derived(local ?? bmax);
   let timer: ReturnType<typeof setTimeout> | undefined;
-  function brightness(v: number) {
+  function brightness(input: HTMLInputElement) {
+    const v = Math.max(floor, Number(input.value));
+    input.value = String(v);
     local = v;
     clearTimeout(timer);
     timer = setTimeout(async () => {
@@ -82,7 +87,7 @@
 
   <div class="bright">
     <label for="bright-{device.id}">{t("dashboard.brightness")}</label>
-    <input id="bright-{device.id}" type="range" min="0" max="1" step="0.01" value={shown} style:--fill="{shown * 100}%" aria-valuetext="{Math.round(shown * 100)} %" oninput={(e) => brightness(Number(e.currentTarget.value))} />
+    <input id="bright-{device.id}" type="range" min={LOWEST} max="1" step="0.01" value={shown} style:--fill="{((shown - LOWEST) / (1 - LOWEST)) * 100}%" aria-valuetext="{Math.round(shown * 100)} %" oninput={(e) => brightness(e.currentTarget)} />
     <output class="tabular" for="bright-{device.id}">{Math.round(shown * 100)} %</output>
   </div>
 

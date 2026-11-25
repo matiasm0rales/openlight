@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CATALOG, defaultSettings } from "./mocks/catalog";
-import { clampToDef, groupByLevel, isDefault, valueIn, visibleDefs } from "./settings";
+import { clampToDef, groupByLevel, isDefault, limitsFor, valueIn, visibleDefs } from "./settings";
 import type { SettingsSnapshot } from "./bindings";
 
 const snapshot = (): SettingsSnapshot => ({
@@ -36,6 +36,14 @@ describe("ajustes generados desde el catálogo", () => {
     const profiles = [{ id: "movies", values: { smoothing_ms: 500 } }];
     expect(valueIn(s, { kind: "profile", id: "movies" }, "smoothing_ms", profiles).value).toBe(500);
     expect(valueIn(s, { kind: "profile", id: "movies" }, "saturation", profiles)).toEqual({ value: 1.3, inherited: true });
+  });
+
+  it("el brillo máximo no baja del mínimo del ámbito, ni el mínimo sube del máximo", () => {
+    const s = snapshot();
+    const scope = { kind: "device", id: "foco" } as const;
+    expect(limitsFor(s, scope, "brightness_max", [])).toEqual({ floor: 0.05 });
+    expect(limitsFor(s, scope, "brightness_min", [])).toEqual({ ceil: 0.4 });
+    expect(limitsFor(s, scope, "saturation", [])).toEqual({});
   });
 
   it("ajusta al rango y al paso del catálogo", () => {

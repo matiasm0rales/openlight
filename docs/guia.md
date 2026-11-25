@@ -290,7 +290,7 @@ global y por último el valor por defecto.
 | **Modo de color** (`color_mode`) | Dominante: el color que más se ve en la zona. Promedio: la mezcla de toda la zona. | Dominante | Dominante, Promedio |
 | **Realce de colores** (`saturation`) | Multiplica la saturación. Más alto, colores más intensos. | ×1,30 | ×0,50 a ×2,50 |
 | **Brillo mínimo** (`brightness_min`) | Brillo del foco cuando la pantalla está oscura. | 5 % | 0 % a 100 % |
-| **Brillo máximo** (`brightness_max`) | Tope de brillo del foco con la pantalla bien clara. | 100 % | 0 % a 100 % |
+| **Brillo máximo** (`brightness_max`) | Tope de brillo del foco con la pantalla bien clara. No apaga el foco: para eso usá «Sacar del efecto» o «Apagar». | 100 % | 5 % a 100 % |
 | **Suavizado** (`smoothing_ms`) | Más alto, transiciones más lentas y sin parpadeo. Los cortes de escena siempre van más rápido. | 300 ms | 0 ms a 2000 ms |
 
 ### Nivel avanzado

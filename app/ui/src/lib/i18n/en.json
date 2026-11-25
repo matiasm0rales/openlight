@@ -29,7 +29,7 @@
     },
     "brightness_max": {
       "title": "Maximum brightness",
-      "help": "Brightness cap when the screen is very bright."
+      "help": "Brightness cap when the screen is very bright. It doesn't turn the light off: use \"Remove from effect\" or \"Turn off\" for that."
     },
     "smoothing_ms": {
       "title": "Smoothing",

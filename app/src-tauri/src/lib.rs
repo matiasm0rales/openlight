@@ -17,6 +17,7 @@ pub mod shell;
 pub mod state;
 pub mod tray;
 pub mod tray_backend;
+pub mod updater;
 pub mod windows;
 
 /// Arranca la app.
@@ -35,6 +36,8 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        // Solo para reiniciar después de actualizar
+        .plugin(tauri_plugin_process::init())
         .plugin(autostart::plugin())
         .on_window_event(windows::on_window_event)
         .invoke_handler(specta.invoke_handler())

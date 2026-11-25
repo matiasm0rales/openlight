@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use openlight_types::DeviceId;
+use tokio::sync::watch;
 
 use crate::error::{CoreError, Result};
 
@@ -35,6 +36,8 @@ impl Holder {
 #[derive(Debug, Clone, Default)]
 pub struct DeviceLocks {
     held: Arc<Mutex<HashMap<DeviceId, Holder>>>,
+    /// Cambia cada vez que se libera un foco.
+    released: Arc<watch::Sender<u64>>,
 }
 
 impl DeviceLocks {
@@ -60,6 +63,11 @@ impl DeviceLocks {
         })
     }
 
+    /// Para enterarse de que se liberó algún foco y volver a intentar lo que no se pudo.
+    pub fn released(&self) -> watch::Receiver<u64> {
+        self.released.subscribe()
+    }
+
     /// Quién tiene el foco ahora.
     pub fn holder(&self, device: &DeviceId) -> Option<Holder> {
         self.lock().get(device).copied()
@@ -82,6 +90,8 @@ pub struct DeviceGuard {
 impl Drop for DeviceGuard {
     fn drop(&mut self) {
         self.locks.lock().remove(&self.device);
+        // Después de soltarlo: quien se entere ya lo encuentra libre
+        self.locks.released.send_modify(|n| *n = n.wrapping_add(1));
     }
 }
 
@@ -120,6 +130,22 @@ mod tests {
         let _again = locks
             .try_acquire(&dev("fake1"), Holder::Calibration)
             .unwrap();
+    }
+
+    #[test]
+    fn avisa_cada_vez_que_se_libera_un_foco() {
+        let locks = DeviceLocks::new();
+        let mut released = locks.released();
+        let guard = locks.try_acquire(&dev("fake1"), Holder::Manual).unwrap();
+        locks
+            .try_acquire(&dev("fake1"), Holder::Session)
+            .unwrap_err();
+        assert!(!released.has_changed().unwrap(), "tomar no avisa");
+        drop(guard);
+        assert!(released.has_changed().unwrap());
+        // Al enterarse, el foco ya está libre
+        released.borrow_and_update();
+        assert_eq!(locks.holder(&dev("fake1")), None);
     }
 
     #[test]

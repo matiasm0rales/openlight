@@ -60,6 +60,7 @@ impl Backend {
         }
         // Antes de leer la configuración: un cambio hecho durante el arranque no se pierde
         let changes = self.changes.subscribe();
+        let releases = self.locks.released();
         let config = self.config()?;
         let mut specs = Vec::new();
         let mut handles = Vec::new();
@@ -102,7 +103,7 @@ impl Backend {
         ));
         let forwarder = tokio::spawn(forward_events(self.clone(), session.subscribe(), state));
         let (alive, ended) = oneshot::channel();
-        tokio::spawn(follow_changes(self.clone(), changes, ended));
+        tokio::spawn(follow_changes(self.clone(), changes, releases, ended));
         *slot = Some(ActiveSession {
             session,
             handles,

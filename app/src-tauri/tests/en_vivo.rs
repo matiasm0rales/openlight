@@ -7,7 +7,8 @@ mod common;
 use std::time::Duration;
 
 use common::{
-    DISPLAY, FAKE_ACCESS_ID, FAKE_ACCESS_SECRET, Harness, Setup, eventually, harness, sim_id,
+    DISPLAY, FAKE_ACCESS_ID, FAKE_ACCESS_SECRET, Harness, Setup, eventually, harness, harness_with,
+    sim_id,
 };
 use openlight_types::ipc::{
     CloudCredentialsInput, DeviceAddRequest, ManualSet, SettingScope, TestPattern,
@@ -365,4 +366,39 @@ async fn si_el_foco_rechaza_la_conexion_el_error_sigue_siendo_de_foco_ocupado() 
         "{:?}",
         error.code
     );
+}
+
+#[tokio::test]
+async fn un_foco_ocupado_al_ganar_zonas_entra_apenas_se_libera() {
+    // La prueba de colores dura casi dos segundos: las zonas llegan con el foco tomado
+    let h = harness_with(Setup { sims: 2, lan: true }, |o| {
+        o.test_step = Duration::from_millis(600)
+    })
+    .await;
+    let ids = setup(&h).await;
+    h.backend.zones_set(ids[1].clone(), Vec::new()).unwrap();
+    h.screen.paint(BLANCO);
+    h.backend.session_start().await.unwrap();
+    eventually("foco 1 en el efecto", SOON, || {
+        brightness_is(&h.sims[0], 1000)
+    })
+    .await;
+
+    let backend = h.backend.clone();
+    let busy = ids[1].clone();
+    let test =
+        tokio::spawn(async move { backend.device_test(busy, TestPattern::RedGreenBlue).await });
+    eventually("la prueba tiene el foco", SOON, || {
+        h.sims[1].active_connections() == 1
+    })
+    .await;
+    h.backend.zones_set(ids[1].clone(), full()).unwrap();
+    test.await.unwrap().unwrap();
+
+    // Sin ningún otro cambio de por medio: el blanco de la pantalla (sin tono ni saturación)
+    eventually("el foco 2 entra", SOON, || {
+        h.sims[1].dp("24") == Some(json!("0000000003e8"))
+    })
+    .await;
+    h.backend.session_stop().await.unwrap();
 }

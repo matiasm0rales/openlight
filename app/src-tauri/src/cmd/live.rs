@@ -4,7 +4,7 @@
 use std::sync::Arc;
 
 use openlight_core::{Config, CoreError, DeviceRecord, DeviceSpec, DeviceTuning};
-use openlight_types::{DeviceId, UserFacingError};
+use openlight_types::{DeviceId, ErrorCode, UserFacingError};
 use tokio::sync::{oneshot, watch};
 use tuya_device::DeviceHandle;
 
@@ -98,7 +98,10 @@ impl Backend {
             match added {
                 Ok(handle) => active.handles.push(handle),
                 Err(error) => {
-                    active.skipped.insert(record.id.clone());
+                    // Si lo tomaron recién, entra cuando lo suelten
+                    if !is_busy(&error) {
+                        active.skipped.insert(record.id.clone());
+                    }
                     failures.push((record.id.clone(), error));
                 }
             }
@@ -138,10 +141,20 @@ impl Backend {
     }
 }
 
-/// Sigue a la configuración mientras dure la sesión (`alive` se cierra con ella).
+/// Si el foco no entró porque otra parte de la app lo está usando: se vuelve a intentar.
+fn is_busy(error: &UserFacingError) -> bool {
+    matches!(
+        error.code,
+        ErrorCode::DeviceInUse | ErrorCode::DeviceInEffect
+    )
+}
+
+/// Sigue a la configuración mientras dure la sesión (`alive` se cierra con ella). También se
+/// pone al día cuando se libera un foco (`releases`): así entra el que estaba ocupado.
 pub(crate) async fn follow_changes(
     backend: Arc<Backend>,
     mut changes: watch::Receiver<u64>,
+    mut releases: watch::Receiver<u64>,
     mut alive: oneshot::Receiver<()>,
 ) {
     loop {
@@ -151,12 +164,15 @@ pub(crate) async fn follow_changes(
             changed = changes.changed() => if changed.is_err() {
                 return;
             },
+            released = releases.changed() => if released.is_err() {
+                return;
+            },
         }
         match backend.sync_session().await {
             // Un foco ocupado (calibrando, probando) no es una falla: entra más tarde
             Ok(failures) => failures
                 .into_iter()
-                .filter(|(id, _)| backend.locks.holder(id).is_none())
+                .filter(|(_, error)| !is_busy(error))
                 .for_each(|(_, error)| backend.raise(error)),
             Err(error) => backend.raise(error),
         }

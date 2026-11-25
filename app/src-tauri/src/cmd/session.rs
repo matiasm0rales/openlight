@@ -2,6 +2,7 @@
 
 use std::collections::HashSet;
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 use std::time::Duration;
 
 use color_engine::Calibration;
@@ -45,11 +46,15 @@ impl Backend {
     ///
     /// Un foco sin clave se saltea con un aviso (`error://raised`, con "renovar clave"); si no
     /// queda ninguno, es un error. Devuelve enseguida: conectar con los focos pasa después y se
-    /// ve en los eventos.
+    /// ve en los eventos. Con la app cerrándose (o instalando una actualización) no hace nada,
+    /// para no volver a tomar los focos que ya se devolvieron.
     pub async fn session_start(self: &Arc<Self>) -> CmdResult<SessionState> {
         let mut slot = self.session.lock().await;
         if let Some(active) = slot.as_ref() {
             return Ok(active.session.state());
+        }
+        if self.shutdown_state.load(Ordering::SeqCst) != 0 {
+            return Ok(SessionState::Idle);
         }
         let config = self.config()?;
         let mut specs = Vec::new();
@@ -175,7 +180,6 @@ impl Backend {
     /// Al cerrar la app: detiene la sesión y cancela la calibración, así los focos no quedan con
     /// el color del ambiente.
     pub async fn shutdown(&self) {
-        use std::sync::atomic::Ordering;
         self.shutdown_state.store(1, Ordering::SeqCst);
         if let Err(error) = self.calibration_cancel().await {
             tracing::warn!(%error, "no se pudo cancelar la calibración al salir");
@@ -188,18 +192,31 @@ impl Backend {
 
     /// Si ya se restauraron los focos al salir.
     pub fn is_shut_down(&self) -> bool {
-        self.shutdown_state
-            .load(std::sync::atomic::Ordering::SeqCst)
-            == 2
+        self.shutdown_state.load(Ordering::SeqCst) == 2
     }
 
     /// Marca que alguien va a correr `shutdown`. `true` si lo marcó esta llamada (la que tiene
     /// que correrlo); `false` si otra ya lo está haciendo o ya terminó.
     pub fn begin_shutdown(&self) -> bool {
-        use std::sync::atomic::Ordering;
         self.shutdown_state
             .compare_exchange(0, 1, Ordering::SeqCst, Ordering::SeqCst)
             .is_ok()
+    }
+
+    /// Antes de instalar una actualización: el mismo cierre que "Salir" ([`Backend::shutdown`]).
+    /// Tiene que pasar antes de instalar porque en Windows el instalador cierra la app sin pasar
+    /// por el evento de salida.
+    pub async fn update_prepare(&self) {
+        self.shutdown().await;
+    }
+
+    /// La actualización no se instaló y la app sigue abierta: se puede volver a arrancar el
+    /// efecto y el próximo "Salir" vuelve a restaurar los focos. Un cierre en curso no se toca.
+    pub fn update_abort(&self) {
+        // `Err` quiere decir que no había un cierre terminado: no hay nada que deshacer
+        let _ = self
+            .shutdown_state
+            .compare_exchange(2, 0, Ordering::SeqCst, Ordering::SeqCst);
     }
 }
 

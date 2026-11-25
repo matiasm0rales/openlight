@@ -98,6 +98,29 @@ impl SettingId {
         }
     }
 
+    /// Cómo llega un cambio de este ajuste a una sesión que ya está andando.
+    pub const fn apply(self) -> SettingApply {
+        match self {
+            Self::CaptureFps => SettingApply::RestartCapture,
+            Self::ColorMode
+            | Self::Saturation
+            | Self::BrightnessMin
+            | Self::BrightnessMax
+            | Self::SmoothingMs
+            | Self::SendChannel
+            | Self::MaxSendsPerS
+            | Self::SendThreshold
+            | Self::BlackBar
+            | Self::GreyThreshold
+            | Self::DarkScreen
+            | Self::HueStickiness
+            | Self::NoScreenWaitS
+            | Self::HeartbeatS
+            | Self::DeadAfterS
+            | Self::RetryEveryS => SettingApply::Live,
+        }
+    }
+
     /// Definición del ajuste en el catálogo.
     pub fn def(self) -> &'static SettingDef {
         catalog()
@@ -111,6 +134,15 @@ impl fmt::Display for SettingId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.as_str())
     }
+}
+
+/// Cómo llega un cambio de ajuste a una sesión que ya está andando.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum SettingApply {
+    /// Al instante, sin cortar nada.
+    Live,
+    /// Hay que rearmar la captura de pantalla. Las conexiones con los focos siguen.
+    RestartCapture,
 }
 
 /// Nivel de un ajuste en la pantalla de Ajustes.

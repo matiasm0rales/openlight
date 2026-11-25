@@ -4,6 +4,7 @@
 
 mod common;
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -20,6 +21,8 @@ use serde_json::json;
 #[derive(Default)]
 struct FakeShell {
     log: Mutex<Vec<String>>,
+    /// Como en Windows cuando el instalador no llega a abrirse: sin tray ni ventana.
+    dismantled: AtomicBool,
 }
 
 impl FakeShell {
@@ -44,6 +47,14 @@ impl Shell for FakeShell {
 
     fn close_calibration(&self) {
         self.log.lock().unwrap().push("close".into());
+    }
+
+    fn is_dismantled(&self) -> bool {
+        self.dismantled.load(Ordering::SeqCst)
+    }
+
+    fn restart(&self) {
+        self.log.lock().unwrap().push("restart".into());
     }
 }
 
@@ -274,5 +285,33 @@ async fn si_la_actualizacion_falla_no_queda_marcado_reabrir_la_ventana() {
     let h = harness(Setup::default()).await;
     h.backend.update_prepare().await;
     h.backend.update_abort();
+    assert!(!h.backend.take_reopen_after_update());
+}
+
+#[tokio::test]
+async fn si_el_instalador_no_se_abrio_y_la_app_quedo_desarmada_se_reinicia() {
+    let h = harness(Setup::default()).await;
+    let shell = Arc::new(FakeShell::default());
+    shell.dismantled.store(true, Ordering::SeqCst);
+    h.backend.set_shell(shell.clone());
+    h.backend.update_prepare().await;
+
+    h.backend.update_abort();
+
+    assert_eq!(shell.count("restart"), 1);
+    // El reinicio tiene que mostrar la ventana, que es lo que la persona estaba mirando.
+    assert!(h.backend.take_reopen_after_update());
+}
+
+#[tokio::test]
+async fn si_la_app_sigue_entera_una_actualizacion_fallida_no_reinicia() {
+    let h = harness(Setup::default()).await;
+    let shell = Arc::new(FakeShell::default());
+    h.backend.set_shell(shell.clone());
+    h.backend.update_prepare().await;
+
+    h.backend.update_abort();
+
+    assert_eq!(shell.count("restart"), 0);
     assert!(!h.backend.take_reopen_after_update());
 }

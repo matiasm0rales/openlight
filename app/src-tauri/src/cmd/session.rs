@@ -213,12 +213,20 @@ impl Backend {
 
     /// La actualización no se instaló y la app sigue abierta: se puede volver a arrancar el
     /// efecto y el próximo "Salir" vuelve a restaurar los focos. Un cierre en curso no se toca.
+    /// Si el intento dejó la app sin tray ni ventana, se reinicia: no habría cómo volver a ella.
     pub fn update_abort(&self) {
         self.take_reopen_after_update();
         // `Err` quiere decir que no había un cierre terminado: no hay nada que deshacer
         let _ = self
             .shutdown_state
             .compare_exchange(2, 0, Ordering::SeqCst, Ordering::SeqCst);
+        if let Some(shell) = self.shell()
+            && shell.is_dismantled()
+        {
+            tracing::warn!("la actualización dejó la app sin tray ni ventana: se reinicia");
+            crate::updater::mark_reopen(self.data_dir());
+            shell.restart();
+        }
     }
 
     /// Si este arranque viene de una actualización (se contesta una sola vez): entonces la

@@ -1,0 +1,42 @@
+name: Notas del updater
+
+# La app muestra como "Novedades" el campo `notes` del latest.json, que se genera al compilar,
+# cuando la Release todavía no tiene texto. Al publicarla (o editarla) se copia su descripción.
+on:
+  release:
+    types: [published, edited]
+
+concurrency:
+  group: release-notas-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  notas:
+    name: Copiar las notas al latest.json
+    if: ${{ !github.event.release.draft }}
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - name: Actualizar latest.json
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          # Por variables de entorno: el texto de la Release no se interpola en el script.
+          TAG: ${{ github.event.release.tag_name }}
+          NOTAS: ${{ github.event.release.body }}
+        run: |
+          set -euo pipefail
+          archivos=$(gh release view "$TAG" --json assets --jq '.assets[].name')
+          if ! grep -qx "latest.json" <<< "$archivos"; then
+            echo "::notice::La Release $TAG no tiene latest.json (sin actualizaciones automáticas)."
+            exit 0
+          fi
+          gh release download "$TAG" --pattern latest.json
+          jq --arg notas "$NOTAS" '.notes = $notas' latest.json > nuevo.json
+          if [ "$(jq -S . latest.json)" = "$(jq -S . nuevo.json)" ]; then
+            echo "Las notas ya estaban al día."
+            exit 0
+          fi
+          mv nuevo.json latest.json
+          gh release upload "$TAG" latest.json --clobber

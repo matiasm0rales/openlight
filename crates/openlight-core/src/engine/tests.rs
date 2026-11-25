@@ -343,3 +343,69 @@ fn si_falla_la_restauracion_sin_pantalla_se_reintenta_en_el_paso_siguiente() {
     assert_eq!(e.tick(1.0, &none, CONNECTED).actions, vec![Action::Restore]);
     assert!(e.tick(2.0, &none, CONNECTED).actions.is_empty());
 }
+
+// ---------- Ajustes en marcha ----------
+
+/// Como los de [`engine`] (sin suavizado ni realce), para cambiarlos en marcha.
+fn plain_settings() -> Settings {
+    Settings {
+        smoothing_ms: 0.0,
+        saturation: 1.0,
+        ..Settings::default()
+    }
+}
+
+const BLANCO: (u8, u8, u8) = (255, 255, 255);
+
+#[test]
+fn bajar_el_brillo_maximo_en_marcha_cambia_el_brillo_enviado() {
+    let mut e = engine(fast());
+    let before = sends(&[e.tick(0.0, &frames("1", solid(BLANCO)), CONNECTED)]);
+    assert!((before[0].v - 1.0).abs() < 1e-6, "{before:?}");
+    e.apply_settings(&Settings {
+        brightness_max: 0.3,
+        ..plain_settings()
+    });
+    let after = sends(&[e.tick(1.0, &frames("1", solid(BLANCO)), CONNECTED)]);
+    assert!((after[0].v - 0.3).abs() < 1e-6, "{after:?}");
+}
+
+#[test]
+fn un_cambio_de_ajustes_reenvia_aunque_no_llegue_al_umbral() {
+    let mut e = engine(fast());
+    e.tick(0.0, &frames("1", solid(ROJO)), CONNECTED);
+    e.apply_settings(&Settings {
+        send_threshold: 0.1,
+        ..plain_settings()
+    });
+    // Una vez, para que el foco vea los ajustes nuevos; después vuelve a mandar solo cambios
+    let steps = [
+        e.tick(1.0, &frames("1", solid(ROJO)), CONNECTED),
+        e.tick(2.0, &frames("1", solid(ROJO)), CONNECTED),
+    ];
+    assert_eq!(sends(&steps).len(), 1);
+}
+
+#[test]
+fn los_tiempos_nuevos_valen_enseguida() {
+    let mut e = engine(fast());
+    e.apply_settings(&Settings {
+        max_sends_per_s: 1.0,
+        no_screen_wait_s: 5.0,
+        send_threshold: 0.05,
+        ..plain_settings()
+    });
+    assert_eq!(e.timing().send_period_s, 1.0);
+    assert_eq!(e.timing().no_screen_wait_s, 5.0);
+    assert_eq!(e.timing().send_threshold, 0.05);
+}
+
+#[test]
+fn cambiar_las_zonas_en_marcha_sigue_la_zona_nueva() {
+    let mut e = engine(fast());
+    let mitades = frames("1", crate::pipeline::tests::halves(ROJO, AZUL));
+    e.tick(0.0, &mitades, CONNECTED);
+    e.set_zones(vec![Zone::from_preset(display("1"), ZonePreset::Right)]);
+    let after = sends(&[e.tick(1.0, &mitades, CONNECTED)]);
+    assert!((after[0].h * 360.0 - 224.0).abs() < 2.0, "{after:?}");
+}

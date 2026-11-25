@@ -1,6 +1,7 @@
 //! Cliente HTTP de la OpenAPI: token, dispositivos, mapeos y regiones.
 
 use std::collections::{HashMap, HashSet};
+use std::net::IpAddr;
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
@@ -35,6 +36,8 @@ const MAX_PAGES: usize = 200;
 const TOKEN_MARGIN: Duration = Duration::from_secs(60);
 /// Timeout de cada pedido.
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(15);
+/// Lo que reemplaza a un secreto en un mensaje de error.
+const HIDDEN: &str = "[oculto]";
 
 type EndpointFn = dyn Fn(Region) -> String + Send + Sync;
 
@@ -73,8 +76,8 @@ pub struct TuyaCloudClient {
 
 impl std::fmt::Debug for TuyaCloudClient {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Sin credenciales: ni siquiera el Access ID tiene que terminar en un log
         f.debug_struct("TuyaCloudClient")
-            .field("access_id", &self.access_id)
             .field("region", &self.region)
             .finish_non_exhaustive()
     }
@@ -85,6 +88,8 @@ impl TuyaCloudClient {
     pub fn new(creds: CloudCredentials) -> Result<Self, CloudError> {
         let http = reqwest::Client::builder()
             .timeout(REQUEST_TIMEOUT)
+            // La OpenAPI no redirige, y seguir una redirección se llevaría la firma y el token
+            .redirect(reqwest::redirect::Policy::none())
             .build()
             .map_err(|e| CloudError::Network(e.to_string()))?;
         Ok(Self {
@@ -97,7 +102,8 @@ impl TuyaCloudClient {
         })
     }
 
-    /// Cambia cómo se calcula la URL base de cada región. Para pruebas (`wiremock`).
+    /// Cambia cómo se calcula la URL base de cada región. Para pruebas (`wiremock`): salvo
+    /// contra la propia máquina, los pedidos salen solo por HTTPS.
     pub fn with_endpoints(
         mut self,
         endpoint: impl Fn(Region) -> String + Send + Sync + 'static,
@@ -243,6 +249,11 @@ impl TuyaCloudClient {
         let base = (self.endpoint)(self.region);
         let mut url = Url::parse(&format!("{}{path}", base.trim_end_matches('/')))
             .map_err(|e| Other(CloudError::Decode(format!("URL inválida: {e}"))))?;
+        if url.scheme() != "https" && !is_loopback(&url) {
+            return Err(Other(CloudError::Network(
+                "la API de Tuya solo se usa por HTTPS".into(),
+            )));
+        }
         if !query.is_empty() {
             let mut sorted: Vec<&(&str, String)> = query.iter().collect();
             sorted.sort_by(|a, b| a.0.cmp(b.0));
@@ -266,7 +277,7 @@ impl TuyaCloudClient {
             .http
             .get(url)
             .header("client_id", &self.access_id)
-            .header("sign", signature)
+            .header("sign", &signature)
             .header("t", &t)
             .header("sign_method", "HMAC-SHA256");
         if let Some(token) = token_str {
@@ -298,7 +309,18 @@ impl TuyaCloudClient {
         if token.is_some() && is_token_error(code, msg) {
             return Err(TokenRejected);
         }
-        Err(Other(classify(code, msg)))
+        // El mensaje llega al log, al diagnóstico y a la UI: si el servidor repite algo de lo
+        // que se le mandó, se tapa antes de que salga de acá.
+        let msg = scrub(
+            msg,
+            &[
+                &self.access_id,
+                self.access_secret.expose(),
+                token_str.unwrap_or_default(),
+                &signature,
+            ],
+        );
+        Err(Other(classify(code, &msg)))
     }
 
     /// Recorre un endpoint paginado con `last_row_key` y junta la lista `list_key`.
@@ -447,6 +469,33 @@ fn now_millis() -> u128 {
         .unwrap_or_default()
 }
 
+/// Si la URL apunta a la propia máquina (la única excepción a HTTPS, para el servidor falso de
+/// las pruebas: nada sale a la red).
+fn is_loopback(url: &Url) -> bool {
+    let Some(host) = url.host_str() else {
+        return false;
+    };
+    host == "localhost"
+        || host
+            .trim_start_matches('[')
+            .trim_end_matches(']')
+            .parse::<IpAddr>()
+            .is_ok_and(|ip| ip.is_loopback())
+}
+
+/// `msg` sin ninguno de los `secrets`, sin importar mayúsculas (la firma viaja en mayúsculas).
+fn scrub(msg: &str, secrets: &[&str]) -> String {
+    let mut out = msg.to_owned();
+    for secret in secrets.iter().filter(|s| !s.is_empty()) {
+        let needle = secret.to_ascii_lowercase();
+        // `to_ascii_lowercase` no cambia los largos: los índices valen para los dos textos
+        while let Some(at) = out.to_ascii_lowercase().find(&needle) {
+            out.replace_range(at..at + needle.len(), HIDDEN);
+        }
+    }
+    out
+}
+
 /// Los ids de Tuya son alfanuméricos; esto evita armar rutas raras con un id manipulado.
 fn is_safe_id(id: &str) -> bool {
     !id.is_empty()
@@ -555,6 +604,33 @@ mod tests {
         assert!(d.online);
         assert!(d.is_light());
         assert!(to_cloud_device(&json!({"name": "x"})).is_none());
+    }
+
+    #[test]
+    fn solo_la_propia_maquina_se_puede_usar_sin_https() {
+        let url = |s: &str| Url::parse(s).unwrap();
+        for local in [
+            "http://127.0.0.1:80/",
+            "http://localhost/",
+            "http://[::1]:9/",
+        ] {
+            assert!(is_loopback(&url(local)), "{local}");
+        }
+        for remote in [
+            "http://openapi.tuyaus.com/",
+            "http://192.168.1.10/",
+            "http://localhost.example.com/",
+        ] {
+            assert!(!is_loopback(&url(remote)), "{remote}");
+        }
+    }
+
+    #[test]
+    fn tapa_los_secretos_sin_importar_mayusculas() {
+        assert_eq!(
+            scrub("id=AbC sign=ff00 y otra vez FF00", &["abc", "", "FF00"]),
+            "id=[oculto] sign=[oculto] y otra vez [oculto]"
+        );
     }
 
     #[test]

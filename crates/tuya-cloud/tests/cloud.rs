@@ -449,3 +449,96 @@ async fn id_raro_no_arma_rutas() {
         .unwrap_err();
     assert!(matches!(err, CloudError::Decode(_)));
 }
+
+// ---------- Q4: seguridad ----------
+
+/// Contesta con un error que repite todo lo que recibió.
+struct Echo;
+
+impl wiremock::Respond for Echo {
+    fn respond(&self, request: &Request) -> ResponseTemplate {
+        let h = |k: &str| {
+            request
+                .headers
+                .get(k)
+                .and_then(|v| v.to_str().ok())
+                .unwrap_or_default()
+                .to_owned()
+        };
+        let msg = format!(
+            "bad request: client_id={} sign={} access_token={} secret={ACCESS_SECRET}",
+            h("client_id"),
+            h("sign"),
+            h("access_token"),
+        );
+        ResponseTemplate::new(200)
+            .set_body_json(serde_json::json!({"success": false, "code": 99999, "msg": msg}))
+    }
+}
+
+#[tokio::test]
+async fn el_mensaje_de_error_de_la_api_no_repite_credenciales_tokens_ni_firmas() {
+    let server = MockServer::start().await;
+    mount_token(&server).await;
+    Mock::given(method("GET"))
+        .respond_with(Echo)
+        .mount(&server)
+        .await;
+
+    let error = client(&server).devices().await.unwrap_err();
+    let CloudError::Api { code: 99999, msg } = &error else {
+        panic!("{error:?}");
+    };
+    assert!(msg.starts_with("bad request:"), "{msg}");
+    let sent = server.received_requests().await.unwrap();
+    let last = sent.last().unwrap();
+    let sign = last.headers.get("sign").unwrap().to_str().unwrap();
+    for secret in [ACCESS_ID, ACCESS_SECRET, &token_of("token_ok.json"), sign] {
+        assert!(!msg.contains(secret), "{msg}");
+    }
+    let visible = serde_json::to_string(&to_user_facing(&error)).unwrap();
+    assert!(
+        !visible.contains(sign) && !visible.contains(ACCESS_ID),
+        "{visible}"
+    );
+}
+
+#[test]
+fn el_debug_del_cliente_no_muestra_las_credenciales() {
+    let text = format!("{:?}", TuyaCloudClient::new(creds(Region::Eu)).unwrap());
+    assert!(text.contains("Eu"), "{text}");
+    assert!(
+        !text.contains(ACCESS_ID) && !text.contains(ACCESS_SECRET),
+        "{text}"
+    );
+}
+
+#[tokio::test]
+async fn fuera_de_la_propia_maquina_no_se_manda_nada_sin_https() {
+    // `.invalid` no resuelve nunca: si se llegara a intentar, el error sería otro
+    let client = TuyaCloudClient::new(creds(Region::Us))
+        .unwrap()
+        .with_endpoints(|_| "http://openapi.tuya.invalid".to_owned());
+    let error = client.devices().await.unwrap_err();
+    let CloudError::Network(detail) = &error else {
+        panic!("{error:?}");
+    };
+    assert!(detail.contains("HTTPS"), "{detail}");
+}
+
+#[tokio::test]
+async fn no_sigue_redirecciones_que_se_llevarian_la_firma_y_el_token() {
+    let other = MockServer::start().await;
+    let server = MockServer::start().await;
+    mount_token(&server).await;
+    Mock::given(method("GET"))
+        .respond_with(
+            ResponseTemplate::new(302)
+                .insert_header("location", format!("{}/robo", other.uri()).as_str()),
+        )
+        .mount(&server)
+        .await;
+
+    client(&server).devices().await.unwrap_err();
+    assert!(other.received_requests().await.unwrap().is_empty());
+}

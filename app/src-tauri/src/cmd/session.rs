@@ -156,11 +156,6 @@ impl Backend {
         }
     }
 
-    /// Si hay una sesión en marcha.
-    pub(crate) async fn session_running(&self) -> bool {
-        self.session.lock().await.is_some()
-    }
-
     /// Si la sesión en marcha está usando ese foco.
     pub(crate) async fn session_uses(&self, device: &DeviceId) -> bool {
         self.session

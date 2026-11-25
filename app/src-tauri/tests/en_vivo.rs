@@ -9,7 +9,7 @@ use std::time::Duration;
 use common::{
     DISPLAY, FAKE_ACCESS_ID, FAKE_ACCESS_SECRET, Harness, Setup, eventually, harness, sim_id,
 };
-use openlight_types::ipc::{CloudCredentialsInput, DeviceAddRequest, SettingScope};
+use openlight_types::ipc::{CloudCredentialsInput, DeviceAddRequest, ManualSet, SettingScope};
 use openlight_types::{
     DeviceId, DisplayId, Dps, ProfileId, Region, SessionState, SettingId, SettingValue, Zone,
     ZonePreset,
@@ -236,4 +236,79 @@ async fn un_foco_sin_zonas_sale_del_efecto_y_al_volver_a_tenerlas_entra() {
         h.backend.session_state() == SessionState::Idle
     })
     .await;
+}
+
+#[tokio::test]
+async fn un_foco_excluido_no_recibe_colores_y_el_otro_sigue_sin_cortarse() {
+    let h = harness(Setup { sims: 2, lan: true }).await;
+    let ids = setup(&h).await;
+    let original = h.sims[1].dps();
+    running(&h).await;
+
+    h.backend
+        .set_device_in_effect(ids[1].clone(), false)
+        .await
+        .unwrap();
+    // Al volver del comando el foco ya está como antes y libre
+    assert!(same(&h.sims[1], &original), "{:?}", h.sims[1].dps());
+    eventually("foco 2 desconectado", Duration::from_secs(3), || {
+        h.sims[1].active_connections() == 0
+    })
+    .await;
+    h.sims[1].reset_stats();
+    h.screen.paint([0, 0, 255]);
+    eventually("el foco 1 sigue", SOON, || hue_is(&h.sims[0], 240)).await;
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    assert_eq!(
+        h.sims[1].stats().commands(),
+        0,
+        "al excluido no le llega nada"
+    );
+    assert!(same(&h.sims[1], &original));
+    assert_eq!(h.sims[0].stats().connections, 1, "el otro no se cortó");
+    h.backend.session_stop().await.unwrap();
+}
+
+#[tokio::test]
+async fn el_control_manual_toma_un_foco_sacado_y_despues_vuelve_al_efecto() {
+    let h = harness(Setup { sims: 2, lan: true }).await;
+    let ids = setup(&h).await;
+    running(&h).await;
+    h.backend
+        .set_device_in_effect(ids[1].clone(), false)
+        .await
+        .unwrap();
+
+    h.backend
+        .device_manual(
+            ids[1].clone(),
+            ManualSet::White {
+                brightness: 1.0,
+                temperature: 0.5,
+            },
+        )
+        .await
+        .unwrap();
+    eventually("blanco", SOON, || {
+        h.sims[1].dp("21") == Some(json!("white")) && h.sims[1].dp("22") == Some(json!(1000))
+    })
+    .await;
+    h.backend
+        .device_manual(ids[1].clone(), ManualSet::Power(false))
+        .await
+        .unwrap();
+    eventually("apagado", SOON, || h.sims[1].dp("20") == Some(json!(false))).await;
+
+    h.backend
+        .set_device_in_effect(ids[1].clone(), true)
+        .await
+        .unwrap();
+    eventually("de vuelta en el efecto", SOON, || {
+        h.sims[1].dp("20") == Some(json!(true)) && brightness_is(&h.sims[1], 1000)
+    })
+    .await;
+    h.backend.session_stop().await.unwrap();
+    // Al detener vuelve a como lo dejó la persona: apagado y en blanco
+    assert_eq!(h.sims[1].dp("20"), Some(json!(false)));
+    assert_eq!(h.sims[1].dp("21"), Some(json!("white")));
 }

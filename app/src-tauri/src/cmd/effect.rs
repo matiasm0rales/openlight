@@ -3,7 +3,7 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use openlight_types::{DeviceId, ErrorCode};
+use openlight_types::DeviceId;
 
 use crate::errors::{CmdResult, internal};
 use crate::state::Backend;
@@ -29,18 +29,51 @@ impl Backend {
             .contains(device)
     }
 
-    /// Prende o apaga un foco dentro del efecto. Con la sesión en marcha, la reinicia para que
-    /// el cambio se vea ya; si no queda ningún foco, simplemente la detiene.
+    /// El tilde de un foco en el menú del tray: lo saca del efecto o lo vuelve a incluir.
     pub async fn toggle_device_in_effect(self: &Arc<Self>, device: DeviceId) -> CmdResult<()> {
+        let include = self.is_excluded(&device);
+        self.set_device_in_effect(device, include).await
+    }
+
+    /// Incluye un foco en el efecto o lo saca, y lo recuerda. Con la sesión en marcha vale ya y
+    /// sin cortar a los demás: al sacarlo, cuando esto vuelve el foco ya está como antes de
+    /// empezar y libre (para el control manual o la calibración). Sin ningún foco que participe,
+    /// la sesión se detiene.
+    pub async fn set_device_in_effect(
+        self: &Arc<Self>,
+        device: DeviceId,
+        in_effect: bool,
+    ) -> CmdResult<()> {
         self.record(&device)?;
-        {
-            let mut excluded = self
-                .excluded
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
-            if !excluded.remove(&device) {
-                excluded.insert(device);
-            }
+        if !self.save_excluded(&device, !in_effect)? {
+            return Ok(());
+        }
+        self.notify_changed();
+        if in_effect {
+            self.forget_skipped(&device).await;
+        }
+        let failures = self.sync_session().await?;
+        // Si no pudo entrar (lo tiene la calibración, por ejemplo), queda afuera y se dice por qué
+        if in_effect && let Some((_, error)) = failures.into_iter().find(|(id, _)| id == &device) {
+            self.save_excluded(&device, true)?;
+            self.notify_changed();
+            return Err(error);
+        }
+        Ok(())
+    }
+
+    /// Anota si el foco está fuera del efecto y lo guarda. `false` si ya estaba así.
+    fn save_excluded(&self, device: &DeviceId, out: bool) -> CmdResult<bool> {
+        let mut excluded = self
+            .excluded
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let changed = if out {
+            excluded.insert(device.clone())
+        } else {
+            excluded.remove(device)
+        };
+        if changed {
             let mut ids: Vec<&DeviceId> = excluded.iter().collect();
             ids.sort();
             let text = serde_json::to_string(&ids).map_err(|e| internal(e.to_string()))?;
@@ -51,16 +84,6 @@ impl Backend {
                 }
             })?;
         }
-        self.notify_changed();
-        if self.session_running().await {
-            self.session_stop().await?;
-            match self.session_start().await {
-                Err(error) if error.code == ErrorCode::NoZones => {}
-                other => {
-                    other?;
-                }
-            }
-        }
-        Ok(())
+        Ok(changed)
     }
 }

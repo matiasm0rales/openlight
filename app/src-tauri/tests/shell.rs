@@ -146,7 +146,7 @@ async fn el_tray_ve_perfiles_focos_y_estado_y_se_entera_de_cada_cambio() {
 }
 
 #[tokio::test]
-async fn sacar_un_foco_del_efecto_lo_deja_fuera_y_reinicia_la_sesion() {
+async fn sacar_un_foco_del_efecto_lo_deja_fuera_y_volver_a_incluirlo_lo_suma() {
     let h = harness(Setup { sims: 2, lan: true }).await;
     ready(&h, 2).await;
     let tray = AppTray::new(h.backend.clone());
@@ -170,7 +170,7 @@ async fn sacar_un_foco_del_efecto_lo_deja_fuera_y_reinicia_la_sesion() {
     .await;
     assert_eq!(h.sims[1].active_connections(), 0, "el foco 2 no se tocó");
 
-    // Con la sesión en marcha, volver a prenderlo reinicia la sesión con los dos
+    // Con la sesión en marcha, volver a prenderlo lo suma sin reiniciar
     h.backend.toggle_device_in_effect(sim_id(2)).await.unwrap();
     eventually("foco 2 activo", Duration::from_secs(8), || {
         h.sims[1].dp("21") == Some(json!("colour"))

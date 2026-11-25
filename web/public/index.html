@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="es" data-scene="atardecer">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title data-i18n="meta.title">OpenLight: tus focos siguen los colores de tu pantalla</title>
+  <meta name="description" data-i18n-attr="content:meta.description" content="App gratuita para macOS, Windows y Linux: tus focos Tuya o Smart Life siguen en tiempo real los colores de tu pantalla, por tu red local.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" data-i18n-attr="content:meta.title" content="OpenLight: tus focos siguen los colores de tu pantalla">
+  <meta property="og:description" data-i18n-attr="content:meta.description" content="App gratuita para macOS, Windows y Linux: tus focos Tuya o Smart Life siguen en tiempo real los colores de tu pantalla, por tu red local.">
+  <link rel="icon" href="img/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+  <link rel="preload" href="fonts/plus-jakarta-sans-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="styles.css">
+  <script src="js/boot.js"></script>
+  <script type="module" src="js/main.js"></script>
+</head>
+<body>
+  <a class="skip" href="#contenido" data-i18n="nav.skip">Saltar al contenido</a>
+  <div class="aurora" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+
+  <header class="top wrap">
+    <a class="brand" href="#contenido">
+      <img class="logo logo-light" src="img/logo-light.svg" alt="OpenLight" width="200" height="51">
+      <img class="logo logo-dark" src="img/logo-dark.svg" alt="OpenLight" width="200" height="51">
+    </a>
+    <nav class="sections" aria-label="Secciones" data-i18n-attr="aria-label:nav.label">
+      <a href="#instalar" data-i18n="nav.install">Cómo instalarla</a>
+      <a href="#preguntas" data-i18n="nav.faq">Preguntas</a>
+    </nav>
+    <div class="tools">
+      <div class="segmented lang js-only" role="group" aria-label="Idioma / Language">
+        <button type="button" data-lang="es" lang="es" aria-pressed="true" aria-label="ES, español">ES</button>
+        <button type="button" data-lang="en" lang="en" aria-pressed="false" aria-label="EN, English">EN</button>
+      </div>
+      <button type="button" id="theme" class="icon-btn js-only" aria-label="Usar tema oscuro">
+        <svg class="icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/></svg>
+        <svg class="icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.3 5.3 7 7M17 17l1.7 1.7M18.7 5.3 17 7M7 17l-1.7 1.7"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main id="contenido" tabindex="-1">
+    <section class="hero wrap" aria-labelledby="titulo">
+      <div class="hero-text">
+        <h1 id="titulo" data-i18n="hero.title">Tus focos, del color de tu pantalla</h1>
+        <p class="lead" data-i18n="hero.lead">OpenLight hace que tus focos Tuya o Smart Life sigan, en tiempo real, los colores de lo que estás viendo. Todo viaja por la red de tu casa.</p>
+
+        <div class="download">
+          <a id="download-main" class="btn primary big" href="https://github.com/matiasm0rales/openlight/releases">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5v11m0 0 4.5-4.5M12 14.5 7.500 10M4.500 19.500h15"/></svg>
+            <span id="download-label">Descargar OpenLight</span>
+          </a>
+          <p id="download-status" class="status" role="status">Gratis y de código abierto.</p>
+          <p id="download-others" class="others">
+            <span id="download-others-label">Descargas para:</span>
+            <a data-os="macos" href="https://github.com/matiasm0rales/openlight/releases">macOS</a>
+            <a data-os="windows" href="https://github.com/matiasm0rales/openlight/releases">Windows</a>
+            <a data-os="linux" href="https://github.com/matiasm0rales/openlight/releases">Linux</a>
+          </p>
+          <p class="howto"><a href="#instalar" data-i18n="hero.howto">Mirá cómo instalarla, paso a paso</a></p>
+        </div>
+
+        <p class="beta" data-i18n-html="beta"><strong>Windows y Linux están en beta:</strong> compilan y pasan las pruebas automáticas, pero todavía no se probaron con focos reales.</p>
+      </div>
+
+      <div class="demo">
+        <div class="stage" role="img" aria-label="Ilustración: una pantalla y dos focos. Cada foco toma el color del lado de la pantalla que tiene cerca." data-i18n-attr="aria-label:demo.alt">
+          <svg class="bulb bulb-left" viewBox="0 0 80 120" aria-hidden="true">
+            <path class="glass" d="M40 6C20.700 6 6 20.800 6 39.500c0 11.600 5.600 19.100 11.700 26.400 4.300 5.200 7.500 10.200 8.300 17.100h28c.8-6.900 4-11.900 8.300-17.100C68.400 58.600 74 51.100 74 39.500 74 20.800 59.300 6 40 6Z"/>
+            <path class="shine" d="M20 38c.600-10 7.400-18.500 17-20.500"/>
+            <rect class="cap" x="25" y="85" width="30" height="22" rx="5"/>
+            <path class="thread" d="M26 92h28M26 99h28"/>
+            <rect class="cap" x="33" y="108" width="14" height="7" rx="3.500"/>
+          </svg>
+          <div class="monitor">
+            <div class="screen">
+              <svg viewBox="0 0 320 180" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+                <defs>
+                  <linearGradient id="cielo" x1="0" x2="1" y1="0" y2="0">
+                    <stop offset="0.080" class="stop-l"/>
+                    <stop offset="0.500" class="stop-m"/>
+                    <stop offset="0.920" class="stop-r"/>
+                  </linearGradient>
+                </defs>
+                <rect width="320" height="180" fill="url(#cielo)"/>
+                <circle class="sun" cx="196" cy="86" r="30"/>
+                <path class="hill-back" d="M0 128c36-30 66-34 100-12s58 16 92-8 80-26 128 14v58H0Z"/>
+                <path class="hill-front" d="M0 152c52-22 90-18 134-2s96 22 186-14v44H0Z"/>
+              </svg>
+            </div>
+            <div class="neck"></div>
+            <div class="foot"></div>
+          </div>
+          <svg class="bulb bulb-right" viewBox="0 0 80 120" aria-hidden="true">
+            <path class="glass" d="M40 6C20.700 6 6 20.800 6 39.500c0 11.600 5.600 19.100 11.700 26.400 4.300 5.200 7.500 10.200 8.300 17.100h28c.8-6.900 4-11.900 8.300-17.100C68.400 58.600 74 51.100 74 39.500 74 20.800 59.300 6 40 6Z"/>
+            <path class="shine" d="M20 38c.600-10 7.400-18.500 17-20.500"/>
+            <rect class="cap" x="25" y="85" width="30" height="22" rx="5"/>
+            <path class="thread" d="M26 92h28M26 99h28"/>
+            <rect class="cap" x="33" y="108" width="14" height="7" rx="3.500"/>
+          </svg>
+        </div>
+        <p class="demo-caption" data-i18n="demo.caption">Cada foco sigue una parte de la pantalla. Probá cambiar lo que se ve:</p>
+        <div class="demo-controls js-only">
+          <div class="scenes" role="group" aria-label="Escena de la pantalla" data-i18n-attr="aria-label:demo.scenes">
+            <button type="button" data-scene="atardecer" aria-pressed="true" data-i18n="demo.sunset">Atardecer</button>
+            <button type="button" data-scene="oceano" aria-pressed="false" data-i18n="demo.ocean">Océano</button>
+            <button type="button" data-scene="selva" aria-pressed="false" data-i18n="demo.forest">Selva</button>
+            <button type="button" data-scene="neon" aria-pressed="false" data-i18n="demo.neon">Neón</button>
+          </div>
+          <button type="button" id="demo-play" class="play">Activar animaciones</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="needs wrap" aria-labelledby="necesitas-titulo">
+      <h2 id="necesitas-titulo" data-i18n="needs.title">Qué necesitás</h2>
+      <ul class="need-list">
+        <li class="need need-bulbs">
+          <div class="need-art" aria-hidden="true">
+            <svg viewBox="0 0 160 100">
+              <circle class="art-halo" cx="80" cy="48" r="38"/>
+              <path class="art-fill" d="M80 20a24 24 0 0 0-13.700 43.700c2.700 2.300 4.200 4.800 4.400 8h18.600c.200-3.200 1.700-5.700 4.400-8A24 24 0 0 0 80 20Z"/>
+              <path class="art-line" d="M72 79h16M75 87h10"/>
+              <path class="art-line rays" d="M40 48H26M134 48h-14M51 20l-9-9M109 20l9-9"/>
+            </svg>
+          </div>
+          <h3 data-i18n="needs.bulbs.title">Focos Tuya o Smart Life con color</h3>
+          <p data-i18n="needs.bulbs.text">Ya agregados en la app Smart Life (o Tuya Smart) del celular. Los focos de luz blanca solamente no sirven para esto.</p>
+        </li>
+        <li class="need need-wifi">
+          <div class="need-art" aria-hidden="true">
+            <svg viewBox="0 0 160 100">
+              <circle class="art-halo" cx="80" cy="56" r="38"/>
+              <path class="art-line wave w3" d="M38 40a60 60 0 0 1 84 0"/>
+              <path class="art-line wave w2" d="M52 55a40 40 0 0 1 56 0"/>
+              <path class="art-line wave w1" d="M66 70a20 20 0 0 1 28 0"/>
+              <circle class="art-fill" cx="80" cy="83" r="6.500"/>
+            </svg>
+          </div>
+          <h3 data-i18n="needs.wifi.title">La compu en la misma Wi-Fi</h3>
+          <p data-i18n="needs.wifi.text">La compu y los focos tienen que estar en la misma red. Ojo con las redes de invitados.</p>
+        </li>
+        <li class="need need-computer">
+          <div class="need-art" aria-hidden="true">
+            <svg viewBox="0 0 160 100">
+              <circle class="art-halo" cx="80" cy="48" r="38"/>
+              <rect class="art-fill" x="42" y="18" width="76" height="52" rx="8"/>
+              <path class="art-cut" d="M52 56c10-14 20-14 30-5s18 4 26-10"/>
+              <path class="art-line" d="M28 82h104"/>
+            </svg>
+          </div>
+          <h3 data-i18n="needs.computer.title">Una compu compatible</h3>
+          <p data-i18n="needs.computer.text">macOS 12.3 o más nuevo, Windows 10 (versión 2004 o más nueva) u 11, o Linux de 64 bits con procesador Intel o AMD (Ubuntu 22.04 o equivalente).</p>
+        </li>
+        <li class="need need-time">
+          <div class="need-art" aria-hidden="true">
+            <svg viewBox="0 0 160 100">
+              <circle class="art-halo" cx="80" cy="50" r="38"/>
+              <circle class="art-fill" cx="80" cy="50" r="32"/>
+              <path class="art-cut" d="M80 30v20"/>
+              <path class="art-cut hand" d="M80 50h16"/>
+              <path class="art-line" d="M42 24l-9 9M118 24l9 9"/>
+            </svg>
+          </div>
+          <h3 data-i18n="needs.time.title">Unos 15 minutos</h3>
+          <p data-i18n="needs.time.text">Una sola vez, con el celular a mano. El asistente de la app te guía para crear la cuenta gratuita de desarrollador de Tuya.</p>
+        </li>
+      </ul>
+    </section>
+
+    <section id="instalar" class="install wrap" aria-labelledby="instalar-titulo">
+      <h2 id="instalar-titulo" data-i18n="install.title">Cómo instalarla</h2>
+      <p class="section-lead" data-i18n="install.lead">OpenLight todavía no tiene la firma digital de Apple ni de Microsoft, así que la primera vez tu compu va a pedirte una confirmación extra. Acá está cada paso.</p>
+
+      <div class="tabs segmented js-only" role="tablist" aria-label="Tu sistema" data-i18n-attr="aria-label:install.tabs">
+        <button type="button" role="tab" id="tab-macos" aria-controls="panel-macos" aria-selected="true">macOS</button>
+        <button type="button" role="tab" id="tab-windows" aria-controls="panel-windows" aria-selected="false" tabindex="-1">Windows</button>
+        <button type="button" role="tab" id="tab-linux" aria-controls="panel-linux" aria-selected="false" tabindex="-1">Linux</button>
+      </div>
+
+      <!-- macOS -->
+      <div class="panel" role="tabpanel" id="panel-macos" aria-labelledby="tab-macos" tabindex="0">
+        <div class="panel-head">
+          <h3>macOS</h3>
+          <a class="btn" data-download="dmg" href="https://github.com/matiasm0rales/openlight/releases">Descargar el instalador .dmg</a>
+        </div>
+        <ol class="steps">
+          <li>
+            <div class="step-text">
+              <h4 data-i18n="mac.1.title">Copiá OpenLight a Aplicaciones</h4>
+              <p data-i18n="mac.1.text">Abrí el archivo .dmg que descargaste y arrastrá el ícono de OpenLight a la carpeta Aplicaciones.</p>
+            </div>
+            <figure class="shot" data-shot="mac-arrastrar">
+              <svg viewBox="0 0 320 200" role="img" aria-label="Ilustración: arrastrar OpenLight a la carpeta Aplicaciones" data-i18n-attr="aria-label:mac.1.alt">
+                <rect class="il-win" x="16" y="18" width="288" height="164" rx="16"/>
+                <circle class="il-dot" cx="34" cy="34" r="4"/><circle class="il-dot" cx="48" cy="34" r="4"/><circle class="il-dot" cx="62" cy="34" r="4"/>
+                <image href="img/icon.svg" x="52" y="68" width="68" height="68"/>
+                <text class="il-label" x="86" y="156" text-anchor="middle">OpenLight</text>
+                <path class="il-arrow" d="M140 102h40m-12-12 12 12-12 12"/>
+                <path class="il-folder" d="M200 76a8 8 0 0 1 8-8h17l8 9h31a8 8 0 0 1 8 8v43a8 8 0 0 1-8 8h-56a8 8 0 0 1-8-8Z"/>
+                <text class="il-label" x="236" y="156" text-anchor="middle" data-i18n="il.applications">Aplicaciones</text>
+              </svg>
+            </figure>
+          </li>
+          <li>
+            <div class="step-text">
+              <h4 data-i18n="mac.2.title">Abrila una vez y cerrá el aviso</h4>
+              <p data-i18n="mac.2.text">Abrí OpenLight desde Aplicaciones. macOS va a decir que no puede comprobarla y no la abre. Tocá «Listo» (en algunas Mac, «Aceptar»). No la muevas a la papelera.</p>
+            </div>
+            <figure class="shot" data-shot="mac-aviso">
+              <svg viewBox="0 0 320 200" role="img" aria-label="Ilustración: aviso de macOS con los botones «Mover a la papelera» y «Listo». Hay que tocar «Listo»." data-i18n-attr="aria-label:mac.2.alt">
+                <rect class="il-win" x="52" y="14" width="216" height="172" rx="20"/>
+                <circle class="il-warn" cx="160" cy="48" r="18"/>
+                <path class="il-warn-mark" d="M160 39v11"/><circle class="il-warn-dot" cx="160" cy="57" r="2"/>
+                <rect class="il-bar" x="84" y="80" width="152" height="9" rx="4.500"/>
+                <rect class="il-bar faint" x="100" y="97" width="120" height="7" rx="3.500"/>
+                <rect class="il-btn target" x="76" y="116" width="168" height="26" rx="13"/>
+                <text class="il-btn-text target" x="160" y="133" text-anchor="middle" data-i18n="il.done">Listo</text>
+                <rect class="il-btn" x="76" y="150" width="168" height="26" rx="13"/>
+                <text class="il-btn-text" x="160" y="167" text-anchor="middle" data-i18n="il.trash">Mover a la papelera</text>
+              </svg>
+            </figure>
+          </li>
+          <li>
+            <div class="step-text">
+              <h4 data-i18n="mac.3.title">Tocá «Abrir igualmente»</h4>
+              <p data-i18n="mac.3.text">Abrí Configuración del Sistema (en algunas Mac se llama Ajustes del Sistema) y entrá a Privacidad y seguridad. Bajá hasta la sección Seguridad y tocá «Abrir igualmente» (o «Abrir de todos modos»).</p>
+            </div>
+            <figure class="shot" data-shot="mac-abrir-igual">
+              <svg viewBox="0 0 320 200" role="img" aria-label="Ilustración: en Privacidad y seguridad, el botón «Abrir igualmente» junto al nombre de OpenLight" data-i18n-attr="aria-label:mac.3.alt">
+                <rect class="il-win" x="16" y="18" width="288" height="164" rx="16"/>
+                <rect class="il-side" x="28" y="30" width="70" height="140" rx="10"/>
+                <rect class="il-bar faint" x="40" y="46" width="44" height="7" rx="3.500"/><rect class="il-bar faint" x="40" y="64" width="34" height="7" rx="3.500"/><rect class="il-bar" x="40" y="82" width="46" height="7" rx="3.500"/><rect class="il-bar faint" x="40" y="100" width="30" height="7" rx="3.500"/>
+                <text class="il-title" x="112" y="48" data-i18n="il.privacy">Privacidad y seguridad</text>
+                <text class="il-label" x="112" y="76" data-i18n="il.security">Seguridad</text>
+                <rect class="il-side" x="110" y="86" width="182" height="72" rx="10"/>
+                <text class="il-small" x="122" y="108" data-i18n="il.blocked">Se bloqueó «OpenLight».</text>
+                <rect class="il-btn target" x="150" y="120" width="130" height="26" rx="13"/>
+                <text class="il-btn-text target" x="215" y="137" text-anchor="middle" data-i18n="il.openAnyway">Abrir igualmente</text>
+              </svg>
+            </figure>
+          </li>
+          <li>
+            <div class="step-text">
+              <h4 data-i18n="mac.4.title">Confirmá y listo</h4>
+              <p data-i18n="mac.4.text">Tocá «Abrir» y confirmá con tu contraseña o Touch ID. Desde ahora se abre como cualquier otra app.</p>
+            </div>
+          </li>
+          <li>
+            <div class="step-text">
+              <h4 data-i18n="mac.5.title">Dale los permisos que pide</h4>
+              <p data-i18n="mac.5.text">El asistente te pide Grabación de pantalla (para ver los colores) y Red local (para hablar con los focos). Después de activar la grabación, reabrí la app.</p>
+            </div>
+          </li>
+        </ol>
+        <div class="why">
+          <h4 data-i18n="mac.why.title">¿Por qué macOS la frena la primera vez?</h4>
+          <p data-i18n="mac.why.text">Apple abre sin preguntar solo las apps registradas en su programa pago para desarrolladores, y OpenLight todavía no está en él. El aviso no significa que haya encontrado un virus: significa que Apple no revisó la app. El código es público, y conviene bajarla solo desde esta página o desde GitHub.</p>
+          <p data-i18n="mac.why.old">En macOS 14 o anterior alcanza con hacer clic derecho sobre OpenLight, elegir «Abrir» y confirmar.</p>
+        </div>
+        <details class="damaged">
+          <summary data-i18n="mac.damaged.q">¿Te dice que la app «está dañada»?</summary>
+          <p data-i18n="mac.damaged.a">Es otra forma del mismo bloqueo: macOS marcó el archivo por haberlo bajado de internet. Hacé esto solo si la bajaste desde esta página o desde GitHub. Abrí la app Terminal, pegá esta línea, tocá Enter y volvé a abrir OpenLight.</p>
+          <pre><code>xattr -dr com.apple.quarantine /Applications/OpenLight.app</code></pre>
+        </details>
+      </div>
+
+      <!-- Windows -->
+      <div class="panel" role="tabpanel" id="panel-windows" aria-labelledby="tab-windows" tabindex="0">
+        <div class="panel-head">
+          <h3>Windows</h3>
+          <a class="btn" data-download="exe" href="https://github.com/matiasm0rales/openlight/releases">Descargar el instalador .exe</a>
+        </div>
+        <p class="beta" data-i18n-html="beta"><strong>Windows y Linux están en beta:</strong> compilan y pasan las pruebas automáticas, pero todavía no se probaron con focos reales.</p>
+        <ol class="steps">
+          <li>
+            <div class="step-text">
+              <h4 data-i18n="win.1.title">Abrí el instalador</h4>
+              <p data-i18n="win.1.text">Hacé doble clic en el archivo que termina en -setup.exe. Si el navegador avisa que no se descarga habitualmente, abrí el menú de la descarga y elegí conservarlo.</p>
+            </div>
+          </li>
+          <li>
+            <div class="step-text">
+              <h4 data-i18n="win.2.title">Si aparece «Windows protegió su PC»</h4>
+              <p data-i18n="win.2.text">Tocá «Más información» y después «Ejecutar de todas formas» (o «Ejecutar de todos modos»). Windows muestra ese aviso con programas nuevos que no tienen firma digital.</p>
+            </div>
+            <figure class="shot" data-shot="windows-smartscreen">
+              <svg viewBox="0 0 320 200" role="img" aria-label="Ilustración: aviso «Windows protegió su PC». Primero se toca «Más información» y después «Ejecutar de todas formas»." data-i18n-attr="aria-label:win.2.alt">
+                <rect class="il-win" x="22" y="14" width="276" height="172" rx="12"/>
+                <text class="il-title" x="42" y="46" data-i18n="il.smartscreen">Windows protegió su PC</text>
+                <rect class="il-bar faint" x="42" y="62" width="228" height="7" rx="3.500"/><rect class="il-bar faint" x="42" y="78" width="180" height="7" rx="3.500"/>
+                <text class="il-link" x="42" y="112" data-i18n="il.moreInfo">Más información</text>
+                <circle class="il-num" cx="276" cy="107" r="10"/><text class="il-num-text" x="276" y="111.500" text-anchor="middle">1</text>
+                <rect class="il-btn target" x="42" y="136" width="170" height="28" rx="6"/>
+                <text class="il-btn-text target" x="127" y="154" text-anchor="middle" data-i18n="il.runAnyway">Ejecutar de todas formas</text>
+                <circle class="il-num" cx="230" cy="150" r="10"/><text class="il-num-text" x="230" y="154.500" text-anchor="middle">2</text>
+              </svg>
+            </figure>
+          </li>
+          <li>
+            <div class="step-text">
+              <h4 data-i18n="win.3.title">Seguí el instalador</h4>
+              <p data-i18n="win.3.text">Está en español y no pide permisos de administrador. Al terminar, abrí OpenLight desde el menú Inicio.</p>
+            </div>
+          </li>
+          <li>
+            <div class="step-text">
+              <h4 data-i18n="win.4.title">Permitila en tu red</h4>
+              <p data-i18n="win.4.text">La primera vez que busque focos, el Firewall de Windows va a preguntar. Marcá «Redes privadas» y permití el acceso.</p>
+            </div>
+            <figure class="shot" data-shot="windows-firewall">
+              <svg viewBox="0 0 320 200" role="img" aria-label="Ilustración: aviso del Firewall de Windows con «Redes privadas» marcado y el botón «Permitir acceso»" data-i18n-attr="aria-label:win.4.alt">
+                <rect class="il-win" x="22" y="14" width="276" height="172" rx="12"/>
+                <text class="il-title" x="42" y="46" data-i18n="il.firewall">Firewall de Windows</text>
+                <rect class="il-bar faint" x="42" y="62" width="210" height="7" rx="3.500"/>
+                <rect class="il-check" x="42" y="86" width="18" height="18" rx="4"/><path class="il-tick" d="m46 95 4 4 7-8"/>
+                <text class="il-label" x="70" y="99.500" data-i18n="il.private">Redes privadas</text>
+                <rect class="il-box" x="42" y="112" width="18" height="18" rx="4"/>
+                <text class="il-label" x="70" y="125.500" data-i18n="il.public">Redes públicas</text>
+                <rect class="il-btn target" x="144" y="144" width="136" height="28" rx="6"/>
+                <text class="il-btn-text target" x="212" y="162" text-anchor="middle" data-i18n="il.allow">Permitir acceso</text>
+              </svg>
+            </figure>
+          </li>
+        </ol>
+        <p class="alt-download"><span data-i18n="win.msi">¿Preferís un instalador .msi (por ejemplo, para administrar varias compus)?</span> <a data-download="msi" href="https://github.com/matiasm0rales/openlight/releases">Descargar el .msi</a></p>
+      </div>
+
+      <!-- Linux -->
+      <div class="panel" role="tabpanel" id="panel-linux" aria-labelledby="tab-linux" tabindex="0">
+        <div class="panel-head">
+          <h3>Linux</h3>
+        </div>
+        <p class="beta" data-i18n-html="beta"><strong>Windows y Linux están en beta:</strong> compilan y pasan las pruebas automáticas, pero todavía no se probaron con focos reales.</p>
+        <p class="section-lead" data-i18n="linux.lead">Elegí un solo formato. Si no sabés cuál, usá el .deb en Ubuntu, Debian o Mint, el .rpm en Fedora y el AppImage en el resto.</p>
+
+        <div class="formats">
+          <article class="format">
+            <h4>AppImage</h4>
+            <p data-i18n="linux.appimage.for">Funciona en casi cualquier distribución, sin instalar.</p>
+            <a class="btn" data-download="appimage" href="https://github.com/matiasm0rales/openlight/releases">Descargar el AppImage</a>
+            <ol class="plain-steps">
+              <li data-i18n="linux.appimage.1">Hacé clic derecho en el archivo, entrá a Propiedades y activá «Ejecutable como programa».</li>
+              <li data-i18n="linux.appimage.2">Abrilo con doble clic.</li>
+            </ol>
+            <p class="small" data-i18n="linux.appimage.terminal">Desde la terminal:</p>
+            <pre><code>chmod +x OpenLight_*.AppImage
+./OpenLight_*.AppImage</code></pre>
+            <p class="small" data-i18n-html="linux.appimage.fuse">Si no abre, instalá FUSE 2: <code>sudo apt install libfuse2</code> (en Ubuntu 24.04 o más nuevo, <code>libfuse2t64</code>).</p>
+          </article>
+          <article class="format">
+            <h4>.deb</h4>
+            <p data-i18n="linux.deb.for">Ubuntu, Debian, Linux Mint y derivadas.</p>
+            <a class="btn" data-download="deb" href="https://github.com/matiasm0rales/openlight/releases">Descargar el .deb</a>
+            <p data-i18n="linux.deb.text">Abrilo con doble clic para instalarlo desde el centro de software, o usá la terminal en la carpeta de descargas:</p>
+            <pre><code>sudo apt install ./OpenLight_*_amd64.deb</code></pre>
+          </article>
+          <article class="format">
+            <h4>.rpm</h4>
+            <p data-i18n="linux.rpm.for">Fedora y derivadas.</p>
+            <a class="btn" data-download="rpm" href="https://github.com/matiasm0rales/openlight/releases">Descargar el .rpm</a>
+            <p data-i18n="linux.rpm.text">Abrilo con doble clic para instalarlo desde el centro de software, o usá la terminal en la carpeta de descargas:</p>
+            <pre><code>sudo dnf install ./OpenLight-*.x86_64.rpm</code></pre>
+          </article>
+        </div>
+
+        <div class="why">
+          <h4 data-i18n="linux.screen.title">Cuando te pregunte qué compartir</h4>
+          <p data-i18n="linux.screen.text">En escritorios con Wayland, el sistema pregunta qué pantalla querés compartir. Elegí el monitor: OpenLight recuerda la elección.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="updates wrap" aria-labelledby="actualiza-titulo">
+      <div class="updates-text">
+        <h2 id="actualiza-titulo" data-i18n="updates.title">Se actualiza sola</h2>
+        <p class="section-lead" data-i18n="updates.text">Cuando hay una versión nueva, la app te avisa y se actualiza con un clic. No hace falta volver a esta página ni instalar todo de nuevo.</p>
+      </div>
+      <figure class="shot" data-shot="actualizacion">
+        <svg viewBox="0 0 390 120" role="img" aria-label="Ilustración: aviso dentro de la app que dice «Hay una versión nueva», con el botón «Actualizar»" data-i18n-attr="aria-label:updates.alt">
+          <rect class="il-win" x="12" y="22" width="366" height="76" rx="22"/>
+          <image href="img/icon.svg" x="28" y="40" width="40" height="40"/>
+          <text class="il-title" x="80" y="56" data-i18n="il.newVersion">Hay una versión nueva</text>
+          <rect class="il-bar faint" x="80" y="68" width="110" height="7" rx="3.500"/>
+          <rect class="il-btn target" x="274" y="44" width="90" height="32" rx="16"/>
+          <text class="il-btn-text target" x="319" y="64" text-anchor="middle" data-i18n="il.update">Actualizar</text>
+        </svg>
+      </figure>
+    </section>
+
+    <section id="preguntas" class="faq wrap" aria-labelledby="preguntas-titulo">
+      <h2 id="preguntas-titulo" data-i18n="faq.title">Preguntas frecuentes</h2>
+      <div class="faq-list">
+        <details>
+          <summary data-i18n="faq.free.q">¿Es gratis?</summary>
+          <p data-i18n="faq.free.a">Sí. OpenLight es gratuita y de código abierto, con licencia MIT o Apache 2.0.</p>
+        </details>
+        <details>
+          <summary data-i18n="faq.account.q">¿Por qué necesito una cuenta de desarrollador de Tuya?</summary>
+          <p data-i18n="faq.account.a">Cada foco tiene una clave que solo se puede leer desde el portal para desarrolladores de Tuya, la empresa detrás de Smart Life. La cuenta es gratis y el asistente de la app te guía. Después, los colores van directo de tu compu a los focos.</p>
+        </details>
+        <details>
+          <summary data-i18n="faq.offline.q">¿Funciona sin internet?</summary>
+          <p data-i18n="faq.offline.a">Una vez configurada, los colores viajan solo por tu red local. Internet hace falta para agregar focos, renovar sus claves y recibir actualizaciones.</p>
+        </details>
+        <details>
+          <summary data-i18n="faq.privacy.q">¿Mi pantalla se sube a algún lado?</summary>
+          <p data-i18n="faq.privacy.a">No. La imagen se analiza en tu compu y a los focos solo se les manda un color. Las claves se guardan en el llavero de tu sistema.</p>
+        </details>
+        <details>
+          <summary data-i18n="faq.bulbs.q">¿Qué focos sirven? ¿Puedo usar varios?</summary>
+          <p data-i18n="faq.bulbs.a">Focos Tuya o Smart Life con color (protocolos 3.1, 3.3, 3.4 y 3.5). Podés usar varios, cada uno siguiendo una zona distinta de la pantalla.</p>
+        </details>
+        <details>
+          <summary data-i18n="faq.noresponse.q">Un foco no responde, ¿qué hago?</summary>
+          <p data-i18n="faq.noresponse.a">Revisá que esté en la misma Wi-Fi que la compu y cerrá la app Smart Life en el celular, que a veces ocupa la conexión. Si lo volviste a vincular, usá «Renovar clave» dentro de OpenLight.</p>
+        </details>
+        <details>
+          <summary data-i18n="faq.permissions.q">Después de actualizar, mi Mac vuelve a pedir permisos</summary>
+          <p data-i18n="faq.permissions.a">Como la app todavía no está firmada, después de una actualización macOS puede pedirte otra vez el permiso de Grabación de pantalla y el acceso al llavero. Permitilos de nuevo y, si activaste la grabación, reabrí OpenLight.</p>
+        </details>
+        <details>
+          <summary data-i18n="faq.phone.q">¿Hay una versión para el celular?</summary>
+          <p data-i18n="faq.phone.a">No. OpenLight es para computadoras: sigue los colores de la pantalla de tu Mac o tu PC. El celular solo se usa durante la configuración.</p>
+        </details>
+      </div>
+    </section>
+
+    <section class="source wrap" aria-labelledby="codigo-titulo">
+      <h2 id="codigo-titulo" data-i18n="source.title">El código está a la vista</h2>
+      <p class="section-lead" data-i18n="source.text">Cualquiera puede revisar cómo funciona OpenLight o proponer mejoras en GitHub, el sitio donde se publica el proyecto.</p>
+      <p class="source-links">
+        <a class="btn" href="https://github.com/matiasm0rales/openlight" data-i18n="source.code">Ver el código en GitHub</a>
+        <a class="btn ghost" href="https://github.com/matiasm0rales/openlight/issues" data-i18n="source.issues">Contar un problema</a>
+      </p>
+    </section>
+  </main>
+
+  <footer class="wrap">
+    <p data-i18n="footer.disclaimer">OpenLight no está afiliada a Philips (Ambilight es marca de Philips) ni a Tuya. Smart Life es una app de Tuya.</p>
+  </footer>
+</body>
+</html>

@@ -634,6 +634,11 @@
     "brightness": "Brillo",
     "manual": "Control manual",
     "calibrate": "Calibrar",
+    "follows": "Sigue la pantalla",
+    "out_of_effect": "Fuera del efecto",
+    "no_zone": "Sin zona: elegí qué sigue en Dispositivos.",
+    "white": "Blanco",
+    "turn_off": "Apagar",
     "device_settings": "Ajustes del foco"
   },
   "devices": {

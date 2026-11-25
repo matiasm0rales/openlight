@@ -634,6 +634,11 @@
     "brightness": "Brightness",
     "manual": "Manual control",
     "calibrate": "Calibrate",
+    "follows": "Follows the screen",
+    "out_of_effect": "Not in the effect",
+    "no_zone": "No area yet: choose what it follows in Devices.",
+    "white": "White",
+    "turn_off": "Turn off",
     "device_settings": "Bulb settings"
   },
   "devices": {

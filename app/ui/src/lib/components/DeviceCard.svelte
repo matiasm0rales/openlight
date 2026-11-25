@@ -1,7 +1,7 @@
 <script lang="ts">
   // Tarjeta de un foco en el panel: estado, color de pantalla vs. enviado, latencia, cortes y brillo rápido.
-  import type { ConfiguredDevice_Serialize, UserFacingError } from "../bindings";
-  import { app, dismiss, raise, refreshSettings } from "../app.svelte";
+  import type { ConfiguredDevice_Serialize, ManualSet, UserFacingError } from "../bindings";
+  import { app, dismiss, raise, refreshSettings, setInEffect } from "../app.svelte";
   import { attempt, commands } from "../ipc";
   import { go } from "../router.svelte";
   import { i18n, t } from "../i18n/index.svelte";
@@ -9,12 +9,21 @@
   import Eclipse from "./Eclipse.svelte";
   import ErrorCard from "./ErrorCard.svelte";
   import Icon from "./Icon.svelte";
+  import Switch from "./Switch.svelte";
 
   let { device }: { device: ConfiguredDevice_Serialize } = $props();
 
   const health = $derived(app.health[device.id]);
   const live = $derived(app.live[device.id]);
-  const kind = $derived(health?.state.kind ?? (app.session === "idle" ? "idle" : "connecting"));
+  // "Sigue la pantalla": en el efecto y con alguna zona que mirar.
+  const follows = $derived(device.in_effect && device.zones.length > 0);
+  const kind = $derived(!follows ? "idle" : (health?.state.kind ?? (app.session === "idle" ? "idle" : "connecting")));
+  // Fuera del efecto el foco se puede usar aparte, desde la misma tarjeta.
+  const canWhite = $derived(Boolean(device.capabilities.dp_bright));
+  async function quick(set: ManualSet) {
+    const r = await attempt(() => commands.deviceManual(device.id, set));
+    if (!r.ok) raise(r.error, () => quick(set));
+  }
   const off = $derived(kind !== "active");
   const raised = $derived(app.errors.find((e) => e.params.device === device.id));
   const error = $derived.by<UserFacingError | null>(() => {
@@ -64,8 +73,16 @@
       <h3 id="dev-{device.id}-name">{device.name}</h3>
       <p class="muted mono small">{device.ip ?? t("devices.auto_ip")} · v{device.version}{device.calibrated ? "" : ` · ${t("devices.not_calibrated")}`}</p>
     </div>
-    <span class="chip {chipClass}" role="status">{t(`device_state.${kind}`)}</span>
+    <span class="chip {chipClass}" role="status">{device.in_effect ? t(`device_state.${kind}`) : t("dashboard.out_of_effect")}</span>
   </header>
+
+  <div class="follow">
+    <Switch checked={follows} label={t("dashboard.follows")} disabled={!device.zones.length} busy={Boolean(app.busy[`effect:${device.id}`])} onchange={(v) => void setInEffect(device.id, v)} />
+    <div>
+      <span class="what" aria-hidden="true">{t("dashboard.follows")}</span>
+      {#if !device.zones.length}<p class="muted small">{t("dashboard.no_zone")}</p>{/if}
+    </div>
+  </div>
 
   <div class="stage">
     <Eclipse screen={live?.screen} sent={live?.sent} {off} size={132} />
@@ -92,6 +109,12 @@
   </div>
 
   <footer>
+    {#if !device.in_effect}
+      {#if canWhite}
+        <button type="button" class="btn small" onclick={() => quick({ kind: "white", value: { brightness: 0.8, temperature: 0.5 } })}><Icon name="sun" size={16} />{t("dashboard.white")}</button>
+      {/if}
+      <button type="button" class="btn small" onclick={() => quick({ kind: "power", value: false })}><Icon name="power" size={16} />{t("dashboard.turn_off")}</button>
+    {/if}
     <button type="button" class="btn small" onclick={() => go("manual", device.id)}><Icon name="bulb" size={16} />{t("dashboard.manual")}</button>
     <button type="button" class="btn small" onclick={() => go("calibrate", device.id)}><Icon name="palette" size={16} />{t("dashboard.calibrate")}</button>
     <button type="button" class="btn ghost small" onclick={async () => { await refreshSettings(); go("settings", device.id); }}><Icon name="sliders" size={16} />{t("dashboard.device_settings")}</button>
@@ -120,6 +143,15 @@
   }
   .small {
     font-size: 0.8rem;
+  }
+  .follow {
+    display: flex;
+    gap: 0.7rem;
+    align-items: center;
+  }
+  .what {
+    font-weight: 700;
+    font-size: 0.9rem;
   }
   .stage {
     display: grid;

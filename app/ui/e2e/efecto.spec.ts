@@ -11,6 +11,42 @@ async function running(page: Page) {
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Tus focos siguen la pantalla");
 }
 
+test("«Sigue la pantalla»: sacar un foco, usarlo aparte y volver a incluirlo", async ({ page }) => {
+  await running(page);
+  const living = page.getByRole("article", { name: "Foco living" });
+  const desk = page.getByRole("article", { name: "Lámpara escritorio" });
+  const follows = living.getByRole("switch", { name: "Sigue la pantalla" });
+  await expect(follows).toBeChecked();
+  await expect(living.getByText("Conectado", { exact: true })).toBeVisible();
+  // Adentro del efecto no se ofrecen los accesos que lo pisarían.
+  await expect(living.getByRole("button", { name: "Apagar" })).toHaveCount(0);
+
+  await follows.click();
+  await expect(follows).not.toBeChecked();
+  await expect(living.getByText("Fuera del efecto")).toBeVisible();
+  await expect(desk.getByRole("switch", { name: "Sigue la pantalla" })).toBeChecked();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Tus focos siguen la pantalla");
+
+  await living.getByRole("button", { name: "Blanco" }).click();
+  await expect.poll(() => mock(page, `m.sims.get("${LIVING}").manual?.kind`)).toBe("white");
+  await living.getByRole("button", { name: "Apagar" }).click();
+  await expect.poll(() => mock(page, `m.sims.get("${LIVING}").manual`)).toEqual({ kind: "power", value: false });
+  await expect(page.getByRole("alert").filter({ hasText: "siguiendo la pantalla" })).toHaveCount(0);
+  await expectAccessible(page, "panel con un foco fuera del efecto");
+
+  await follows.click();
+  await expect(living.getByText("Conectado", { exact: true })).toBeVisible();
+  await expect(living.getByRole("button", { name: "Apagar" })).toHaveCount(0);
+});
+
+test("el panel muestra lo que se cambia desde el tray", async ({ page }) => {
+  await running(page);
+  const follows = page.getByRole("article", { name: "Foco living" }).getByRole("switch", { name: "Sigue la pantalla" });
+  await expect(follows).toBeChecked();
+  await mock(page, `m.setInEffect("${LIVING}", false)`);
+  await expect(follows).not.toBeChecked();
+});
+
 test("control manual con el efecto andando: ofrece sacar el foco y después devolverlo", async ({ page }) => {
   await running(page);
   await page.getByRole("article", { name: "Foco living" }).getByRole("button", { name: "Control manual" }).click();

@@ -208,15 +208,23 @@ impl Backend {
     /// por el evento de salida.
     pub async fn update_prepare(&self) {
         self.shutdown().await;
+        crate::updater::mark_reopen(self.data_dir());
     }
 
     /// La actualización no se instaló y la app sigue abierta: se puede volver a arrancar el
     /// efecto y el próximo "Salir" vuelve a restaurar los focos. Un cierre en curso no se toca.
     pub fn update_abort(&self) {
+        self.take_reopen_after_update();
         // `Err` quiere decir que no había un cierre terminado: no hay nada que deshacer
         let _ = self
             .shutdown_state
             .compare_exchange(2, 0, Ordering::SeqCst, Ordering::SeqCst);
+    }
+
+    /// Si este arranque viene de una actualización (se contesta una sola vez): entonces la
+    /// ventana se muestra aunque la app se haya abierto sola al iniciar sesión.
+    pub fn take_reopen_after_update(&self) -> bool {
+        crate::updater::take_reopen(self.data_dir())
     }
 }
 

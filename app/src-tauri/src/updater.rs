@@ -4,9 +4,39 @@
 //! principal tiene el permiso). Antes de instalar llama a `update_prepare`, que devuelve los
 //! focos como al salir ([`crate::state::Backend::update_prepare`]).
 
+use std::path::Path;
+
+/// Archivo que marca que el próximo arranque viene de una actualización.
+const REOPEN_MARKER: &str = "abrir-despues-de-actualizar";
+
+/// Antes de actualizar: el próximo arranque tiene que mostrar la ventana, aunque la app se
+/// haya abierto sola al iniciar sesión (el reinicio repite los argumentos del arranque).
+pub fn mark_reopen(data_dir: &Path) {
+    if let Err(error) = std::fs::create_dir_all(data_dir)
+        .and_then(|()| std::fs::write(data_dir.join(REOPEN_MARKER), b""))
+    {
+        tracing::warn!(%error, "no se pudo anotar que hay que reabrir la ventana");
+    }
+}
+
+/// Si el arranque viene de una actualización; la marca se borra al leerla.
+pub fn take_reopen(data_dir: &Path) -> bool {
+    std::fs::remove_file(data_dir.join(REOPEN_MARKER)).is_ok()
+}
+
 #[cfg(test)]
 mod tests {
+    use super::*;
     use serde_json::{Value, json};
+
+    #[test]
+    fn la_marca_para_reabrir_la_ventana_se_consume_una_sola_vez() {
+        let dir = tempfile::tempdir().unwrap();
+        assert!(!take_reopen(dir.path()));
+        mark_reopen(dir.path());
+        assert!(take_reopen(dir.path()));
+        assert!(!take_reopen(dir.path()));
+    }
 
     #[test]
     fn solo_la_ventana_principal_puede_actualizar_y_reiniciar() {

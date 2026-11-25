@@ -258,3 +258,21 @@ async fn abortar_sin_haber_preparado_no_interrumpe_un_cierre() {
         "el cierre en curso sigue marcado"
     );
 }
+
+#[tokio::test]
+async fn despues_de_actualizar_se_muestra_la_ventana_una_sola_vez() {
+    let h = harness(Setup::default()).await;
+    assert!(!h.backend.take_reopen_after_update());
+    h.backend.update_prepare().await;
+    let reopened = common::reopen(&h);
+    assert!(reopened.take_reopen_after_update());
+    assert!(!reopened.take_reopen_after_update());
+}
+
+#[tokio::test]
+async fn si_la_actualizacion_falla_no_queda_marcado_reabrir_la_ventana() {
+    let h = harness(Setup::default()).await;
+    h.backend.update_prepare().await;
+    h.backend.update_abort();
+    assert!(!h.backend.take_reopen_after_update());
+}

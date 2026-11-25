@@ -55,9 +55,13 @@ pub fn run() {
             backend.set_logs(log.handle());
             app.manage(log);
             app.manage(backend.clone());
+            let updated = backend.take_reopen_after_update();
             tray::install(app.handle(), Arc::new(tray_backend::AppTray::new(backend)))?;
-            // Arrancó solo al iniciar sesión: queda en el tray, sin abrir la ventana.
-            if autostart::started_by_autostart() {
+            if updated {
+                // Acaba de actualizarse desde la ventana: vuelve a mostrarse.
+                windows::show_main(app.handle())?;
+            } else if autostart::started_by_autostart() {
+                // Arrancó solo al iniciar sesión: queda en el tray, sin abrir la ventana.
                 windows::hide_main(app.handle())?;
             }
             Ok(())

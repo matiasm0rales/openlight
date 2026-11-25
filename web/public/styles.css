@@ -1307,6 +1307,9 @@ html:not(.js) .panel + .panel {
   .need-list {
     grid-template-columns: minmax(0, 1fr);
   }
+  .need-art {
+    aspect-ratio: 16 / 7;
+  }
 }
 
 /* ---------- Movimiento ----------

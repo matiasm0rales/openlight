@@ -4,7 +4,7 @@
 //! Qué se registra lo decide `RUST_LOG`; sin él, `info` en general y `debug` para los crates
 //! propios que explican por qué un foco no responde. **Los secretos no entran al log**: los
 //! `Secret` no implementan `Display` ni `Serialize`, y ningún `tracing::*!` recibe claves, el
-//! Access Secret ni tokens (hay una prueba en `tests/diagnostico.rs` que lo comprueba).
+//! Access Secret ni tokens (`tests/secretos.rs` recorre el flujo entero y lo comprueba).
 
 use std::collections::VecDeque;
 use std::fmt::Write as _;

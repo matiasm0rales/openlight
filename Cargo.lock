@@ -3539,6 +3539,7 @@ dependencies = [
  "tuya-device",
  "tuya-discovery",
  "tuya-sim",
+ "wiremock",
  "zip",
 ]
 

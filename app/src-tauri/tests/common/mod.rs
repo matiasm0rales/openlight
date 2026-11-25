@@ -216,6 +216,20 @@ pub fn sim_id(n: usize) -> DeviceId {
 }
 
 pub async fn harness(setup: Setup) -> Harness {
+    harness_with(setup, Overrides::default()).await
+}
+
+/// Lo que una prueba puede cambiar del arnés además de [`Setup`].
+#[derive(Default)]
+pub struct Overrides {
+    /// Clave local de todos los focos simulados (si no, la de fábrica del simulador).
+    pub local_key: Option<[u8; 16]>,
+    /// Otra nube en lugar de la falsa.
+    pub cloud: Option<openlight_lib::state::CloudFactory>,
+}
+
+/// Como [`harness`], con los cambios de `overrides`.
+pub async fn harness_with(setup: Setup, overrides: Overrides) -> Harness {
     let dir = tempfile::tempdir().unwrap();
     let events = MemorySink::new();
     let secrets = Arc::new(MemoryStore::new());
@@ -226,13 +240,13 @@ pub async fn harness(setup: Setup) -> Harness {
     let mut lan = Vec::new();
     let mut ports: HashMap<DeviceId, u16> = HashMap::new();
     for n in 1..=setup.sims {
-        let sim = tuya_sim::start(
-            SimConfig::new(ProtocolVersion::V35)
-                .ephemeral()
-                .dev_id(sim_id(n).0),
-        )
-        .await
-        .unwrap();
+        let mut config = SimConfig::new(ProtocolVersion::V35)
+            .ephemeral()
+            .dev_id(sim_id(n).0);
+        if let Some(key) = overrides.local_key {
+            config = config.local_key(key);
+        }
+        let sim = tuya_sim::start(config).await.unwrap();
         ports.insert(sim_id(n), sim.port());
         cloud_devices.push(CloudDevice {
             id: sim_id(n),
@@ -289,6 +303,7 @@ pub async fn harness(setup: Setup) -> Harness {
                 region: creds.region,
             }) as Arc<dyn TuyaCloud>)
         });
+    let cloud_factory = overrides.cloud.unwrap_or(cloud_factory);
     let backend = Backend::new(BackendParts {
         data_dir: dir.path().join("datos"),
         secrets: secrets.clone(),

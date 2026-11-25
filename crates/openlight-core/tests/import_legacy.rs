@@ -394,3 +394,38 @@ fn una_calibracion_rota_no_impide_importar_los_focos() {
             .contains(&"import.warning.calibration_invalid".to_owned())
     );
 }
+
+/// El error llega a la UI (y la persona puede copiarlo para pedir ayuda): dice dónde falla,
+/// nunca qué había ahí.
+#[test]
+fn el_error_de_un_archivo_mal_formado_no_repite_su_contenido() {
+    for (name, text) in [
+        ("devices.json", format!(r#"["{KEY_A}"]"#)),
+        ("devices.json", format!(r#""{KEY_A}""#)),
+        (
+            "devices.json",
+            format!(r#"[{{"id": "x", "key": ["{KEY_A}"]}}]"#),
+        ),
+        (
+            "config.json",
+            format!(r#"{{"local_key": {{"{KEY_A}": 1}}}}"#),
+        ),
+        ("config.json", format!(r#""{KEY_A}""#)),
+    ] {
+        let e = env();
+        fs::remove_file(e.legacy.join("config.json")).unwrap();
+        fs::remove_file(e.legacy.join("devices.json")).unwrap();
+        fs::write(e.legacy.join(name), &text).unwrap();
+
+        let error = import_legacy(&e.legacy, &e.store, &e.secrets, None).unwrap_err();
+
+        let message = error.to_string();
+        assert!(!message.contains(KEY_A), "{text}: {message}");
+        assert!(
+            message.contains(name) && message.contains("línea 1"),
+            "{message}"
+        );
+        let visible: openlight_types::UserFacingError = error.into();
+        assert!(!format!("{visible:?}").contains(KEY_A));
+    }
+}

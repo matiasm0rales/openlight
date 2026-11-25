@@ -82,7 +82,8 @@ test("prueba A/B: lo que se prueba es temporal hasta que se elige", async ({ pag
   await expect.poll(modeOf).toBe("average");
   await page.getByRole("button", { name: "Volver a la calibración" }).click();
   await expect.poll(modeOf).toBe("average");
-  await page.getByRole("button", { name: "Guardar y salir" }).click();
+  // Con el efecto andando la calibración del foco no se abre: no hay nada que guardar.
+  await page.getByRole("button", { name: "Salir sin guardar" }).click();
   await expect(page).toHaveURL(/#\/dashboard/);
 });
 

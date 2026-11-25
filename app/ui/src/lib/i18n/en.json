@@ -720,7 +720,10 @@
     "cool": "Cool",
     "scenes": "Scenes",
     "scenes_from_app": "This bulb has its own scenes. For now, choose them from the Smart Life app.",
-    "session_running": "The effect is running and will override what you choose here.",
+    "in_effect": "This light is following the screen. To control it by hand, remove it from the effect: the others keep going.",
+    "remove_from_effect": "Remove this light from the effect",
+    "out_of_effect": "This light is not in the effect: it stays as you leave it.",
+    "add_to_effect": "Add it back to the effect",
     "no_devices": "No bulbs to control yet."
   },
   "diagnostics": {

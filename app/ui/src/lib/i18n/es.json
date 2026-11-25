@@ -720,7 +720,10 @@
     "cool": "Frío",
     "scenes": "Escenas",
     "scenes_from_app": "Este foco tiene escenas propias. Por ahora se eligen desde la app Smart Life.",
-    "session_running": "El efecto está andando y va a pisar lo que elijas acá.",
+    "in_effect": "Este foco está siguiendo la pantalla. Para controlarlo a mano, sacalo del efecto: los demás siguen.",
+    "remove_from_effect": "Sacar este foco del efecto",
+    "out_of_effect": "Este foco está fuera del efecto: queda como lo dejes.",
+    "add_to_effect": "Volver a incluirlo en el efecto",
     "no_devices": "Todavía no hay focos para controlar."
   },
   "diagnostics": {

@@ -204,6 +204,12 @@ class MockBackend {
     return d;
   }
 
+  /** Como la app: mientras un foco sigue la pantalla, nadie más lo toma. */
+  private free(id: string): void {
+    const d = this.state.devices.find((x) => x.id === id);
+    if (this.session !== "idle" && d?.in_effect !== false) throw err("device_in_effect", [{ kind: "remove_from_effect" }], { device: id });
+  }
+
   private keyError(d: ConfiguredDevice_Serialize): UserFacingError {
     return err("device_key_rejected", [{ kind: "renew_key" }, { kind: "show_help", value: "device_troubleshooting" }], { device: d.id, name: d.name });
   }
@@ -550,6 +556,7 @@ class MockBackend {
 
   async deviceRemove(id: string) {
     await this.wait(200);
+    this.free(id);
     this.state.devices = this.state.devices.filter((d) => d.id !== id);
     delete this.state.deviceOverrides[id];
     this.persist();
@@ -558,6 +565,7 @@ class MockBackend {
 
   async deviceTest(id: string) {
     const d = this.device(id);
+    this.free(id);
     await this.wait(1200);
     if (this.state.keyRejected.includes(id)) throw this.keyError(d);
     return null;
@@ -566,6 +574,7 @@ class MockBackend {
   async deviceManual(id: string, set: ManualSet) {
     const d = this.device(id);
     await this.wait(80);
+    this.free(id);
     if (this.state.keyRejected.includes(id)) throw this.keyError(d);
     if (set.kind === "colour" && !d.capabilities.dp_colour) throw err("device_no_colour", [{ kind: "show_help", value: "device_troubleshooting" }], { name: d.name });
     this.simFor(id).manual = set;
@@ -654,6 +663,7 @@ class MockBackend {
 
   calibrationStart(device: string, display: string, quick: boolean): CalibrationState {
     this.device(device);
+    this.free(device);
     const saved = this.state.calibrations[device] ?? [];
     const hues = quick ? QUICK_HUES : HUES;
     this.calibration = {

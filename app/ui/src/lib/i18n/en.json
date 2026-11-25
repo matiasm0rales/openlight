@@ -179,6 +179,14 @@
       "title": "Another app is using the light",
       "detail": "Close the Smart Life app on your phone: it sometimes holds the light's local connection."
     },
+    "device_in_effect": {
+      "title": "This light is following the screen",
+      "detail": "To control, calibrate or test it, remove it from the effect: the others keep going. You can add it back afterwards."
+    },
+    "device_in_use": {
+      "title": "OpenLight is already using this light",
+      "detail": "Wait for the calibration, test or manual control to finish and try again."
+    },
     "device_no_colour": {
       "title": "This device can't show colors",
       "detail": "It only has white light, so it can't follow the screen."
@@ -322,6 +330,7 @@
       "screen_cast_portal": "Open portal permissions"
     },
     "renew_key": "Renew key",
+    "remove_from_effect": "Remove from effect",
     "retry": "Retry",
     "open_url": "Open {host}",
     "show_help": "Guide: {topic}",

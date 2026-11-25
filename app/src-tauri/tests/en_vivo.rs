@@ -9,10 +9,12 @@ use std::time::Duration;
 use common::{
     DISPLAY, FAKE_ACCESS_ID, FAKE_ACCESS_SECRET, Harness, Setup, eventually, harness, sim_id,
 };
-use openlight_types::ipc::{CloudCredentialsInput, DeviceAddRequest, ManualSet, SettingScope};
+use openlight_types::ipc::{
+    CloudCredentialsInput, DeviceAddRequest, ManualSet, SettingScope, TestPattern,
+};
 use openlight_types::{
-    DeviceId, DisplayId, Dps, ProfileId, Region, SessionState, SettingId, SettingValue, Zone,
-    ZonePreset,
+    DeviceId, DisplayId, Dps, ErrorCode, FixAction, ProfileId, Region, SessionState, SettingId,
+    SettingValue, Zone, ZonePreset,
 };
 use serde_json::json;
 use tuya_sim::SimHandle;
@@ -311,4 +313,56 @@ async fn el_control_manual_toma_un_foco_sacado_y_despues_vuelve_al_efecto() {
     // Al detener vuelve a como lo dejó la persona: apagado y en blanco
     assert_eq!(h.sims[1].dp("20"), Some(json!(false)));
     assert_eq!(h.sims[1].dp("21"), Some(json!("white")));
+}
+
+#[tokio::test]
+async fn con_el_foco_en_el_efecto_se_ofrece_sacarlo_y_no_se_culpa_a_otra_app() {
+    let h = harness(Setup::default()).await;
+    let ids = setup(&h).await;
+    running(&h).await;
+    let id = ids[0].clone();
+
+    let manual = h
+        .backend
+        .device_manual(id.clone(), ManualSet::Power(false))
+        .await
+        .unwrap_err();
+    let calibration = h
+        .backend
+        .calibration_start(id.clone(), DisplayId(DISPLAY.into()), true)
+        .await
+        .unwrap_err();
+    let test = h
+        .backend
+        .device_test(id.clone(), TestPattern::Blink)
+        .await
+        .unwrap_err();
+    let remove = h.backend.device_remove(id.clone()).await.unwrap_err();
+    for error in [manual, calibration, test, remove] {
+        assert_eq!(error.code, ErrorCode::DeviceInEffect);
+        assert_eq!(error.actions, vec![FixAction::RemoveFromEffect]);
+        assert_eq!(error.params["device"], id.0);
+    }
+    h.backend.session_stop().await.unwrap();
+}
+
+#[tokio::test]
+async fn si_el_foco_rechaza_la_conexion_el_error_sigue_siendo_de_foco_ocupado() {
+    let h = harness(Setup::default()).await;
+    let ids = setup(&h).await;
+    // Otra app lo tiene: el foco corta la conexión apenas llega
+    h.sims[0].update_faults(|f| f.occupied = true);
+    let error = h
+        .backend
+        .device_manual(ids[0].clone(), ManualSet::Power(true))
+        .await
+        .unwrap_err();
+    assert!(
+        !matches!(
+            error.code,
+            ErrorCode::DeviceInEffect | ErrorCode::DeviceInUse
+        ),
+        "{:?}",
+        error.code
+    );
 }

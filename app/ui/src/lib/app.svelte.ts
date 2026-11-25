@@ -99,6 +99,12 @@ export async function runFix(action: FixAction, err: UserFacingError, retry?: ()
       }
       return false;
     }
+    case "remove_from_effect": {
+      const device = err.params.device;
+      if (!device || !(await setInEffect(device, false))) return false;
+      dismissCode("device_in_effect", device);
+      return true;
+    }
     case "open_url":
       openExternal(action.value);
       return false;

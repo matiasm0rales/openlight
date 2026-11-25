@@ -496,6 +496,10 @@ export type ErrorCode =
 "device_timeout" | 
 /**  Otra app (Smart Life) ocupa la conexión local del foco. */
 "device_busy" | 
+/**  El foco está siguiendo la pantalla: para usarlo aparte hay que sacarlo del efecto. */
+"device_in_effect" | 
+/**  La propia app ya está usando el foco (calibración, prueba o control manual). */
+"device_in_use" | 
 /**  El foco no soporta color. */
 "device_no_colour" | 
 /**  Firma inválida (Access Secret mal copiado). */
@@ -535,6 +539,8 @@ export type FixAction =
 { kind: "renew_key" } | 
 /**  Reintentar. */
 { kind: "retry" } | 
+/**  Sacar del efecto el foco del error (`params.device`). */
+{ kind: "remove_from_effect" } | 
 /**  Abrir una URL externa. */
 { kind: "open_url"; value: string } | 
 /**  Mostrar una sección de la ayuda. */

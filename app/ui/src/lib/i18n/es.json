@@ -179,6 +179,14 @@
       "title": "Otra app está usando el foco",
       "detail": "Cerrá la app Smart Life en el celular: a veces ocupa la conexión local del foco."
     },
+    "device_in_effect": {
+      "title": "Este foco está siguiendo la pantalla",
+      "detail": "Para usarlo a mano, calibrarlo o probarlo, sacalo del efecto: los demás siguen. Después lo podés volver a incluir."
+    },
+    "device_in_use": {
+      "title": "OpenLight ya está usando este foco",
+      "detail": "Esperá a que termine la calibración, la prueba o el control manual y probá de nuevo."
+    },
     "device_no_colour": {
       "title": "Este dispositivo no muestra colores",
       "detail": "Solo tiene luz blanca, así que no puede seguir la pantalla."
@@ -322,6 +330,7 @@
       "screen_cast_portal": "Abrir permisos del portal"
     },
     "renew_key": "Renovar clave",
+    "remove_from_effect": "Sacar del efecto",
     "retry": "Reintentar",
     "open_url": "Abrir {host}",
     "show_help": "Ver guía: {topic}",

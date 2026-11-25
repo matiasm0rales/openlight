@@ -10,7 +10,8 @@ cambian entre versiones.
 - Focos: [`device_not_found`](#device_not_found) ·
   [`device_not_found_on_lan`](#device_not_found_on_lan) · [`lan_scan_failed`](#lan_scan_failed) ·
   [`device_key_rejected`](#device_key_rejected) · [`device_timeout`](#device_timeout) ·
-  [`device_busy`](#device_busy) · [`device_no_colour`](#device_no_colour)
+  [`device_busy`](#device_busy) · [`device_in_effect`](#device_in_effect) ·
+  [`device_in_use`](#device_in_use) · [`device_no_colour`](#device_no_colour)
 - Nube de Tuya: [`cloud_invalid_signature`](#cloud_invalid_signature) ·
   [`cloud_invalid_token`](#cloud_invalid_token) ·
   [`cloud_permission_denied`](#cloud_permission_denied) ·
@@ -190,12 +191,30 @@ Si el foco ya estaba agregado, un error de búsqueda no le borra nada: conserva 
 
 **«Otra app está usando el foco»**
 
-- **Qué significa:** el foco está tomado o rechazó la conexión.
-- **Por qué pasa:** casi siempre es **la propia OpenLight**: querés usar el control manual,
-  calibrar, identificar o probar un foco mientras el efecto (o una calibración) lo está usando.
-  También puede ser otra app que ocupa el foco, como Smart Life.
-- **Arreglo:** detené el efecto o cerrá la calibración y volvé a intentar. Si no había nada de
-  eso andando, cerrá Smart Life y los otros programas.
+- **Qué significa:** el foco rechazó la conexión.
+- **Por qué pasa:** otra app lo está ocupando, como Smart Life o el script anterior. Cuando el
+  que lo usa es la propia OpenLight, ves [`device_in_effect`](#device_in_effect) o
+  [`device_in_use`](#device_in_use).
+- **Arreglo:** cerrá Smart Life y los otros programas y reintentá.
+
+### device_in_effect
+
+**«Este foco está siguiendo la pantalla»**
+
+- **Qué significa:** pediste usar aparte un foco que está en el efecto.
+- **Por qué pasa:** querés usar el control manual, calibrar, identificar, probar o quitar un foco
+  mientras sigue la pantalla.
+- **Arreglo:** tocá **Sacar del efecto** (los demás focos siguen) y volvé a intentar. Para
+  incluirlo de nuevo, prendé **Sigue la pantalla** en su tarjeta del panel.
+
+### device_in_use
+
+**«OpenLight ya está usando este foco»**
+
+- **Qué significa:** otra parte de la app tiene el foco en este momento.
+- **Por qué pasa:** hay una calibración abierta, una prueba corriendo o un cambio del control
+  manual todavía en curso.
+- **Arreglo:** cerrá la calibración o esperá unos segundos y reintentá.
 
 ### device_no_colour
 

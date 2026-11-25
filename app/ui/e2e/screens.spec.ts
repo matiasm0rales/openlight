@@ -175,3 +175,9 @@ test("tema oscuro, inglés y pantalla chica siguen siendo accesibles", async ({ 
   await page.getByRole("link", { name: "Settings" }).click();
   await expectAccessible(page, "ajustes en pantalla chica");
 });
+
+test("en el navegador el riel sí ofrece la maqueta del tray", async ({ page }) => {
+  await open(page, "configured", "dashboard");
+  await page.getByRole("link", { name: "Menú del tray" }).click();
+  await expect(page.getByRole("group", { name: "Menú de OpenLight" })).toBeVisible();
+});

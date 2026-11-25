@@ -10,8 +10,8 @@ use openlight_types::{
 };
 use tokio::sync::{mpsc, oneshot, watch};
 
-use crate::actor::Actor;
-use crate::config::{DeviceConfig, Locator};
+use crate::actor::{Actor, Channels};
+use crate::config::{DeviceConfig, LinkSettings, Locator};
 use crate::health::{Counters, with_bytes};
 use crate::original::StateStore;
 
@@ -63,6 +63,7 @@ pub struct DeviceHandle {
     id: DeviceId,
     cmds: mpsc::Sender<Cmd>,
     colour: Arc<watch::Sender<Option<Hsv>>>,
+    link: Arc<watch::Sender<Option<LinkSettings>>>,
     snapshot: watch::Receiver<DeviceSnapshot>,
     counters: Arc<Counters>,
 }
@@ -85,6 +86,7 @@ pub fn spawn(
     let id = config.creds.id.clone();
     let (cmds_tx, cmds_rx) = mpsc::channel(32);
     let (colour_tx, colour_rx) = watch::channel(None);
+    let (link_tx, link_rx) = watch::channel(None);
     let counters = Arc::new(Counters::default());
     let initial = DeviceSnapshot {
         state: DeviceSessionState::Idle,
@@ -96,9 +98,12 @@ pub fn spawn(
         config,
         locator,
         store,
-        cmds_rx,
-        colour_rx,
-        snapshot_tx,
+        Channels {
+            cmds: cmds_rx,
+            colour: colour_rx,
+            link: link_rx,
+            snapshot: snapshot_tx,
+        },
         counters.clone(),
     );
     tokio::spawn(actor.run());
@@ -106,6 +111,7 @@ pub fn spawn(
         id,
         cmds: cmds_tx,
         colour: Arc::new(colour_tx),
+        link: Arc::new(link_tx),
         snapshot: snapshot_rx,
         counters,
     }
@@ -153,6 +159,12 @@ impl DeviceHandle {
     /// mandarlos, se manda solo el último. Se ignora mientras el foco no esté activo.
     pub fn send_colour(&self, hsv: Hsv) {
         self.colour.send_replace(Some(hsv));
+    }
+
+    /// Cambia el canal del color y los tiempos de la conexión sin reconectar. No espera ni
+    /// bloquea; vale para el próximo color y los próximos latidos.
+    pub fn configure(&self, settings: LinkSettings) {
+        self.link.send_replace(Some(settings));
     }
 
     /// Lee todos los DPs (`DP_QUERY`).

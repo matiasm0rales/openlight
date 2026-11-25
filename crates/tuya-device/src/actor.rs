@@ -31,11 +31,20 @@ use tuya_proto::{Key, PayloadData, cmd, key_from_str};
 
 use crate::CapabilitiesExt;
 use crate::colour::colour_write;
-use crate::config::{DeviceConfig, IpMode, Located, Locator};
+use crate::config::{DeviceConfig, IpMode, LinkSettings, Located, Locator};
 use crate::conn::{Conn, ConnParams, Incoming, dps_of};
 use crate::handle::{Cmd, DeviceSnapshot, StartInfo};
 use crate::health::{Counters, HealthTracker, reason_of};
 use crate::original::{SavedState, StateStore, choose_original};
+
+/// Por dónde el actor recibe órdenes, colores y ajustes, y publica su estado.
+pub(crate) struct Channels {
+    pub cmds: mpsc::Receiver<Cmd>,
+    pub colour: watch::Receiver<Option<Hsv>>,
+    /// Canal y tiempos que cambian en marcha.
+    pub link: watch::Receiver<Option<LinkSettings>>,
+    pub snapshot: watch::Sender<DeviceSnapshot>,
+}
 
 pub(crate) struct Actor {
     cfg: DeviceConfig,
@@ -44,6 +53,8 @@ pub(crate) struct Actor {
     store: Arc<dyn StateStore>,
     cmds: mpsc::Receiver<Cmd>,
     colour: watch::Receiver<Option<Hsv>>,
+    /// Canal y tiempos que cambian en marcha.
+    link: watch::Receiver<Option<LinkSettings>>,
     snapshot: watch::Sender<DeviceSnapshot>,
     counters: Arc<Counters>,
     health: HealthTracker,
@@ -99,11 +110,15 @@ impl Actor {
         cfg: DeviceConfig,
         locator: Arc<dyn Locator>,
         store: Arc<dyn StateStore>,
-        cmds: mpsc::Receiver<Cmd>,
-        colour: watch::Receiver<Option<Hsv>>,
-        snapshot: watch::Sender<DeviceSnapshot>,
+        channels: Channels,
         counters: Arc<Counters>,
     ) -> Self {
+        let Channels {
+            cmds,
+            colour,
+            link,
+            snapshot,
+        } = channels;
         let key = key_from_str(cfg.creds.local_key.expose()).map_err(|e| {
             // Como tinytuya: una clave que no mide 16 bytes es `ERR_KEY_OR_VER`.
             tracing::warn!(error = %e, "la clave local no es válida");
@@ -128,6 +143,7 @@ impl Actor {
             store,
             cmds,
             colour,
+            link,
             snapshot,
             counters,
             health: HealthTracker::default(),
@@ -207,6 +223,8 @@ impl Actor {
                     // Se soltaron todos los handles.
                     None => break,
                 },
+                // Antes que el color: un canal nuevo vale desde el color que viene.
+                Ok(()) = self.link.changed() => self.apply_link(),
                 changed = self.colour.changed(), if connected && self.active => {
                     if changed.is_err() {
                         break;
@@ -216,6 +234,17 @@ impl Actor {
             }
         }
         self.conn = None;
+    }
+
+    /// Toma el canal y los tiempos nuevos. El bucle recalcula las esperas en la vuelta que viene.
+    fn apply_link(&mut self) {
+        let Some(link) = *self.link.borrow_and_update() else {
+            return;
+        };
+        self.cfg.channel = link.channel;
+        self.cfg.timings.heartbeat = link.heartbeat;
+        self.cfg.timings.dead_after = link.dead_after;
+        self.cfg.timings.retry_every = link.retry_every;
     }
 
     async fn handle(&mut self, command: Cmd) {

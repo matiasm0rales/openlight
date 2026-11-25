@@ -86,6 +86,33 @@ impl Default for Timings {
     }
 }
 
+/// Lo que sale de los ajustes y se puede cambiar con el actor andando
+/// ([`crate::DeviceHandle::configure`]), sin reconectar.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LinkSettings {
+    /// Por dónde se le manda el color (`send_channel`).
+    pub channel: SendChannel,
+    /// Entre señales de vida (`heartbeat_s`).
+    pub heartbeat: Duration,
+    /// Silencio tras el cual la conexión se da por muerta (`dead_after_s`).
+    pub dead_after: Duration,
+    /// Entre intentos de reconexión (`retry_every_s`).
+    pub retry_every: Duration,
+}
+
+impl LinkSettings {
+    /// Los que salen de estos ajustes.
+    pub fn from_settings(settings: &Settings) -> Self {
+        let timings = Timings::from_settings(settings);
+        Self {
+            channel: settings.send_channel,
+            heartbeat: timings.heartbeat,
+            dead_after: timings.dead_after,
+            retry_every: timings.retry_every,
+        }
+    }
+}
+
 /// Todo lo que el actor necesita saber de un foco.
 #[derive(Debug, Clone)]
 pub struct DeviceConfig {

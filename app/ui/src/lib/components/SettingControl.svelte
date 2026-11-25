@@ -15,6 +15,7 @@
     canReset,
     floor,
     ceil,
+    note,
     onchange,
     onreset,
   }: {
@@ -25,6 +26,8 @@
     /** Topes más estrechos que el rango del catálogo (dependen de otro ajuste). */
     floor?: number;
     ceil?: number;
+    /** Aviso: dónde no se va a notar un cambio hecho acá. */
+    note?: string;
     onchange: (v: SettingValue) => void;
     onreset: () => void;
   } = $props();
@@ -95,6 +98,7 @@
     <output class="value tabular" for={id} aria-live="off">{def.kind.kind === "number" ? shown : optionLabel(String(local))}</output>
   </div>
   <p class="help" id="{id}-help">{t(def.help_key)}</p>
+  {#if note}<p class="note">{note}</p>{/if}
 
   {#if def.kind.kind === "number"}
     <input
@@ -167,6 +171,14 @@
     color: var(--muted);
     font-size: 0.9rem;
     max-width: 62ch;
+  }
+  .note {
+    justify-self: start;
+    padding: 0.35rem 0.6rem;
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+    color: var(--text);
+    font-size: 0.82rem;
   }
   .choices {
     display: flex;

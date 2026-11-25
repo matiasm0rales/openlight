@@ -91,6 +91,8 @@
     "title": "Ajustes",
     "default_is": "Por defecto: {value}",
     "inherited": "Heredado",
+    "shadowed_profile": "El perfil «{name}» usa su propio valor mientras está activo.",
+    "shadowed_devices": "Tienen su propio valor: {names}.",
     "restore_named": "Restaurar {name}",
     "restore_all": "Restaurar todo",
     "level_label": "Nivel de detalle",

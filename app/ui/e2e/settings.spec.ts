@@ -98,3 +98,18 @@ test("el brillo máximo no baja del mínimo y explica que no apaga el foco", asy
   await expect(max).toHaveAttribute("aria-valuetext", "30 %");
   await expect(page.getByRole("alert")).toHaveCount(0);
 });
+
+test("con un perfil activo, el ajuste global se puede mover y avisa quién lo tapa", async ({ page }) => {
+  await open(page, "configured", "settings");
+  await page.getByRole("complementary", { name: "Perfiles" }).locator("li", { hasText: "Películas" }).getByRole("button", { name: "Activar" }).click();
+  const control = page.locator('[data-setting="saturation"]');
+  await expect(control).toContainText("El perfil «Películas» usa su propio valor mientras está activo");
+  const sat = page.getByRole("slider", { name: "Realce de colores" });
+  await expect(sat).toHaveAttribute("aria-valuetext", "×1,30");
+  await sat.fill("2");
+  await expect.poll(() => page.evaluate(() => (window as any).__openlightMock.state.global.saturation)).toBe(2);
+  await expect(sat).toHaveAttribute("aria-valuetext", "×2,00");
+  // Y el brillo que la lámpara tiene propio también se avisa.
+  await expect(page.locator('[data-setting="brightness_max"]')).toContainText("Tienen su propio valor: Lámpara escritorio");
+  await expectAccessible(page, "ajustes con avisos de valor tapado");
+});

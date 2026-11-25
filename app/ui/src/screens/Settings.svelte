@@ -3,11 +3,11 @@
   // conoce un ajuste concreto. Niveles Básico/Avanzado/Experto, ámbito global/foco/perfil,
   // restaurar, vista previa en vivo y perfiles (crear, duplicar, renombrar, atajo, borrar).
   import type { Profile_Serialize, SettingDef, SettingLevel, SettingScope, SettingValue } from "../lib/bindings";
-  import { activateProfile, app, raise, refreshSettings } from "../lib/app.svelte";
+  import { activateProfile, app, deviceName, raise, refreshSettings } from "../lib/app.svelte";
   import { attempt, commands } from "../lib/ipc";
   import { route } from "../lib/router.svelte";
   import { t } from "../lib/i18n/index.svelte";
-  import { LEVELS, groupByLevel, limitsFor, overridesFor, valueIn, visibleDefs } from "../lib/settings";
+  import { LEVELS, groupByLevel, limitsFor, overridesFor, shadowedBy, valueIn, visibleDefs } from "../lib/settings";
   import Eclipse from "../lib/components/Eclipse.svelte";
   import Icon from "../lib/components/Icon.svelte";
   import SettingControl from "../lib/components/SettingControl.svelte";
@@ -44,6 +44,18 @@
   const groups = $derived(snapshot ? groupByLevel(visibleDefs(snapshot.catalog, level)) : []);
   const own = $derived(snapshot ? overridesFor(snapshot, scope, app.profiles) : {});
   const hidden = $derived(snapshot ? snapshot.catalog.length - visibleDefs(snapshot.catalog, level).length : 0);
+
+  // Dónde no se va a notar lo que se cambie en este ámbito.
+  function note(def: SettingDef): string | undefined {
+    if (!snapshot) return undefined;
+    const hidden = shadowedBy(snapshot, scope, def.id, app.profiles);
+    const profile = app.profiles.find((p) => p.id === hidden.profile);
+    const lines = [
+      profile ? t("settings.shadowed_profile", { name: profileName(profile) }) : "",
+      hidden.devices.length ? t("settings.shadowed_devices", { names: hidden.devices.map(deviceName).join(", ") }) : "",
+    ];
+    return lines.filter(Boolean).join(" ") || undefined;
+  }
 
   async function set(def: SettingDef, value: SettingValue) {
     const r = await attempt(() => commands.settingsSet(scope, def.id, value));
@@ -176,7 +188,7 @@
             <div class="list">
               {#each g.defs as def (def.id)}
                 {@const v = valueIn(snapshot, scope, def.id, app.profiles)}
-                <SettingControl {def} value={v.value} inherited={v.inherited} canReset={scope.kind === "global" ? undefined : own[def.id] !== undefined} {...limitsFor(snapshot, scope, def.id, app.profiles)} onchange={(val) => set(def, val)} onreset={() => reset(def)} />
+                <SettingControl {def} value={v.value} inherited={v.inherited} canReset={scope.kind === "global" ? undefined : own[def.id] !== undefined} {...limitsFor(snapshot, scope, def.id, app.profiles)} note={note(def)} onchange={(val) => set(def, val)} onreset={() => reset(def)} />
               {/each}
             </div>
           </section>

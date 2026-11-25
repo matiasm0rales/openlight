@@ -91,6 +91,8 @@
     "title": "Settings",
     "default_is": "Default: {value}",
     "inherited": "Inherited",
+    "shadowed_profile": "The \"{name}\" profile uses its own value while it's active.",
+    "shadowed_devices": "These have their own value: {names}.",
     "restore_named": "Restore {name}",
     "restore_all": "Restore all",
     "level_label": "Level of detail",

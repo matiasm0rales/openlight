@@ -78,6 +78,8 @@ El resto del documento es el plan original. Esta sección dice en qué quedó ca
 Salieron de leer el código para escribir la documentación; no tienen tarea asignada en el plan:
 
 - Los cambios de **ajustes, perfil activo y zonas** valen recién al detener y volver a arrancar el efecto, pero la pantalla de Ajustes dice que se ven en el foco mientras se mueve el control.
+- La **prueba A/B** de la calibración no puede comparar: pide el efecto andando, que no puede tomar el foco que se está calibrando, y las variantes no se aplican en caliente.
+- El **control manual** avisa que el efecto «va a pisar lo que elijas», pero con el efecto andando la app rechaza el comando con `device_busy`.
 - Los **atajos de los perfiles** se guardan y se muestran, pero no están conectados como atajos de teclado.
 - Falta la **integración con la suspensión del sistema** (`NativePower`): la sesión sabe restaurar antes de dormir, pero la app no le avisa.
 - El texto de `storage` habla de espacio en disco, y el mismo código sale cuando falla el llavero.

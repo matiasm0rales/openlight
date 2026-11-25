@@ -1,5 +1,7 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import { app, init } from "./lib/app.svelte";
+  import { startUpdater } from "./lib/updater.svelte";
   import { route } from "./lib/router.svelte";
   import { i18n, t } from "./lib/i18n/index.svelte";
   import { applyTheme, theme } from "./lib/theme.svelte";
@@ -24,6 +26,9 @@
     document.documentElement.lang = i18n.locale;
     document.title = route.name === "dashboard" ? "OpenLight" : `${t(`nav.${route.name}`)} · OpenLight`;
   });
+
+  // La ventana de calibración no tiene permiso para actualizar: solo busca la principal.
+  onMount(() => (route.name === "calibrate" ? undefined : startUpdater()));
 
   // La ventana misma se ilumina con el color que va al primer foco (el "ambilight" de la app).
   const sent = $derived.by(() => {

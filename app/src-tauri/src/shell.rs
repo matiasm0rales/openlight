@@ -13,6 +13,11 @@ pub trait Shell: Send + Sync {
     fn open_calibration(&self, display: &DisplayId) -> Result<(), String>;
     /// Cierra la ventana de calibración (si no está abierta no hace nada).
     fn close_calibration(&self);
+    /// Si la app quedó sin tray ni ventana. Pasa en Windows cuando el instalador de una
+    /// actualización no llega a abrirse: el plugin ya había desarmado la app para dejarle lugar.
+    fn is_dismantled(&self) -> bool;
+    /// Reinicia la app.
+    fn restart(&self);
 }
 
 /// La shell de Tauri.
@@ -35,5 +40,14 @@ impl Shell for TauriShell {
         if let Err(error) = crate::windows::close_calibration(&self.0) {
             tracing::warn!(%error, "no se pudo cerrar la ventana de calibración");
         }
+    }
+
+    fn is_dismantled(&self) -> bool {
+        // El tray se instala al arrancar: si no está, lo quitó la limpieza previa a salir
+        self.0.tray_by_id(crate::tray::TRAY_ID).is_none()
+    }
+
+    fn restart(&self) {
+        self.0.request_restart();
     }
 }

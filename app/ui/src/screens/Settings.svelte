@@ -11,6 +11,7 @@
   import Eclipse from "../lib/components/Eclipse.svelte";
   import Icon from "../lib/components/Icon.svelte";
   import SettingControl from "../lib/components/SettingControl.svelte";
+  import UpdatesPanel from "../lib/components/UpdatesPanel.svelte";
 
   const LEVEL_KEY = "openlight.settings.level";
   function savedLevel(): SettingLevel {
@@ -242,6 +243,8 @@
       </form>
     </aside>
   </div>
+
+  <UpdatesPanel />
 </div>
 
 <style>

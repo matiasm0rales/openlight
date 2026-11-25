@@ -17,6 +17,7 @@ pub mod shell;
 pub mod state;
 pub mod tray;
 pub mod tray_backend;
+pub mod updater;
 pub mod windows;
 
 /// Arranca la app.
@@ -27,6 +28,10 @@ pub fn run() {
     #[cfg(debug_assertions)]
     ipc::export_bindings(&specta).expect("no se pudieron exportar los bindings de TypeScript");
 
+    let mut context = tauri::generate_context!();
+    // Solo en desarrollo: probar el updater contra un `latest.json` local (docs/release.md).
+    let dev_endpoint = updater::apply_dev_endpoint(&mut context.config_mut().plugins);
+
     tauri::Builder::default()
         // Una sola instancia: abrir la app otra vez trae la ventana principal al frente. Tiene
         // que ser el primer plugin.
@@ -35,6 +40,8 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        // Solo para reiniciar después de actualizar
+        .plugin(tauri_plugin_process::init())
         .plugin(autostart::plugin())
         .on_window_event(windows::on_window_event)
         .invoke_handler(specta.invoke_handler())
@@ -45,6 +52,15 @@ pub fn run() {
                 &logging::log_dir(app.handle(), &data_dir)?,
                 &logging::export_dir(app.handle(), &data_dir),
             );
+            match dev_endpoint {
+                Some(Ok(endpoint)) => {
+                    tracing::warn!(%endpoint, "actualizaciones desde un endpoint de desarrollo");
+                }
+                Some(Err(error)) => {
+                    tracing::warn!(%error, "{} se ignora", updater::ENDPOINT_ENV);
+                }
+                None => {}
+            }
             let sink = Arc::new(events::TauriSink(app.handle().clone()));
             let backend = state::Backend::new(state::BackendParts::production(data_dir, sink))
                 .map_err(|e| format!("no se pudo iniciar el backend: {e}"))?;
@@ -52,24 +68,32 @@ pub fn run() {
             backend.set_logs(log.handle());
             app.manage(log);
             app.manage(backend.clone());
+            let updated = backend.take_reopen_after_update();
             tray::install(app.handle(), Arc::new(tray_backend::AppTray::new(backend)))?;
-            // Arrancó solo al iniciar sesión: queda en el tray, sin abrir la ventana.
-            if autostart::started_by_autostart() {
+            if updated {
+                // Acaba de actualizarse desde la ventana: vuelve a mostrarse.
+                windows::show_main(app.handle())?;
+            } else if autostart::started_by_autostart() {
+                // Arrancó solo al iniciar sesión: queda en el tray, sin abrir la ventana.
                 windows::hide_main(app.handle())?;
             }
             Ok(())
         })
-        .build(tauri::generate_context!())
+        .build(context)
         .expect("error al iniciar OpenLight")
         .run(|app, event| {
             // Salir restaura los focos (Cmd+Q, "Salir" del tray, cerrar la sesión del sistema):
-            // sin esto quedarían con el color del ambiente.
+            // sin esto quedarían con el color del ambiente. Un reinicio no se puede frenar
+            // (Tauri ignora `prevent_exit`), así que sus focos se restauran en `Exit`; después
+            // de una actualización ya llegan restaurados (`update_prepare`).
             let Some(backend) = app.try_state::<Arc<state::Backend>>() else {
                 return;
             };
             let backend = Arc::clone(&backend);
             match event {
-                tauri::RunEvent::ExitRequested { api, .. } if !backend.is_shut_down() => {
+                tauri::RunEvent::ExitRequested { api, code, .. }
+                    if code != Some(tauri::RESTART_EXIT_CODE) && !backend.is_shut_down() =>
+                {
                     api.prevent_exit();
                     if backend.begin_shutdown() {
                         let app = app.clone();

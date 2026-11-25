@@ -760,5 +760,68 @@
       "skipped_non_light": "Omití dispositivos que no son luces (enchufes, sensores).",
       "ip_invalid": "Una IP del setup anterior no es válida y la ignoré: se va a buscar sola."
     }
+  },
+  "update": {
+    "section_title": "Actualizaciones",
+    "current_version": "Versión actual: {version}",
+    "auto": "Buscar actualizaciones automáticamente",
+    "auto_help": "OpenLight busca al abrirse y cada 6 horas. No instala nada sin que vos se lo pidas.",
+    "check": "Buscar actualizaciones",
+    "checking": "Buscando…",
+    "up_to_date": "Ya tenés la última versión.",
+    "available_title": "Hay una versión nueva: {version}",
+    "available_lead": "Tenés la {current}. Se descarga, se instala y OpenLight se vuelve a abrir.",
+    "installed_title": "La versión {version} ya está instalada",
+    "notes": "Novedades",
+    "install": "Actualizar y reiniciar",
+    "later": "Más tarde",
+    "progress_label": "Descarga de la actualización",
+    "progress": "{done} de {total}",
+    "progress_unknown": "{done} descargados",
+    "phase": {
+      "downloading": "Descargando la actualización…",
+      "restoring": "Devolviendo los focos a como estaban…",
+      "installing": "Instalando…",
+      "restarting": "Reiniciando OpenLight…"
+    },
+    "action": {
+      "retry": "Reintentar",
+      "web": "Descargar desde GitHub",
+      "restart": "Reiniciar ahora"
+    },
+    "error": {
+      "network": {
+        "title": "No hay conexión",
+        "detail": "No pudimos conectarnos con GitHub. Revisá que la computadora tenga internet y reintentá."
+      },
+      "unavailable": {
+        "title": "No pudimos leer la última versión",
+        "detail": "GitHub no devolvió la información de la actualización. Reintentá en un rato o descargala desde GitHub."
+      },
+      "signature": {
+        "title": "La descarga no pasó la verificación de firma",
+        "detail": "No se instaló nada. Reintentá; si vuelve a pasar, descargá la versión nueva desde la página oficial en GitHub."
+      },
+      "unsupported": {
+        "title": "Todavía no hay actualización automática para tu sistema",
+        "detail": "Descargá el instalador de la versión nueva desde GitHub e instalalo encima."
+      },
+      "permission": {
+        "title": "No se pudo reemplazar la app",
+        "detail": "OpenLight no puede escribir donde está instalado. En macOS, movelo a la carpeta Aplicaciones, abrilo de nuevo y reintentá."
+      },
+      "auth": {
+        "title": "Falta tu autorización",
+        "detail": "El sistema pidió tu contraseña para instalar y se canceló. Reintentá y escribila."
+      },
+      "install": {
+        "title": "No se pudo instalar",
+        "detail": "Seguís con la versión de antes. Reintentá o descargá el instalador desde GitHub."
+      },
+      "restart": {
+        "title": "No se pudo reiniciar",
+        "detail": "Reiniciá ahora, o salí de OpenLight desde el menú del tray y abrilo de nuevo."
+      }
+    }
   }
 }

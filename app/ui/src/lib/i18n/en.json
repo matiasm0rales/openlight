@@ -760,5 +760,68 @@
       "skipped_non_light": "I skipped devices that are not lights (plugs, sensors).",
       "ip_invalid": "An IP from the old setup is not valid and was ignored: it will be found automatically."
     }
+  },
+  "update": {
+    "section_title": "Updates",
+    "current_version": "Current version: {version}",
+    "auto": "Check for updates automatically",
+    "auto_help": "OpenLight checks when it opens and every 6 hours. Nothing is installed unless you ask for it.",
+    "check": "Check for updates",
+    "checking": "Checking…",
+    "up_to_date": "You have the latest version.",
+    "available_title": "A new version is available: {version}",
+    "available_lead": "You have {current}. It downloads, installs, and OpenLight reopens.",
+    "installed_title": "Version {version} is installed",
+    "notes": "What's new",
+    "install": "Update and restart",
+    "later": "Later",
+    "progress_label": "Update download",
+    "progress": "{done} of {total}",
+    "progress_unknown": "{done} downloaded",
+    "phase": {
+      "downloading": "Downloading the update…",
+      "restoring": "Putting your bulbs back the way they were…",
+      "installing": "Installing…",
+      "restarting": "Restarting OpenLight…"
+    },
+    "action": {
+      "retry": "Try again",
+      "web": "Download from GitHub",
+      "restart": "Restart now"
+    },
+    "error": {
+      "network": {
+        "title": "No connection",
+        "detail": "We couldn't reach GitHub. Check that your computer is online and try again."
+      },
+      "unavailable": {
+        "title": "We couldn't read the latest version",
+        "detail": "GitHub didn't return the update information. Try again in a while or download it from GitHub."
+      },
+      "signature": {
+        "title": "The download failed the signature check",
+        "detail": "Nothing was installed. Try again; if it keeps happening, download the new version from the official page on GitHub."
+      },
+      "unsupported": {
+        "title": "There's no automatic update for your system yet",
+        "detail": "Download the installer for the new version from GitHub and install it over this one."
+      },
+      "permission": {
+        "title": "The app couldn't be replaced",
+        "detail": "OpenLight can't write where it's installed. On macOS, move it to the Applications folder, open it again and retry."
+      },
+      "auth": {
+        "title": "Your authorization is needed",
+        "detail": "The system asked for your password to install and it was cancelled. Try again and type it."
+      },
+      "install": {
+        "title": "Installation failed",
+        "detail": "You're still on the previous version. Try again or download the installer from GitHub."
+      },
+      "restart": {
+        "title": "Couldn't restart",
+        "detail": "Restart now, or quit OpenLight from the tray menu and open it again."
+      }
+    }
   }
 }

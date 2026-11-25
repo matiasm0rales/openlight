@@ -40,12 +40,19 @@ impl Backend {
         value: SettingValue,
     ) -> CmdResult<SettingsSnapshot> {
         id.def().validate(&value)?;
-        if matches!(id, SettingId::BrightnessMin | SettingId::BrightnessMax) {
-            self.check_brightness(&scope, id, &value)?;
-        }
-        self.edit_overrides(&scope, |values| {
-            values.0.insert(id, value);
-        })?;
+        let new = value.clone();
+        self.edit_overrides(
+            &scope,
+            || match id {
+                SettingId::BrightnessMin | SettingId::BrightnessMax => {
+                    self.check_brightness(&scope, id, &value)
+                }
+                _ => Ok(()),
+            },
+            |values| {
+                values.0.insert(id, new);
+            },
+        )?;
         self.settings_get()
     }
 
@@ -55,12 +62,16 @@ impl Backend {
         scope: SettingScope,
         id: Option<SettingId>,
     ) -> CmdResult<SettingsSnapshot> {
-        self.edit_overrides(&scope, |values| match id {
-            Some(id) => {
-                values.0.remove(&id);
-            }
-            None => values.0.clear(),
-        })?;
+        self.edit_overrides(
+            &scope,
+            || Ok(()),
+            |values| match id {
+                Some(id) => {
+                    values.0.remove(&id);
+                }
+                None => values.0.clear(),
+            },
+        )?;
         self.settings_get()
     }
 
@@ -101,13 +112,16 @@ impl Backend {
             .ok_or_else(|| unknown_profile(id))
     }
 
-    /// Aplica `change` a los valores que pisa el ámbito y los guarda.
+    /// Aplica `change` a los valores que pisa el ámbito y los guarda. `check` corre con la
+    /// edición ya tomada: lo que valida es lo mismo que después se modifica.
     fn edit_overrides(
         &self,
         scope: &SettingScope,
+        check: impl FnOnce() -> CmdResult<()>,
         change: impl FnOnce(&mut SettingsOverride),
     ) -> CmdResult<()> {
         let _edit = self.edit_lock();
+        check()?;
         match scope {
             SettingScope::Global => {
                 let mut config = self.config()?;

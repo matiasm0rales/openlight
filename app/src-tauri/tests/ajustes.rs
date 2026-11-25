@@ -214,3 +214,47 @@ async fn el_brillo_maximo_no_puede_quedar_por_debajo_del_minimo() {
         .unwrap_err();
     assert_eq!(error.code, ErrorCode::InvalidSetting);
 }
+
+#[tokio::test]
+async fn dos_cambios_de_brillo_a_la_vez_no_dejan_el_rango_invertido() {
+    let h = harness(Setup {
+        sims: 0,
+        lan: false,
+    })
+    .await;
+    // Cada uno es válido contra lo de antes, pero no los dos: tiene que entrar uno solo
+    for _ in 0..200 {
+        let start = std::sync::Arc::new(std::sync::Barrier::new(2));
+        let threads: Vec<_> = [
+            (SettingId::BrightnessMin, 0.8),
+            (SettingId::BrightnessMax, 0.5),
+        ]
+        .into_iter()
+        .map(|(id, value)| {
+            let (backend, start) = (h.backend.clone(), start.clone());
+            std::thread::spawn(move || {
+                start.wait();
+                backend
+                    .settings_set(SettingScope::Global, id, num(value))
+                    .is_ok()
+            })
+        })
+        .collect();
+        let accepted = threads
+            .into_iter()
+            .map(|t| t.join().unwrap())
+            .filter(|ok| *ok)
+            .count();
+        let global = h.backend.settings_get().unwrap().global;
+        assert!(
+            global.brightness_min <= global.brightness_max,
+            "quedó guardado mínimo {} y máximo {}",
+            global.brightness_min,
+            global.brightness_max
+        );
+        assert_eq!(accepted, 1);
+        h.backend
+            .settings_reset(SettingScope::Global, None)
+            .unwrap();
+    }
+}

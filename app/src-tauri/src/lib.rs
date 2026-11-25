@@ -66,13 +66,17 @@ pub fn run() {
         .expect("error al iniciar OpenLight")
         .run(|app, event| {
             // Salir restaura los focos (Cmd+Q, "Salir" del tray, cerrar la sesión del sistema):
-            // sin esto quedarían con el color del ambiente.
+            // sin esto quedarían con el color del ambiente. Un reinicio no se puede frenar
+            // (Tauri ignora `prevent_exit`), así que sus focos se restauran en `Exit`; después
+            // de una actualización ya llegan restaurados (`update_prepare`).
             let Some(backend) = app.try_state::<Arc<state::Backend>>() else {
                 return;
             };
             let backend = Arc::clone(&backend);
             match event {
-                tauri::RunEvent::ExitRequested { api, .. } if !backend.is_shut_down() => {
+                tauri::RunEvent::ExitRequested { api, code, .. }
+                    if code != Some(tauri::RESTART_EXIT_CODE) && !backend.is_shut_down() =>
+                {
                     api.prevent_exit();
                     if backend.begin_shutdown() {
                         let app = app.clone();

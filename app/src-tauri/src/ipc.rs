@@ -173,7 +173,7 @@ pub async fn settings_get(app: App<'_>) -> CmdResult<SettingsSnapshot> {
     app.settings_get()
 }
 
-/// Cambia un ajuste (validado contra el catálogo). Vale desde la próxima sesión.
+/// Cambia un ajuste (validado contra el catálogo). Con el efecto andando vale en seguida.
 #[tauri::command]
 #[specta::specta]
 pub async fn settings_set(

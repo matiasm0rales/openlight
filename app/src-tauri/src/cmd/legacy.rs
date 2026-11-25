@@ -25,6 +25,7 @@ impl Backend {
         for device in &report.devices {
             self.release_manual(device);
         }
+        self.config_changed();
         self.notify_changed();
         Ok(report)
     }

@@ -30,7 +30,8 @@ impl Backend {
         })
     }
 
-    /// Cambia un ajuste después de validarlo contra el catálogo.
+    /// Cambia un ajuste después de validarlo contra el catálogo. Con el efecto andando vale en
+    /// seguida.
     pub fn settings_set(
         &self,
         scope: SettingScope,
@@ -92,6 +93,7 @@ impl Backend {
                 self.store.save_devices(&records)?;
             }
         }
+        self.config_changed();
         Ok(())
     }
 
@@ -154,6 +156,7 @@ impl Backend {
         stored.shortcut = profile.shortcut.filter(|s| !s.trim().is_empty());
         let saved = stored.clone();
         self.store.save_config(&config)?;
+        self.config_changed();
         self.notify_changed();
         Ok(saved)
     }
@@ -175,11 +178,13 @@ impl Backend {
             config.active_profile = None;
         }
         self.store.save_config(&config)?;
+        self.config_changed();
         self.notify_changed();
         Ok(())
     }
 
-    /// Activa un perfil (`None` = solo los ajustes globales). Vale desde la próxima sesión.
+    /// Activa un perfil (`None` = solo los ajustes globales). Con el efecto andando vale en
+    /// seguida.
     pub fn profiles_activate(&self, id: Option<ProfileId>) -> CmdResult<()> {
         let _edit = self.edit_lock();
         let mut config = self.config()?;
@@ -190,6 +195,7 @@ impl Backend {
         }
         config.active_profile = id;
         self.store.save_config(&config)?;
+        self.config_changed();
         self.notify_changed();
         Ok(())
     }

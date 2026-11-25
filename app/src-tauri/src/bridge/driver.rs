@@ -2,8 +2,8 @@
 
 use async_trait::async_trait;
 use openlight_core::LightDriver;
-use openlight_types::{DeviceError, Hsv, LinkHealth};
-use tuya_device::DeviceHandle;
+use openlight_types::{DeviceError, Hsv, LinkHealth, Settings};
+use tuya_device::{DeviceHandle, LinkSettings};
 
 /// Un foco de la sesión: el actor de `tuya-device` visto como [`LightDriver`].
 ///
@@ -50,6 +50,10 @@ impl LightDriver for TuyaDriver {
 
     fn health(&self) -> LinkHealth {
         self.handle.health()
+    }
+
+    fn apply_settings(&mut self, settings: &Settings) {
+        self.handle.configure(LinkSettings::from_settings(settings));
     }
 }
 

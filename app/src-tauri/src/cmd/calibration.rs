@@ -220,7 +220,12 @@ impl Backend {
         if let Some(shell) = self.shell() {
             shell.close_calibration();
         }
-        let CalibrationRun { device, handle, .. } = run;
+        let CalibrationRun {
+            device,
+            handle,
+            _guard,
+            ..
+        } = run;
         let wait = self.options.restore_timeout;
         match tokio::time::timeout(wait, handle.restore()).await {
             Ok(Ok(())) => {}
@@ -229,6 +234,9 @@ impl Backend {
             }
             Err(_) => tracing::warn!(%device, "el foco no volvió a su estado a tiempo"),
         }
+        // Libre de nuevo: si participa del efecto en marcha, vuelve a entrar
+        drop(_guard);
+        self.config_changed();
     }
 }
 

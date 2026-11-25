@@ -360,6 +360,10 @@ impl Backend {
         if self.session_uses(&device).await {
             self.session_stop().await?;
             self.session_start().await?;
+        } else {
+            // Si se había quedado afuera por la clave, ahora puede entrar
+            self.forget_skipped(&device).await;
+            self.config_changed();
         }
         Ok(())
     }

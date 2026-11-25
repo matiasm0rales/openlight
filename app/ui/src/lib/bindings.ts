@@ -43,7 +43,7 @@ export const commands = {
 	zonesSet: (device: DeviceId, zones: Zone[], options?: InvokeOptions) => __TAURI_INVOKE<null>("zones_set", { device, zones }, options),
 	/**  Catálogo y valores de los ajustes. */
 	settingsGet: (options?: InvokeOptions) => __TAURI_INVOKE<SettingsSnapshot_Serialize>("settings_get", undefined, options),
-	/**  Cambia un ajuste (validado contra el catálogo). Vale desde la próxima sesión. */
+	/**  Cambia un ajuste (validado contra el catálogo). Con el efecto andando vale en seguida. */
 	settingsSet: (scope: SettingScope, id: SettingId, value: SettingValue, options?: InvokeOptions) => __TAURI_INVOKE<SettingsSnapshot_Serialize>("settings_set", { scope, id, value }, options),
 	/**  Vuelve un ajuste (o todos, con `id = None`) a su valor por defecto. */
 	settingsReset: (scope: SettingScope, id: SettingId | null, options?: InvokeOptions) => __TAURI_INVOKE<SettingsSnapshot_Serialize>("settings_reset", { scope, id }, options),

@@ -53,6 +53,7 @@ import {
 } from "../bindings";
 import { CATALOG, defaultSettings } from "./catalog";
 import { CLOUD_DEVICES, DISPLAYS, IDS, builtinProfiles, configuredFrom, seedLog, zone } from "./data";
+import { MOCK_VERSION, MockUpdater } from "./updater";
 
 export type Scenario = "fresh" | "configured";
 
@@ -146,13 +147,17 @@ class MockBackend {
   log: LogLine[] = seedLog(Date.now());
   fast: boolean;
   autostart = false;
+  updater: MockUpdater;
+  /** Entre `update_prepare` y `update_abort` el efecto no se puede arrancar (como en la app). */
+  private updating = false;
   private timers: ReturnType<typeof setInterval>[] = [];
   private videoT = 0;
   private sceneHue = 18;
   private nextCut = 5;
 
-  constructor(scenario: Scenario | null, fast: boolean) {
+  constructor(scenario: Scenario | null, fast: boolean, update: string | null) {
     this.fast = fast;
+    this.updater = new MockUpdater(update, (ms) => this.wait(ms));
     this.state = scenario ? this.reset(scenario) : (this.load() ?? freshState());
     this.persist();
   }
@@ -285,6 +290,7 @@ class MockBackend {
 
   async start(): Promise<SessionState> {
     if (this.session === "active" || this.session === "connecting") return this.session;
+    if (this.updating) return "idle";
     if (this.state.devices.length === 0) {
       throw err("device_not_found", [{ kind: "show_help", value: "device_troubleshooting" }, { kind: "retry" }]);
     }
@@ -763,6 +769,7 @@ class MockBackend {
       case "session_state":
         return this.session;
       case "session_start":
+        this.updater.calls.push("session_start");
         return this.start();
       case "session_stop":
         return this.stop();
@@ -782,7 +789,28 @@ class MockBackend {
       case "diagnostics_export":
         await this.wait(800);
         return a.destination ?? "~/Desktop/openlight-diagnostico.zip";
+      case "update_prepare":
+        this.updater.calls.push("update_prepare");
+        await this.stop();
+        this.updating = true;
+        return null;
+      case "update_abort":
+        this.updater.calls.push("update_abort");
+        this.updating = false;
+        return null;
       // Plugins de Tauri que usa la UI (no son parte de ipc.rs).
+      case "plugin:app|version":
+        return MOCK_VERSION;
+      case "plugin:updater|check":
+        return this.updater.check();
+      case "plugin:updater|download":
+        return this.updater.download(a.onEvent);
+      case "plugin:updater|install":
+        return this.updater.install();
+      case "plugin:process|restart":
+        return this.updater.restart();
+      case "plugin:resources|close":
+        return null;
       case "plugin:autostart|is_enabled":
         return this.autostart;
       case "plugin:autostart|enable":
@@ -836,8 +864,8 @@ function previewImage(display: string, t: number) {
 
 let backend: MockBackend | null = null;
 
-export function installMocks(opts: { scenario?: Scenario | null; fast?: boolean } = {}): MockBackend {
-  backend = new MockBackend(opts.scenario ?? null, opts.fast ?? false);
+export function installMocks(opts: { scenario?: Scenario | null; fast?: boolean; update?: string | null } = {}): MockBackend {
+  backend = new MockBackend(opts.scenario ?? null, opts.fast ?? false, opts.update ?? null);
   const b = backend;
   mockIPC((cmd, args) => b.handle(cmd, (args ?? {}) as Record<string, unknown>), { shouldMockEvents: true });
   return b;

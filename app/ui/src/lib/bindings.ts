@@ -71,6 +71,13 @@ export const commands = {
 	calibrationSave: (options?: InvokeOptions) => __TAURI_INVOKE<null>("calibration_save", undefined, options),
 	/**  Cierra la calibración sin guardar. */
 	calibrationCancel: (options?: InvokeOptions) => __TAURI_INVOKE<null>("calibration_cancel", undefined, options),
+	/**
+	 *  Antes de instalar una actualización: devuelve los focos a como estaban, por el mismo camino
+	 *  que "Salir". La búsqueda, la descarga y la instalación las hace el plugin del updater.
+	 */
+	updatePrepare: (options?: InvokeOptions) => __TAURI_INVOKE<null>("update_prepare", undefined, options),
+	/**  La actualización no se instaló y la app sigue abierta: se puede volver a arrancar el efecto. */
+	updateAbort: (options?: InvokeOptions) => __TAURI_INVOKE<null>("update_abort", undefined, options),
 	/**  Importa el setup del script Python desde una carpeta. */
 	importLegacy: (folder: string, options?: InvokeOptions) => __TAURI_INVOKE<ImportReport>("import_legacy", { folder }, options),
 	/**  Últimas líneas del log (las más nuevas al final), para el visor del diagnóstico. */

@@ -18,7 +18,7 @@ export const MOCK_VERSION = "0.1.0";
 export const MOCK_NEXT_VERSION = "0.2.0";
 export const MOCK_NOTES = "## Novedades\n\n- **Escenas** en el control manual.\n- Menos consumo con la pantalla quieta.\n- Se arregló la reconexión de los focos 3.5.";
 
-const SIZE = 12 * 1024 * 1024;
+const SIZE = 12_000_000;
 const CHUNKS = 10;
 
 export class MockUpdater {
@@ -52,10 +52,12 @@ export class MockUpdater {
   async download(onEvent: Channel<DownloadEvent>) {
     this.calls.push("download");
     const send = (e: DownloadEvent) => onEvent.onmessage(e);
+    // La pausa existe desde el principio: se la puede soltar antes de que la descarga llegue.
+    const gate = new Promise<void>((r) => (this.resume = r));
     send({ event: "Started", data: { contentLength: SIZE } });
     for (let i = 0; i < CHUNKS; i++) {
       await this.wait(120);
-      if (i === 4 && this.scenario === "hang") await new Promise<void>((r) => (this.resume = r));
+      if (i === 4 && this.scenario === "hang") await gate;
       if (i === 4 && this.scenario === "offline_download") throw "error decoding response body";
       send({ event: "Progress", data: { chunkLength: SIZE / CHUNKS } });
     }

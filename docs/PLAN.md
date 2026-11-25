@@ -2,6 +2,88 @@
 
 > Nombre: **OpenLight**, una parodia de Ambilight (que es marca de Philips) con guiño al código abierto. Identificadores: `openlight` en crates, binario y repo; bundle id `io.github.<usuario>.openlight`. La tarea T0.1 revisa que no choque con otro proyecto en crates.io, GitHub o las tiendas.
 
+## Estado del proyecto (2026-11-24)
+
+El resto del documento es el plan original. Esta sección dice en qué quedó cada cosa; los números `#N` son pull requests del repo `matiasm0rales/openlight`, que ya es público.
+
+**Resumen:** las waves 0 a 2 y la integración (I1) están en `main` (PRs #1 a #22) con el CI en verde. La prueba con hardware en macOS (I2) está en curso. La prueba en Windows y Linux (I3) está **postergada**. Siguen la wave 4 y la distribución. Todavía no hay ninguna versión publicada.
+
+### Plataformas
+
+| Sistema | Compila y pasa el CI | Probado con focos reales |
+|---|---|---|
+| macOS (arm64 y x64) | sí | **sí**: una A60 (protocolo 3.3) y un W509Z2 (3.5) |
+| Windows | sí | **no**: pendiente (I3) |
+| Linux (X11 y Wayland) | sí | **no**: pendiente (I3) |
+
+### Cambios respecto del plan
+
+- La web de descarga va en Vercel, los instaladores en GitHub Releases y la app se actualiza sola.
+- **Sin firma ni notarización de Apple por ahora**: el `.dmg` sale sin firmar. El workflow firma solo si existen los secrets (ver [`release.md`](release.md)).
+- El resto de los desvíos técnicos está en [`decisiones.md`](decisiones.md).
+
+### Wave 0 — fundación: hecha
+
+| id | estado | dónde | qué falta |
+|---|---|---|---|
+| T0.1 | hecha | commit `21dea96`, [`decisiones.md`](decisiones.md) | — |
+| T0.2 | hecha | commit `21dea96` | — |
+| T0.3 | hecha | commit `21dea96`; el contrato se amplió en #1, #15 y #18 | — |
+| T0.4 | hecha | commit `21dea96`; runners `macos-15`, `macos-15-intel`, `windows-latest`, `ubuntu-22.04` | — |
+| T0.5 | hecha | commit `21dea96`, `tools/golden/` | — |
+
+### Wave 1 — módulos: hecha (integrada en #10)
+
+| id | estado | PRs | qué falta |
+|---|---|---|---|
+| A `tuya-proto` | hecha; fuzz de 10 min sin panics | #3 | — |
+| B `tuya-sim` | hecha; tinytuya real lo controla en 3.1 a 3.5 | #7 | `contra_sim.py` se corre a mano, no está en el CI |
+| C `tuya-cloud` + `tuya-discovery` | hecha | #4 | no quedó registrada la prueba manual de `cargo run -p tuya-cloud --example listar` contra una cuenta real |
+| D `color-engine` | hecha; golden en verde y benchmark bajo 0,2 ms por zona | #5 | — |
+| E1 captura macOS | hecha; medición de CPU en el PR | #6 | — |
+| E2 captura Windows | código hecho | #2 | checklist manual en Windows 11 (CPU y HDR): va con I3 |
+| E3 captura Linux | código hecho; X11 probado contra Xvfb | #9 | checklist manual en X11 y GNOME Wayland reales (y KDE/wlroots): va con I3 |
+| U UI contra mocks | hecha | #1 (contrato), #8 | las escenas del control manual: la lista está vacía y se eligen desde Smart Life |
+
+### Wave 2 — núcleo y empaquetado: hecha
+
+| id | estado | PRs | qué falta |
+|---|---|---|---|
+| F `tuya-device` | hecha; 24 h simuladas; arreglos con el foco real | #13, #17, #19 | `device22` no está soportado |
+| G `openlight-core` + `secrets` | hecha | #12 | fallback cifrado del llavero (sin llavero del sistema, la app no puede guardar claves) |
+| P empaquetado y release | el workflow genera los instaladores de los 3 SO | #11 | publicar el primer tag; probar los instaladores ya instalados; firma de Apple (postergada) |
+
+### Wave 3 — integración
+
+| id | estado | PRs | qué falta |
+|---|---|---|---|
+| I1 app real (IPC, tray, autostart, permisos, calibración) | hecha; además rediseño, logo y selector de idioma | #14, #15, #16, #21, #22 | ver "Pendientes detectados en el código" |
+| I2 hardware real en macOS | **en curso**: el usuario usa la app en el día a día | arreglos: #17, #18, #19, #20 | completar el checklist de 4.3; hallazgos en [`i2-hallazgos.md`](i2-hallazgos.md) |
+| I3 Windows y Linux | **pendiente y postergada** | — | todo el checklist de 4.3 en cada sistema |
+
+### Wave 4 — terminación y distribución
+
+| id | estado | qué falta |
+|---|---|---|
+| Q1 cortes de conexión | pendiente; el logger (#20) y `LinkHealth` (#13) ya dan los datos | medir motivo y frecuencia en el foco real y ajustar los valores por defecto |
+| Q2 UX, redacción, accesibilidad y capturas | pendiente (hubo mejoras en #16 y #22) | revisión completa y capturas reales del portal de Tuya |
+| Q3 documentación | hecha: README, [`guia.md`](guia.md), [`errores.md`](errores.md), [`protocolo.md`](protocolo.md), [`CONTRIBUTING.md`](../CONTRIBUTING.md) | sumar la URL de la web cuando exista |
+| Q4 seguridad | parcial: prueba de que logs y diagnóstico no llevan secretos (#20) | revisar capabilities de Tauri, CSP y el resto del punto |
+| Web en Vercel | en curso | — |
+| Updater automático | en curso; el plugin y el workflow ya están (#11) | interfaz de actualización, permiso `updater:default` y clave pública del updater |
+| Primera Release | pendiente | tag, borrador revisado y publicado |
+
+### Pendientes detectados en el código
+
+Salieron de leer el código para escribir la documentación; no tienen tarea asignada en el plan:
+
+- Los cambios de **ajustes, perfil activo y zonas** valen recién al detener y volver a arrancar el efecto, pero la pantalla de Ajustes dice que se ven en el foco mientras se mueve el control.
+- Los **atajos de los perfiles** se guardan y se muestran, pero no están conectados como atajos de teclado.
+- Falta la **integración con la suspensión del sistema** (`NativePower`): la sesión sabe restaurar antes de dormir, pero la app no le avisa.
+- El texto de `storage` habla de espacio en disco, y el mismo código sale cuando falla el llavero.
+- El texto de `device_busy` habla de Smart Life, y el mismo código sale cuando es la propia app la que está usando el foco (efecto, calibración o control manual).
+- Con un sistema en un idioma sin traducción, la interfaz sale en español y el menú del tray en inglés (#22).
+
 ## 0. Contexto
 
 Hoy existe un "mini programita" en Python (`~/Documents/Open RGB`):

@@ -372,9 +372,9 @@ pasa por la nube.
 
 | Síntoma | Qué hacer |
 |---|---|
-| Cambié un ajuste, el brillo, el perfil o la zona y no pasa nada | detené el efecto y volvé a arrancarlo |
+| Cambié un ajuste global y un foco no cambia | ese foco o el perfil activo usan su propio valor: la pantalla de Ajustes lo avisa bajo el control |
 | El atajo de un perfil no hace nada | los atajos todavía no están conectados |
-| La prueba A/B no muestra diferencias | todavía no funciona: elegí el valor en Ajustes |
+| La prueba A/B no deja arrancar el efecto | arrancalo **antes** de abrir la calibración y entrá directo a la prueba A/B, sin sacar el foco del efecto |
 | macOS pide la contraseña del llavero varias veces después de actualizar o recompilar | la firma del programa cambió; elegí **Permitir siempre** en cada pedido |
 | Los colores se ven entrecortados | probá otro **Canal del foco**, o bajá los comandos por segundo |
 | Al despertar la compu los focos quedaron con un color | detené y arrancá el efecto; conviene detenerlo antes de suspender |

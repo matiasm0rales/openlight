@@ -28,6 +28,10 @@ pub fn run() {
     #[cfg(debug_assertions)]
     ipc::export_bindings(&specta).expect("no se pudieron exportar los bindings de TypeScript");
 
+    let mut context = tauri::generate_context!();
+    // Solo en desarrollo: probar el updater contra un `latest.json` local (docs/release.md).
+    let dev_endpoint = updater::apply_dev_endpoint(&mut context.config_mut().plugins);
+
     tauri::Builder::default()
         // Una sola instancia: abrir la app otra vez trae la ventana principal al frente. Tiene
         // que ser el primer plugin.
@@ -48,6 +52,15 @@ pub fn run() {
                 &logging::log_dir(app.handle(), &data_dir)?,
                 &logging::export_dir(app.handle(), &data_dir),
             );
+            match dev_endpoint {
+                Some(Ok(endpoint)) => {
+                    tracing::warn!(%endpoint, "actualizaciones desde un endpoint de desarrollo");
+                }
+                Some(Err(error)) => {
+                    tracing::warn!(%error, "{} se ignora", updater::ENDPOINT_ENV);
+                }
+                None => {}
+            }
             let sink = Arc::new(events::TauriSink(app.handle().clone()));
             let backend = state::Backend::new(state::BackendParts::production(data_dir, sink))
                 .map_err(|e| format!("no se pudo iniciar el backend: {e}"))?;
@@ -66,7 +79,7 @@ pub fn run() {
             }
             Ok(())
         })
-        .build(tauri::generate_context!())
+        .build(context)
         .expect("error al iniciar OpenLight")
         .run(|app, event| {
             // Salir restaura los focos (Cmd+Q, "Salir" del tray, cerrar la sesión del sistema):

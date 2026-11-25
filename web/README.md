@@ -64,6 +64,9 @@ botones dicen **«Próximamente»** y llevan a la página de releases. Sin JavaS
 La elección está en `public/js/downloads.js`. Si cambian los nombres de los instaladores en
 `release.yml`, actualizá ese archivo y el JSON de ejemplo.
 
+La sección **«Se actualiza sola»** supone que la app trae actualizador. Si la última release no tiene
+`latest.json` (se publicó sin la clave de firma), pasa a explicar cómo actualizar a mano.
+
 ## Cambiar textos
 
 - Español: directamente en `public/index.html`.

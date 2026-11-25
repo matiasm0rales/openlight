@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { RELEASES_URL, UA, open } from "./helpers.js";
+import { RELEASE, RELEASES_URL, UA, open } from "./helpers.js";
 
 const main = (page) => page.locator("#download-main");
 
@@ -43,6 +43,22 @@ for (const [caso, api] of [
     });
   });
 }
+
+test("promete actualizarse sola salvo que la versión publicada no traiga actualizador", async ({ page }) => {
+  const heading = page.locator("#actualiza-titulo");
+  await open(page);
+  await expect(page.locator("#download-status")).toContainText("Versión 0.1.0");
+  await expect(heading).toHaveText("Se actualiza sola");
+
+  await open(page, { api: { ...RELEASE, assets: RELEASE.assets.filter((a) => a.name !== "latest.json") } });
+  await expect(heading).toHaveText("Actualizaciones");
+  await expect(page.locator(".updates")).toContainText("todavía no se actualiza sola");
+  await expect(page.locator(".updates .shot")).toBeHidden();
+  await page.getByRole("button", { name: "EN, English" }).click();
+  await expect(heading).toHaveText("Updates");
+  await page.getByRole("button", { name: "ES, español" }).click();
+  await expect(heading).toHaveText("Actualizaciones");
+});
 
 test.describe("en un celular", () => {
   test.use({ userAgent: UA.android, viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });

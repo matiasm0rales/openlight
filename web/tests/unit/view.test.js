@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { RELEASES_URL } from "../../public/js/downloads.js";
-import { formatButton, mainButton, otherLinks, releaseFromApi } from "../../public/js/view.js";
+import { formatButton, mainButton, manualUpdates, otherLinks, releaseFromApi } from "../../public/js/view.js";
 import { TEXTS } from "../../public/js/i18n.js";
 
 const json = JSON.parse(readFileSync(new URL("../fixtures/release-latest.json", import.meta.url), "utf8"));
@@ -80,4 +80,15 @@ test("los links chicos son los otros sistemas, o los tres si no se detectó ning
   const all = otherLinks(null, platform("mobile"), es);
   assert.ok(all.items.every((i) => i.visible && i.href === RELEASES_URL));
   assert.equal(all.label, es.downloadsFor);
+});
+
+test("si la release publicada no trae actualizador, la web no promete que se actualiza sola", () => {
+  // Sin la clave de firma, release.yml publica los instaladores sin latest.json.
+  const without = releaseFromApi({ ...json, assets: json.assets.filter((a) => a.name !== "latest.json") });
+  assert.deepEqual(manualUpdates(without, es), es.manualUpdates);
+  assert.equal(manualUpdates(without, TEXTS.en).title, "Updates");
+});
+
+test("con actualizador, sin release o mientras la busca, vale el texto de la página", () => {
+  for (const release of [releaseFromApi(json), null, undefined]) assert.equal(manualUpdates(release, es), null);
 });

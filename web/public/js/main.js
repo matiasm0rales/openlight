@@ -1,6 +1,6 @@
 import { LATEST_RELEASE_API, detectPlatform } from "./downloads.js";
 import { EN, TEXTS, pickLanguage } from "./i18n.js";
-import { formatButton, mainButton, otherLinks, releaseFromApi } from "./view.js";
+import { formatButton, mainButton, manualUpdates, otherLinks, releaseFromApi } from "./view.js";
 
 const root = document.documentElement;
 const $ = (selector) => document.querySelector(selector);
@@ -99,6 +99,15 @@ function renderDownloads() {
     link.href = item.href;
     link.hidden = !item.visible;
   }
+
+  // El texto de siempre sobre actualizaciones ya lo puso applyLanguage; acá solo se pisa si la
+  // versión publicada no trae actualizador.
+  const manual = manualUpdates(release, t);
+  if (manual) {
+    $("#actualiza-titulo").textContent = manual.title;
+    $(".updates-text .section-lead").textContent = manual.text;
+  }
+  $(".updates .shot").hidden = Boolean(manual);
 
   for (const link of $$("a[data-download]")) {
     const button = formatButton(link.dataset.download, release, t);

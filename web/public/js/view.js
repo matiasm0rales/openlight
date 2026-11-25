@@ -14,7 +14,17 @@ const fill = (template, values) => template.replace(/\{(\w+)\}/g, (_, key) => va
 export function releaseFromApi(json, arch = "x64") {
   const downloads = pickDownloads(json?.assets, arch);
   if (!Object.values(downloads).some(Boolean)) return null;
-  return { version: String(json.tag_name ?? "").replace(/^v/, ""), downloads };
+  return {
+    version: String(json.tag_name ?? "").replace(/^v/, ""),
+    downloads,
+    // latest.json es lo que consulta el actualizador: release.yml solo lo sube si firma los paquetes.
+    selfUpdates: json.assets.some((a) => a?.name === "latest.json"),
+  };
+}
+
+/** Qué decir en «Se actualiza sola» si la versión publicada no puede hacerlo; null si puede. */
+export function manualUpdates(release, texts) {
+  return release && !release.selfUpdates ? texts.manualUpdates : null;
 }
 
 /** El botón grande de la portada. */

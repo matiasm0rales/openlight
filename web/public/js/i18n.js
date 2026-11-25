@@ -44,6 +44,10 @@ export const TEXTS = {
     toLight: "Usar tema claro",
     play: "Activar animaciones",
     pause: "Pausar animaciones",
+    manualUpdates: {
+      title: "Actualizaciones",
+      text: "La versión disponible todavía no se actualiza sola. Cuando salga una nueva, bajala de esta página, cerrá OpenLight e instalala encima.",
+    },
   },
   en: {
     downloadFor: "Download for {os}",
@@ -72,6 +76,10 @@ export const TEXTS = {
     toLight: "Use light theme",
     play: "Turn animations on",
     pause: "Pause animations",
+    manualUpdates: {
+      title: "Updates",
+      text: "The available version doesn’t update itself yet. When a new one is out, download it from this page, quit OpenLight and install it over the old one.",
+    },
   },
 };
 

@@ -7,11 +7,13 @@ import {
   EVENT_COLOR_LIVE,
   EVENT_DEVICE_HEALTH,
   EVENT_DISCOVERY_FOUND,
+  EVENT_EFFECT_DEVICES,
   EVENT_ERROR_RAISED,
   EVENT_PIPELINE_STATS,
   EVENT_SESSION_STATE,
   type DeviceHealthEvent,
   type DiscoveredDevice,
+  type EffectDevicesEvent,
   type LiveColorEvent,
   type PipelineStatsEvent,
   type SessionStateEvent,
@@ -28,6 +30,7 @@ export interface EventPayloads {
   [EVENT_ERROR_RAISED]: UserFacingError;
   [EVENT_DISCOVERY_FOUND]: DiscoveredDevice;
   [EVENT_PIPELINE_STATS]: PipelineStatsEvent;
+  [EVENT_EFFECT_DEVICES]: EffectDevicesEvent;
 }
 
 export type EventName = keyof EventPayloads;

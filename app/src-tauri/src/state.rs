@@ -373,6 +373,7 @@ impl Backend {
             zones: record.zones.clone(),
             overrides: record.overrides.clone(),
             calibrated: matches!(self.store.load_calibration(&record.id), Ok(Some(_))),
+            in_effect: !self.is_excluded(&record.id),
         }
     }
 

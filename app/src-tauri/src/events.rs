@@ -8,8 +8,8 @@ use std::sync::{Arc, Mutex, PoisonError};
 
 use openlight_types::UserFacingError;
 use openlight_types::ipc::{
-    DeviceHealthEvent, DiscoveredDevice, LiveColorEvent, PipelineStatsEvent, SessionStateEvent,
-    events,
+    DeviceHealthEvent, DiscoveredDevice, EffectDevicesEvent, LiveColorEvent, PipelineStatsEvent,
+    SessionStateEvent, events,
 };
 use tauri::Emitter;
 use tokio::sync::broadcast;
@@ -29,6 +29,8 @@ pub enum AppEvent {
     ErrorRaised(UserFacingError),
     /// `discovery://found`.
     DiscoveryFound(DiscoveredDevice),
+    /// `effect://devices`.
+    EffectDevices(EffectDevicesEvent),
 }
 
 impl AppEvent {
@@ -41,6 +43,7 @@ impl AppEvent {
             Self::PipelineStats(_) => events::PIPELINE_STATS,
             Self::ErrorRaised(_) => events::ERROR_RAISED,
             Self::DiscoveryFound(_) => events::DISCOVERY_FOUND,
+            Self::EffectDevices(_) => events::EFFECT_DEVICES,
         }
     }
 }
@@ -64,6 +67,7 @@ impl<R: tauri::Runtime> EventSink for TauriSink<R> {
             AppEvent::PipelineStats(p) => self.0.emit(name, p),
             AppEvent::ErrorRaised(p) => self.0.emit(name, p),
             AppEvent::DiscoveryFound(p) => self.0.emit(name, p),
+            AppEvent::EffectDevices(p) => self.0.emit(name, p),
         };
         if let Err(error) = sent {
             tracing::debug!(event = name, %error, "no se pudo emitir el evento");

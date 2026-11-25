@@ -10,8 +10,8 @@
 
 use openlight_types::ipc::{
     CalibrationState, CloudCredentialsInput, CloudDeviceInfo, ConfiguredDevice, DeviceAddRequest,
-    DeviceHealthEvent, DiscoveredDevice, ImportReport, LiveColorEvent, LogLine, ManualSet,
-    OnboardingState, OnboardingStep, PermissionStatus, PipelineStatsEvent, PreviewImage,
+    DeviceHealthEvent, DiscoveredDevice, EffectDevicesEvent, ImportReport, LiveColorEvent, LogLine,
+    ManualSet, OnboardingState, OnboardingStep, PermissionStatus, PipelineStatsEvent, PreviewImage,
     SessionStateEvent, SettingScope, SettingsSnapshot, TestPattern, events,
 };
 use openlight_types::{
@@ -132,6 +132,14 @@ pub async fn device_test(app: App<'_>, device: DeviceId, pattern: TestPattern) -
 #[specta::specta]
 pub async fn device_manual(app: App<'_>, device: DeviceId, set: ManualSet) -> CmdResult<()> {
     app.device_manual(device, set).await
+}
+
+/// Incluye un foco en el efecto o lo saca (el "Sigue la pantalla" del panel y el tilde del
+/// tray). Con el efecto andando vale ya: al sacarlo, al volver el foco ya está libre.
+#[tauri::command]
+#[specta::specta]
+pub async fn device_set_in_effect(app: App<'_>, device: DeviceId, enabled: bool) -> CmdResult<()> {
+    app.set_device_in_effect(device, enabled).await
 }
 
 /// Renueva la clave local con las credenciales guardadas (un clic; también lo ofrece el 914).
@@ -359,6 +367,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             device_remove,
             device_test,
             device_manual,
+            device_set_in_effect,
             renew_key,
             displays_list,
             display_preview,
@@ -391,12 +400,14 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         .typ::<DiscoveredDevice>()
         .typ::<ErrorCode>()
         .typ::<PipelineStatsEvent>()
+        .typ::<EffectDevicesEvent>()
         .constant("EVENT_SESSION_STATE", events::SESSION_STATE)
         .constant("EVENT_DEVICE_HEALTH", events::DEVICE_HEALTH)
         .constant("EVENT_COLOR_LIVE", events::COLOR_LIVE)
         .constant("EVENT_ERROR_RAISED", events::ERROR_RAISED)
         .constant("EVENT_DISCOVERY_FOUND", events::DISCOVERY_FOUND)
         .constant("EVENT_PIPELINE_STATS", events::PIPELINE_STATS)
+        .constant("EVENT_EFFECT_DEVICES", events::EFFECT_DEVICES)
 }
 
 /// Ruta de los bindings generados.

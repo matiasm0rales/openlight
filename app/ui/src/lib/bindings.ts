@@ -33,6 +33,11 @@ export const commands = {
 	deviceTest: (device: DeviceId, pattern: TestPattern, options?: InvokeOptions) => __TAURI_INVOKE<null>("device_test", { device, pattern }, options),
 	/**  Control manual de un foco. */
 	deviceManual: (device: DeviceId, set: ManualSet, options?: InvokeOptions) => __TAURI_INVOKE<null>("device_manual", { device, set }, options),
+	/**
+	 *  Incluye un foco en el efecto o lo saca (el "Sigue la pantalla" del panel y el tilde del
+	 *  tray). Con el efecto andando vale ya: al sacarlo, al volver el foco ya está libre.
+	 */
+	deviceSetInEffect: (device: DeviceId, enabled: boolean, options?: InvokeOptions) => __TAURI_INVOKE<null>("device_set_in_effect", { device, enabled }, options),
 	/**  Renueva la clave local con las credenciales guardadas (un clic; también lo ofrece el 914). */
 	renewKey: (device: DeviceId, options?: InvokeOptions) => __TAURI_INVOKE<null>("renew_key", { device }, options),
 	/**  Monitores disponibles. */
@@ -92,6 +97,8 @@ export const EVENT_COLOR_LIVE = "color://live" as const;
 export const EVENT_DEVICE_HEALTH = "device://health" as const;
 
 export const EVENT_DISCOVERY_FOUND = "discovery://found" as const;
+
+export const EVENT_EFFECT_DEVICES = "effect://devices" as const;
 
 export const EVENT_ERROR_RAISED = "error://raised" as const;
 
@@ -271,6 +278,8 @@ export type ConfiguredDevice_Deserialize = {
 	overrides: SettingsOverride,
 	/**  Si tiene calibración guardada. */
 	calibrated: boolean,
+	/**  Si participa del efecto: el usuario no lo sacó. Sin zonas tampoco sigue la pantalla. */
+	in_effect: boolean,
 };
 
 /**  Un foco configurado en la app. */
@@ -293,6 +302,8 @@ export type ConfiguredDevice_Serialize = {
 	overrides: SettingsOverride,
 	/**  Si tiene calibración guardada. */
 	calibrated: boolean,
+	/**  Si participa del efecto: el usuario no lo sacó. Sin zonas tampoco sigue la pantalla. */
+	in_effect: boolean,
 };
 
 /**  Pedido para agregar un foco (la clave sale de la nube o de la importación). */
@@ -453,6 +464,12 @@ export type DpRange = {
 	max: number,
 	/**  Paso entre valores. */
 	step: number,
+};
+
+/**  Evento `effect://devices`. */
+export type EffectDevicesEvent = {
+	/**  Los focos que el usuario sacó del efecto. */
+	excluded: DeviceId[],
 };
 
 /**  Código estable de un error visible. No se renombra nunca: aparece en la FAQ y en los logs. */

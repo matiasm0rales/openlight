@@ -1,11 +1,14 @@
-//! Qué focos participan del efecto (el tilde de cada foco en el menú del tray).
+//! Qué focos participan del efecto: el tilde de cada foco en el menú del tray y el interruptor
+//! "Sigue la pantalla" del panel.
 
 use std::collections::HashSet;
 use std::sync::Arc;
 
 use openlight_types::DeviceId;
+use openlight_types::ipc::EffectDevicesEvent;
 
 use crate::errors::{CmdResult, internal};
+use crate::events::AppEvent;
 use crate::state::Backend;
 
 const FILE: &str = "excluded_devices.json";
@@ -29,6 +32,20 @@ impl Backend {
             .contains(device)
     }
 
+    /// Avisa al tray y a la ventana qué focos están fuera del efecto.
+    pub(crate) fn effect_changed(&self) {
+        let mut excluded: Vec<DeviceId> = self
+            .excluded
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .iter()
+            .cloned()
+            .collect();
+        excluded.sort();
+        self.emit(AppEvent::EffectDevices(EffectDevicesEvent { excluded }));
+        self.notify_changed();
+    }
+
     /// El tilde de un foco en el menú del tray: lo saca del efecto o lo vuelve a incluir.
     pub async fn toggle_device_in_effect(self: &Arc<Self>, device: DeviceId) -> CmdResult<()> {
         let include = self.is_excluded(&device);
@@ -48,7 +65,7 @@ impl Backend {
         if !self.save_excluded(&device, !in_effect)? {
             return Ok(());
         }
-        self.notify_changed();
+        self.effect_changed();
         if in_effect {
             self.forget_skipped(&device).await;
         }
@@ -56,14 +73,14 @@ impl Backend {
         // Si no pudo entrar (lo tiene la calibración, por ejemplo), queda afuera y se dice por qué
         if in_effect && let Some((_, error)) = failures.into_iter().find(|(id, _)| id == &device) {
             self.save_excluded(&device, true)?;
-            self.notify_changed();
+            self.effect_changed();
             return Err(error);
         }
         Ok(())
     }
 
     /// Anota si el foco está fuera del efecto y lo guarda. `false` si ya estaba así.
-    fn save_excluded(&self, device: &DeviceId, out: bool) -> CmdResult<bool> {
+    pub(crate) fn save_excluded(&self, device: &DeviceId, out: bool) -> CmdResult<bool> {
         let mut excluded = self
             .excluded
             .lock()

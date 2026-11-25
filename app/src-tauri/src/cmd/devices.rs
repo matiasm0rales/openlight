@@ -187,6 +187,10 @@ impl Backend {
         self.store.update_state(|state| {
             state.devices.remove(&device);
         })?;
+        // Si se lo vuelve a agregar, participa del efecto como cualquier foco nuevo
+        if self.save_excluded(&device, false)? {
+            self.effect_changed();
+        }
         self.notify_changed();
         Ok(())
     }

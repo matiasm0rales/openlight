@@ -7,7 +7,7 @@ A60 (protocolo 3.3) y un W509Z2 (3.5). Estado de cada punto al 2026-11-24.
 |---|---|---|
 | 1 | La app no escribía logs | **hecho** en [#20](https://github.com/matiasm0rales/openlight/pull/20) |
 | 2 | W509Z2: `device_timeout` al restaurar, y re-agregado como 3.3 | **arreglado** en [#17](https://github.com/matiasm0rales/openlight/pull/17), [#18](https://github.com/matiasm0rales/openlight/pull/18) y [#19](https://github.com/matiasm0rales/openlight/pull/19) |
-| 3 | El llavero de macOS pide la contraseña muchas veces | **arreglado**; falta verificarlo en la app instalada |
+| 3 | El llavero de macOS pide la contraseña muchas veces | **arreglado** en [#29](https://github.com/matiasm0rales/openlight/pull/29); falta verificarlo en la app instalada |
 
 ## 1. Logger
 

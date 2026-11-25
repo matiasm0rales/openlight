@@ -90,9 +90,11 @@ jobs:
       - name: Firma y notarización de macOS (opcional)
         if: runner.os == 'macOS'
         shell: bash
-        # Solo si están cargados los secrets. Sin ellos se arma el .dmg sin firmar y el job sigue.
+        # Solo si están cargados los secrets. Sin ellos la .app sale con firma ad-hoc
+        # (`signingIdentity: "-"` en tauri.conf.json), el .dmg sin firmar y el job sigue.
         # Firmar necesita certificado + contraseña + identidad; notarizar suma Apple ID,
-        # contraseña de aplicación y Team ID. Tauri se entera por las variables APPLE_*.
+        # contraseña de aplicación y Team ID. Tauri se entera por las variables APPLE_*, y
+        # APPLE_SIGNING_IDENTITY le gana a la del .json.
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -119,7 +121,7 @@ jobs:
               echo "::warning::Faltan APPLE_ID, APPLE_PASSWORD o APPLE_TEAM_ID: el .dmg se firma pero no se notariza."
             fi
           else
-            echo "::warning::Sin secrets de Apple: el .dmg queda sin firmar ni notarizar (ver docs/release.md)."
+            echo "::warning::Sin secrets de Apple: la .app sale con firma ad-hoc, sin notarizar (ver docs/release.md)."
           fi
 
       - name: Firma del updater (opcional)
@@ -173,6 +175,36 @@ jobs:
             echo "__FIN_RUTAS__"
           } >> "$GITHUB_OUTPUT"
           echo "$RUTAS_JSON" | jq -r '.[]'
+
+      - name: Verificar la firma del bundle (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          RUTAS_JSON: ${{ steps.tauri.outputs.artifactPaths }}
+        # Revisa la .app suelta y la que viaja dentro del .dmg, que es la que instala la gente.
+        # Con solo la firma del linker los recursos no quedan sellados.
+        run: |
+          set -euo pipefail
+          suelta=$(jq -r '.[] | select(endswith(".app"))' <<<"$RUTAS_JSON")
+          dmg=$(jq -r '.[] | select(endswith(".dmg"))' <<<"$RUTAS_JSON")
+          montaje=$(mktemp -d)
+          hdiutil attach "$dmg" -nobrowse -readonly -mountpoint "$montaje"
+          trap 'hdiutil detach "$montaje" -quiet || true' EXIT
+          for app in "$suelta" "$montaje/$(basename "$suelta")"; do
+            echo "== $app"
+            codesign --verify --deep --strict --verbose=2 "$app"
+            firma=$(codesign --display --verbose=4 "$app" 2>&1)
+            echo "$firma"
+            if ! grep -q '^Sealed Resources version=' <<<"$firma"; then
+              echo "::error::$app no tiene los recursos sellados."
+              exit 1
+            fi
+            # Si el `-` de tauri.conf.json le ganara a la identidad de los secrets, se vería acá.
+            if [ -n "${APPLE_SIGNING_IDENTITY:-}" ] && grep -q '^Signature=adhoc$' <<<"$firma"; then
+              echo "::error::hay identidad de Apple configurada pero $app salió con firma ad-hoc."
+              exit 1
+            fi
+          done
 
       - name: Subir instaladores como artifacts
         uses: actions/upload-artifact@v4

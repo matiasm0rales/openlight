@@ -1,9 +1,10 @@
 //! Ajustes (globales, por foco y por perfil) y perfiles.
 
+use openlight_core::Config;
 use openlight_types::ipc::{DeviceOverrides, SettingScope, SettingsSnapshot};
 use openlight_types::{
-    ErrorCode, FixAction, Profile, ProfileId, SettingId, SettingValue, Settings, UserFacingError,
-    catalog,
+    ErrorCode, FixAction, Profile, ProfileId, SettingId, SettingValue, Settings, SettingsOverride,
+    UserFacingError, catalog,
 };
 
 use crate::errors::{CmdResult, invalid, unknown_device};
@@ -39,6 +40,9 @@ impl Backend {
         value: SettingValue,
     ) -> CmdResult<SettingsSnapshot> {
         id.def().validate(&value)?;
+        if matches!(id, SettingId::BrightnessMin | SettingId::BrightnessMax) {
+            self.check_brightness(&scope, id, &value)?;
+        }
         self.edit_overrides(&scope, |values| {
             values.0.insert(id, value);
         })?;
@@ -60,11 +64,48 @@ impl Backend {
         self.settings_get()
     }
 
+    /// Que con ese valor el brillo máximo no quede por debajo del mínimo, mirando el ámbito
+    /// junto con lo que hereda.
+    fn check_brightness(
+        &self,
+        scope: &SettingScope,
+        id: SettingId,
+        value: &SettingValue,
+    ) -> CmdResult<()> {
+        let config = self.config()?;
+        let mut layers = vec![config.global.clone()];
+        match scope {
+            SettingScope::Global => {}
+            SettingScope::Profile(profile) => {
+                layers.push(self.profile_values(&config, profile)?);
+            }
+            SettingScope::Device(device) => {
+                if let Some(active) = &config.active_profile {
+                    layers.push(self.profile_values(&config, active)?);
+                }
+                layers.push(self.record(device)?.overrides);
+            }
+        }
+        if let Some(own) = layers.last_mut() {
+            own.0.insert(id, value.clone());
+        }
+        check_layers(&layers)
+    }
+
+    fn profile_values(&self, config: &Config, id: &ProfileId) -> CmdResult<SettingsOverride> {
+        config
+            .profiles
+            .iter()
+            .find(|p| &p.id == id)
+            .map(|p| p.values.clone())
+            .ok_or_else(|| unknown_profile(id))
+    }
+
     /// Aplica `change` a los valores que pisa el ámbito y los guarda.
     fn edit_overrides(
         &self,
         scope: &SettingScope,
-        change: impl FnOnce(&mut openlight_types::SettingsOverride),
+        change: impl FnOnce(&mut SettingsOverride),
     ) -> CmdResult<()> {
         let _edit = self.edit_lock();
         match scope {
@@ -140,6 +181,7 @@ impl Backend {
         profile.values.validate().map_err(UserFacingError::from)?;
         let _edit = self.edit_lock();
         let mut config = self.config()?;
+        check_layers(&[config.global.clone(), profile.values.clone()])?;
         let stored = config
             .profiles
             .iter_mut()
@@ -199,6 +241,15 @@ impl Backend {
         self.notify_changed();
         Ok(())
     }
+}
+
+/// El rango de brillo que queda al aplicar las capas en orden sobre los valores por defecto.
+fn check_layers(layers: &[SettingsOverride]) -> CmdResult<()> {
+    let mut settings = Settings::default();
+    for layer in layers {
+        settings = settings.with_overrides(layer)?;
+    }
+    Ok(settings.check_brightness()?)
 }
 
 fn unknown_profile(id: &ProfileId) -> UserFacingError {

@@ -223,6 +223,10 @@
       "title": "No pude importar esa carpeta",
       "detail": "No encontré un devices.json válido."
     },
+    "brightness_range": {
+      "title": "El brillo máximo no puede ser menor que el mínimo",
+      "detail": "Con mínimo {min} % y máximo {max} % no queda rango. Subí el máximo o bajá el mínimo. Para apagar un foco usá «Sacar del efecto» o «Apagar»."
+    },
     "invalid_setting": {
       "title": "Valor no válido",
       "detail": "El ajuste {setting} no acepta ese valor."

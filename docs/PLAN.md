@@ -239,7 +239,7 @@ pub enum FixAction { OpenSettings(SystemPane), RenewKey, Retry, OpenUrl(String),
 | `color_mode` | dominante | dominante/promedio | básico | el color que más se ve, o la mezcla de toda la zona |
 | `saturation` | 1.3 | 0.5–2.5 | básico | realce de colores |
 | `brightness_min` | 0.05 | 0–1 | básico | brillo con pantalla oscura |
-| `brightness_max` | 1.0 | 0–1 | básico | tope de brillo |
+| `brightness_max` | 1.0 | 0.05–1 | básico | tope de brillo (no baja del mínimo) |
 | `smoothing_ms` | 300 | 0–2000 | básico | más alto = transiciones más lentas |
 | `send_channel` | Colour (24) | Colour/ControlDirect/ControlGradual | avanzado | canal del foco |
 | `capture_fps` | 20 | 5–60 | avanzado | capturas por segundo |

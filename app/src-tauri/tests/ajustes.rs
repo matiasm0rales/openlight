@@ -164,3 +164,53 @@ async fn cambios_de_ajustes_al_mismo_tiempo_no_se_pisan() {
         }
     }
 }
+
+#[tokio::test]
+async fn el_brillo_maximo_no_puede_quedar_por_debajo_del_minimo() {
+    let h = harness(Setup {
+        sims: 0,
+        lan: false,
+    })
+    .await;
+    let b = &h.backend;
+    b.settings_set(SettingScope::Global, SettingId::BrightnessMin, num(0.4))
+        .unwrap();
+    for (id, value) in [
+        (SettingId::BrightnessMax, 0.3),
+        (SettingId::BrightnessMin, 1.0),
+    ] {
+        if id == SettingId::BrightnessMin {
+            b.settings_set(SettingScope::Global, SettingId::BrightnessMax, num(0.9))
+                .unwrap();
+        }
+        let error = b
+            .settings_set(SettingScope::Global, id, num(value))
+            .unwrap_err();
+        assert_eq!(error.title, "error.brightness_range.title", "{id}");
+    }
+    let global = b.settings_get().unwrap().global;
+    assert!((global.brightness_min - 0.4).abs() < 1e-6, "no se guardó");
+    assert!((global.brightness_max - 0.9).abs() < 1e-6, "no se guardó");
+
+    // En un perfil, contra lo que hereda de los globales
+    let work = SettingScope::Profile(ProfileId("work".into()));
+    let error = b
+        .settings_set(work.clone(), SettingId::BrightnessMax, num(0.2))
+        .unwrap_err();
+    assert_eq!(error.title, "error.brightness_range.title");
+    let mut profile = b
+        .profiles_list()
+        .unwrap()
+        .into_iter()
+        .find(|p| p.id.0 == "work")
+        .unwrap();
+    profile.values.0.insert(SettingId::BrightnessMax, num(0.2));
+    let error = b.profiles_update(profile).unwrap_err();
+    assert_eq!(error.title, "error.brightness_range.title");
+
+    // Cero no es un brillo: para apagar el foco hay otra cosa
+    let error = b
+        .settings_set(SettingScope::Global, SettingId::BrightnessMax, num(0.0))
+        .unwrap_err();
+    assert_eq!(error.code, ErrorCode::InvalidSetting);
+}

@@ -223,6 +223,10 @@
       "title": "Couldn't import that folder",
       "detail": "No valid devices.json was found."
     },
+    "brightness_range": {
+      "title": "Maximum brightness can't be below the minimum",
+      "detail": "A minimum of {min}% and a maximum of {max}% leave no range. Raise the maximum or lower the minimum. To turn a light off use \"Remove from effect\" or \"Turn off\"."
+    },
     "invalid_setting": {
       "title": "Invalid value",
       "detail": "The {setting} setting doesn't accept that value."

@@ -330,7 +330,8 @@ static CATALOG: LazyLock<Vec<SettingDef>> = LazyLock::new(|| {
         ),
         SettingDef::new(
             I::BrightnessMax,
-            number(0.0, 1.0, 0.01, U::Fraction),
+            // Con 0 el foco no se apaga (nunca se le pide brillo 0): el piso es 5 %
+            number(0.05, 1.0, 0.01, U::Fraction),
             n(1.0),
             Basic,
         ),
@@ -449,6 +450,14 @@ pub enum SettingsError {
         /// Ajuste.
         id: SettingId,
     },
+    /// El brillo máximo quedaría por debajo del mínimo.
+    #[error("el brillo máximo ({max}) quedaría por debajo del mínimo ({min})")]
+    BrightnessRange {
+        /// Brillo mínimo resultante.
+        min: f32,
+        /// Brillo máximo resultante.
+        max: f32,
+    },
 }
 
 impl From<SettingsError> for UserFacingError {
@@ -457,6 +466,17 @@ impl From<SettingsError> for UserFacingError {
             SettingsError::OutOfRange { id, .. }
             | SettingsError::UnknownChoice { id, .. }
             | SettingsError::WrongType { id } => *id,
+            SettingsError::BrightnessRange { min, max } => {
+                let percent = |v: f32| format!("{:.0}", v * 100.0);
+                let mut error = UserFacingError::new(ErrorCode::InvalidSetting)
+                    .with_param("setting", SettingId::BrightnessMax.as_str())
+                    .with_param("min", percent(*min))
+                    .with_param("max", percent(*max));
+                // Textos propios: "valor no válido" no alcanza para entender qué pasa
+                error.title = "error.brightness_range.title".to_owned();
+                error.detail = "error.brightness_range.detail".to_owned();
+                return error;
+            }
         };
         UserFacingError::new(ErrorCode::InvalidSetting).with_param("setting", id.as_str())
     }
@@ -471,6 +491,20 @@ impl SettingsOverride {
     /// Verifica todos los valores contra el catálogo.
     pub fn validate(&self) -> Result<(), SettingsError> {
         self.0.iter().try_for_each(|(id, v)| id.def().validate(v))
+    }
+
+    /// Lleva al rango de hoy lo que una versión anterior aceptaba: un brillo máximo por debajo
+    /// del piso actual. Se aplica al leer lo guardado, antes de validarlo.
+    pub fn upgrade(&mut self) {
+        let id = SettingId::BrightnessMax;
+        let SettingKind::Number { min, .. } = id.def().kind else {
+            return;
+        };
+        if let Some(SettingValue::Number(value)) = self.0.get_mut(&id)
+            && *value < min
+        {
+            *value = min;
+        }
     }
 }
 
@@ -610,6 +644,17 @@ impl Settings {
         Ok(())
     }
 
+    /// El brillo máximo no puede quedar por debajo del mínimo: no habría rango.
+    pub fn check_brightness(&self) -> Result<(), SettingsError> {
+        if self.brightness_max < self.brightness_min {
+            return Err(SettingsError::BrightnessRange {
+                min: self.brightness_min,
+                max: self.brightness_max,
+            });
+        }
+        Ok(())
+    }
+
     /// Copia con los valores de `overrides` aplicados (globales → perfil → foco).
     pub fn with_overrides(&self, overrides: &SettingsOverride) -> Result<Self, SettingsError> {
         let mut s = self.clone();
@@ -727,6 +772,42 @@ mod tests {
             Err(SettingsError::WrongType { .. })
         ));
         assert_eq!(s, Settings::default());
+    }
+
+    #[test]
+    fn el_brillo_maximo_no_llega_a_cero() {
+        let def = SettingId::BrightnessMax.def();
+        assert!(def.validate(&SettingValue::Number(0.0)).is_err());
+        assert!(def.validate(&SettingValue::Number(0.05)).is_ok());
+    }
+
+    #[test]
+    fn el_maximo_no_puede_quedar_por_debajo_del_minimo() {
+        let mut s = Settings {
+            brightness_min: 0.4,
+            brightness_max: 0.4,
+            ..Settings::default()
+        };
+        assert_eq!(s.check_brightness(), Ok(()));
+        s.brightness_max = 0.3;
+        let error = s.check_brightness().unwrap_err();
+        let shown = UserFacingError::from(error);
+        assert_eq!(shown.code, ErrorCode::InvalidSetting);
+        assert_eq!(shown.title, "error.brightness_range.title");
+        assert_eq!(shown.detail, "error.brightness_range.detail");
+        assert_eq!(shown.params["min"], "40");
+        assert_eq!(shown.params["max"], "30");
+    }
+
+    #[test]
+    fn un_maximo_guardado_por_una_version_anterior_sube_al_minimo_del_catalogo() {
+        let mut ov = SettingsOverride::default();
+        ov.0.insert(SettingId::BrightnessMax, SettingValue::Number(0.0));
+        ov.0.insert(SettingId::BrightnessMin, SettingValue::Number(0.0));
+        ov.upgrade();
+        assert_eq!(ov.0[&SettingId::BrightnessMax], SettingValue::Number(0.05));
+        assert_eq!(ov.0[&SettingId::BrightnessMin], SettingValue::Number(0.0));
+        ov.validate().unwrap();
     }
 
     #[test]

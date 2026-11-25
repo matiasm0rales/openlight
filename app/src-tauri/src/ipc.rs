@@ -298,6 +298,25 @@ pub async fn calibration_cancel(app: App<'_>) -> CmdResult<()> {
     app.calibration_cancel().await
 }
 
+// ---------- Actualizaciones ----------
+
+/// Antes de instalar una actualización: devuelve los focos a como estaban, por el mismo camino
+/// que "Salir". La búsqueda, la descarga y la instalación las hace el plugin del updater.
+#[tauri::command]
+#[specta::specta]
+pub async fn update_prepare(app: App<'_>) -> CmdResult<()> {
+    app.update_prepare().await;
+    Ok(())
+}
+
+/// La actualización no se instaló y la app sigue abierta: se puede volver a arrancar el efecto.
+#[tauri::command]
+#[specta::specta]
+pub async fn update_abort(app: App<'_>) -> CmdResult<()> {
+    app.update_abort();
+    Ok(())
+}
+
 // ---------- Importar y diagnóstico ----------
 
 /// Importa el setup del script Python desde una carpeta.
@@ -359,6 +378,8 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             calibration_set,
             calibration_save,
             calibration_cancel,
+            update_prepare,
+            update_abort,
             import_legacy,
             diagnostics_log,
             diagnostics_export,

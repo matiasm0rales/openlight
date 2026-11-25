@@ -158,7 +158,7 @@ usá la app, no la tecla.
 - **Por qué pasa:** otro programa tiene tomado el puerto de búsqueda (el script anterior es el
   caso típico), falta el permiso de Red local en macOS, o el firewall lo impide.
 - **Arreglo:** cerrá los otros programas que usen tus focos, revisá el
-  [permiso](#local_network_denied) o el [firewall](#firewall_blocked) y tocá **Reintentar**.
+  [permiso](#local_network_denied) o el [firewall](#firewall_blocked) y tocá **Buscar de nuevo**.
 
 Si el foco ya estaba agregado, un error de búsqueda no le borra nada: conserva su IP y versión.
 

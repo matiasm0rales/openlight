@@ -1,5 +1,49 @@
+/// Los comandos de la app. Declararlos hace que Tauri exija un permiso para cada uno, así cada
+/// ventana puede invocar solo los que le da su capability. Un comando nuevo de `ipc.rs` se suma
+/// acá y en `capabilities/default.json` (`tests/permisos.rs` falla si falta).
+const COMMANDS: &[&str] = &[
+    "onboarding_state",
+    "onboarding_save",
+    "check_permissions",
+    "open_system_settings",
+    "cloud_validate",
+    "cloud_list_devices",
+    "discover_lan",
+    "devices_list",
+    "device_add",
+    "device_update",
+    "device_remove",
+    "device_test",
+    "device_manual",
+    "renew_key",
+    "displays_list",
+    "display_preview",
+    "zones_set",
+    "settings_get",
+    "settings_set",
+    "settings_reset",
+    "profiles_list",
+    "profiles_create",
+    "profiles_update",
+    "profiles_delete",
+    "profiles_activate",
+    "session_state",
+    "session_start",
+    "session_stop",
+    "calibration_start",
+    "calibration_set",
+    "calibration_save",
+    "calibration_cancel",
+    "update_prepare",
+    "update_abort",
+    "import_legacy",
+    "diagnostics_log",
+    "diagnostics_export",
+];
+
 fn main() {
-    let mut attributes = tauri_build::Attributes::new();
+    let mut attributes = tauri_build::Attributes::new()
+        .app_manifest(tauri_build::AppManifest::new().commands(COMMANDS));
     if std::env::var("CARGO_CFG_TARGET_ENV").as_deref() == Ok("msvc") {
         // tauri-build solo agrega el manifiesto de Windows al ejecutable de la app; los binarios
         // de `cargo test` quedan sin Common Controls v6 y no arrancan (STATUS_ENTRYPOINT_NOT_FOUND).

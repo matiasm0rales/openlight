@@ -57,6 +57,9 @@ objc2-core-graphics = { version = "0.3.2", default-features = false, features = 
 tuya-sim = { path = "../../crates/tuya-sim" }
 # Q4 (seguridad): la OpenAPI falsa y las formas en que podría aparecer un secreto
 wiremock = "0.6.5"
+# y el verificador de permisos de Tauri (runtime falso) con las capabilities reales
+tauri = { workspace = true, features = ["test"] }
+glob = "0.3.3"
 tempfile = "3.27.0"
 tokio = { workspace = true, features = ["rt", "time", "macros", "sync", "rt-multi-thread"] }
 

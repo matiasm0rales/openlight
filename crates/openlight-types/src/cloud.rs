@@ -83,8 +83,9 @@ impl Region {
     }
 }
 
-/// Credenciales del proyecto Cloud (paso 6 del asistente). Nunca vuelven a la UI.
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// Credenciales del proyecto Cloud (paso 6 del asistente). Nunca vuelven a la UI. `Debug` no
+/// muestra ni el Access ID ni el Access Secret.
+#[derive(Clone, PartialEq, Eq)]
 pub struct CloudCredentials {
     /// Access ID / Client ID.
     pub access_id: String,
@@ -92,6 +93,14 @@ pub struct CloudCredentials {
     pub access_secret: Secret<String>,
     /// Data Center.
     pub region: Region,
+}
+
+impl std::fmt::Debug for CloudCredentials {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CloudCredentials")
+            .field("region", &self.region)
+            .finish_non_exhaustive()
+    }
 }
 
 /// Cuenta validada (token obtenido y usuario de Smart Life vinculado).
@@ -221,6 +230,25 @@ mod tests {
         }
         assert_eq!(Region::parse("AZ"), Some(Region::Us));
         assert_eq!(Region::parse("mars"), None);
+    }
+
+    #[test]
+    fn el_debug_de_las_credenciales_no_muestra_ni_el_id_ni_el_secreto() {
+        let creds = CloudCredentials {
+            access_id: "idfalso1234567890abc".into(),
+            access_secret: Secret::new("secretofalso0123456789".into()),
+            region: Region::Eu,
+        };
+        let input = crate::ipc::CloudCredentialsInput {
+            access_id: creds.access_id.clone(),
+            access_secret: creds.access_secret.expose().clone(),
+            region: creds.region,
+        };
+        for text in [format!("{creds:?}"), format!("{input:?}")] {
+            assert!(text.contains("Eu"), "{text}");
+            assert!(!text.contains("idfalso"), "{text}");
+            assert!(!text.contains("secretofalso"), "{text}");
+        }
     }
 
     #[test]

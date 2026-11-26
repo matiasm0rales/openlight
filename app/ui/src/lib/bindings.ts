@@ -188,7 +188,7 @@ export type CloudAccount = {
 	region: Region,
 };
 
-/**  Credenciales tal como las escribe el usuario en el paso 6. `Debug` oculta el secreto. */
+/**  Credenciales tal como las escribe el usuario en el paso 6. `Debug` no muestra ninguna. */
 export type CloudCredentialsInput = {
 	/**  Access ID. */
 	access_id: string,

@@ -232,7 +232,11 @@ pub fn destroyed<R: Runtime>(app: &AppHandle<R>, label: &str) {
 }
 
 /// Que se haya cerrado la última ventana no termina la app (sigue en el tray). Se llama con cada
-/// evento de `App::run`; salir de verdad llega con un código y no pasa por acá.
+/// evento de `App::run`.
+///
+/// Un pedido de salida sin código sale solo de ahí (`tauri-runtime-wry`, al destruirse la última
+/// ventana). Salir de verdad no pasa por acá: "Salir" del tray y reiniciar traen código, y
+/// Cmd+Q (el `terminate:` del menú de macOS) no pide permiso y llega como `RunEvent::Exit`.
 pub fn keep_running(event: &tauri::RunEvent) {
     if let tauri::RunEvent::ExitRequested {
         code: None, api, ..

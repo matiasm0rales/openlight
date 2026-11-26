@@ -41,7 +41,8 @@
       "icons/icon.ico"
     ],
     "macOS": {
-      "minimumSystemVersion": "12.3"
+      "minimumSystemVersion": "12.3",
+      "signingIdentity": "-"
     },
     "windows": {
       "nsis": {

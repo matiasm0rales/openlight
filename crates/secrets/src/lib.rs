@@ -6,13 +6,17 @@
 //! [`openlight_types::Secret`].
 //!
 //! - [`SecretStore`]: lo que el resto de la app necesita (guardar, leer, borrar).
-//! - [`KeyringStore`]: el llavero real del sistema.
+//! - [`KeyringStore`]: el llavero real del sistema. En macOS junta todos los secretos en una sola
+//!   entrada (así pide permiso una sola vez) y migra solo las entradas de versiones anteriores.
 //! - [`MemoryStore`]: un backend en memoria, para pruebas y para correr sin llavero.
 //!
 //! Los errores no incluyen nunca el valor del secreto, solo el nombre de la entrada.
 
+mod entries;
 mod keyring_store;
 mod memory;
+mod per_key;
+mod vault;
 
 use std::fmt;
 
@@ -33,7 +37,8 @@ pub enum SecretKey {
 }
 
 impl SecretKey {
-    /// Nombre estable de la entrada en el llavero (el "usuario" de la credencial).
+    /// Nombre estable del secreto: el de su entrada en el llavero (el "usuario" de la
+    /// credencial) o, con una sola entrada para todos, el que lo identifica adentro.
     pub fn account(&self) -> String {
         match self {
             Self::DeviceLocalKey(id) => format!("device:{id}:local_key"),

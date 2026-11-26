@@ -343,7 +343,9 @@ pasa por la nube.
   - un archivo de configuración dañado, o escrito por una versión más nueva de OpenLight (no se
     pisa);
   - el llavero no está disponible: bloqueado, acceso denegado, o en Linux no hay un servicio de
-    claves (GNOME Keyring, KWallet).
+    claves (GNOME Keyring, KWallet);
+  - en macOS, la entrada de OpenLight en el llavero está dañada o la escribió una versión más
+    nueva (tampoco se pisa).
 - **Arreglo:** liberá espacio, desbloqueá o instalá el llavero (en macOS, **Permitir siempre**
   cuando lo pida), o actualizá la app. El registro en **Diagnóstico** dice qué falló. Las
   carpetas están en la [guía](guia.md#dónde-se-guardan-las-cosas).
@@ -375,6 +377,6 @@ pasa por la nube.
 | Cambié un ajuste global y un foco no cambia | ese foco o el perfil activo usan su propio valor: la pantalla de Ajustes lo avisa bajo el control |
 | El atajo de un perfil no hace nada | los atajos todavía no están conectados |
 | La prueba A/B no deja arrancar el efecto | arrancalo **antes** de abrir la calibración y entrá directo a la prueba A/B, sin sacar el foco del efecto |
-| macOS pide la contraseña del llavero varias veces después de actualizar o recompilar | la firma del programa cambió; elegí **Permitir siempre** en cada pedido |
+| macOS pide la contraseña del llavero después de actualizar o recompilar | la firma del programa cambió; elegí **Permitir siempre** en cada pedido |
 | Los colores se ven entrecortados | probá otro **Canal del foco**, o bajá los comandos por segundo |
 | Al despertar la compu los focos quedaron con un color | detené y arrancá el efecto; conviene detenerlo antes de suspender |

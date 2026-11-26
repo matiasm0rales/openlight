@@ -102,6 +102,7 @@ impl From<CoreError> for UserFacingError {
             CoreError::DeviceLocked { .. } => ErrorCode::DeviceInUse,
             CoreError::NothingToDo => ErrorCode::DeviceNotFound,
             CoreError::Capture(CaptureError::PermissionDenied) => ErrorCode::ScreenPermissionDenied,
+            CoreError::Capture(CaptureError::PermissionStale) => ErrorCode::ScreenPermissionStale,
             CoreError::Capture(CaptureError::DisplayNotFound(_)) => ErrorCode::NoDisplay,
             CoreError::Capture(CaptureError::Unsupported(_)) => ErrorCode::CaptureUnsupported,
             CoreError::Capture(CaptureError::Backend(_)) => ErrorCode::Internal,
@@ -115,6 +116,7 @@ impl From<CoreError> for UserFacingError {
             ErrorCode::ScreenPermissionDenied => {
                 FixAction::OpenSettings(SystemPane::ScreenRecording)
             }
+            ErrorCode::ScreenPermissionStale => FixAction::RepairScreenPermission,
             ErrorCode::CaptureUnsupported => FixAction::ShowHelp(HelpTopic::Permissions),
             ErrorCode::DeviceKeyRejected => FixAction::RenewKey,
             ErrorCode::DeviceNotFound | ErrorCode::DeviceTimeout => {
@@ -123,9 +125,21 @@ impl From<CoreError> for UserFacingError {
             ErrorCode::DeviceInEffect => FixAction::RemoveFromEffect,
             _ => FixAction::Retry,
         };
-        let visible = UserFacingError::new(code)
+        let mut visible = UserFacingError::new(code)
             .with_param("detail", error.to_string())
             .with_action(action);
+        match code {
+            ErrorCode::ScreenPermissionStale => {
+                visible = visible.with_action(FixAction::OpenSettings(SystemPane::ScreenRecording));
+            }
+            // En macOS, un permiso atado a otra versión de la app se niega como uno sin dar,
+            // aunque en Ajustes figure activado: ahí hace falta poder repararlo
+            ErrorCode::ScreenPermissionDenied if cfg!(target_os = "macos") => {
+                visible.detail = format!("{}_macos", visible.detail);
+                visible = visible.with_action(FixAction::RepairScreenPermission);
+            }
+            _ => {}
+        }
         match error {
             CoreError::DeviceLocked { device, .. } => visible.with_param("device", device.0),
             _ => visible,
@@ -146,6 +160,45 @@ mod tests {
             holder: holder.into(),
         }
         .into()
+    }
+
+    fn captura(error: CaptureError) -> UserFacingError {
+        CoreError::Capture(error).into()
+    }
+
+    #[test]
+    fn el_permiso_fantasma_se_ofrece_reparar_primero() {
+        let visible = captura(CaptureError::PermissionStale);
+        assert_eq!(visible.code, ErrorCode::ScreenPermissionStale);
+        assert_eq!(
+            visible.actions,
+            [
+                FixAction::RepairScreenPermission,
+                FixAction::OpenSettings(SystemPane::ScreenRecording)
+            ]
+        );
+    }
+
+    // En macOS el permiso atado a otra versión se ve igual que uno sin dar (el interruptor sigue
+    // prendido en Ajustes): además de abrir Ajustes hay que poder repararlo.
+    #[test]
+    fn sin_permiso_en_macos_tambien_se_puede_reparar() {
+        let visible = captura(CaptureError::PermissionDenied);
+        assert_eq!(visible.code, ErrorCode::ScreenPermissionDenied);
+        let ajustes = FixAction::OpenSettings(SystemPane::ScreenRecording);
+        if cfg!(target_os = "macos") {
+            assert_eq!(
+                visible.actions,
+                [ajustes, FixAction::RepairScreenPermission]
+            );
+            assert_eq!(
+                visible.detail,
+                "error.screen_permission_denied.detail_macos"
+            );
+        } else {
+            assert_eq!(visible.actions, [ajustes]);
+            assert_eq!(visible.detail, "error.screen_permission_denied.detail");
+        }
     }
 
     #[test]

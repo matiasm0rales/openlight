@@ -17,6 +17,7 @@ on:
       - "app/src-tauri/tauri.updater.conf.json"
       - "app/src-tauri/Info.plist"
       - "app/src-tauri/icons/**"
+      - "tools/release/**"
   workflow_dispatch:
 
 concurrency:
@@ -137,14 +138,14 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
 
-      - name: Firma y notarización de macOS (opcional)
+      - name: Firma de macOS (Apple, certificado propio o ad-hoc)
         if: runner.os == 'macOS'
         shell: bash
-        # Solo si están cargados los secrets. Sin ellos la .app sale con firma ad-hoc
-        # (`signingIdentity: "-"` en tauri.conf.json), el .dmg sin firmar y el job sigue.
-        # Firmar necesita certificado + contraseña + identidad; notarizar suma Apple ID,
-        # contraseña de aplicación y Team ID. Tauri se entera por las variables APPLE_*, y
-        # APPLE_SIGNING_IDENTITY le gana a la del .json.
+        # Por orden de preferencia: Developer ID (y notarización) con los secrets APPLE_*; el
+        # certificado propio con los MACOS_*, que mantiene la identidad entre versiones y con ella
+        # el permiso de Grabación de pantalla; y si no hay nada, ad-hoc (`signingIdentity: "-"` en
+        # tauri.conf.json) con un warning. Tauri se entera por las variables APPLE_*, y
+        # APPLE_SIGNING_IDENTITY le gana a la del .json. Ver docs/release.md.
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -152,27 +153,10 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: |
-          if [ -n "$APPLE_CERTIFICATE" ] && [ -n "$APPLE_CERTIFICATE_PASSWORD" ] && [ -n "$APPLE_SIGNING_IDENTITY" ]; then
-            {
-              echo "APPLE_CERTIFICATE=$APPLE_CERTIFICATE"
-              echo "APPLE_CERTIFICATE_PASSWORD=$APPLE_CERTIFICATE_PASSWORD"
-              echo "APPLE_SIGNING_IDENTITY=$APPLE_SIGNING_IDENTITY"
-            } >> "$GITHUB_ENV"
-            echo "Se firma con la identidad Developer ID configurada."
-            if [ -n "$APPLE_ID" ] && [ -n "$APPLE_PASSWORD" ] && [ -n "$APPLE_TEAM_ID" ]; then
-              {
-                echo "APPLE_ID=$APPLE_ID"
-                echo "APPLE_PASSWORD=$APPLE_PASSWORD"
-                echo "APPLE_TEAM_ID=$APPLE_TEAM_ID"
-              } >> "$GITHUB_ENV"
-              echo "Se notariza con la cuenta de Apple configurada."
-            else
-              echo "::warning::Faltan APPLE_ID, APPLE_PASSWORD o APPLE_TEAM_ID: el .dmg se firma pero no se notariza."
-            fi
-          else
-            echo "::warning::Sin secrets de Apple: la .app sale con firma ad-hoc, sin notarizar (ver docs/release.md)."
-          fi
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          MACOS_SIGNING_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
+        run: tools/release/preparar-firma-macos.sh
 
       - name: Firma del updater (opcional)
         shell: bash
@@ -234,29 +218,48 @@ jobs:
         env:
           RUTAS_JSON: ${{ steps.tauri.outputs.artifactPaths }}
         # Revisa la .app suelta y la que viaja dentro del .dmg, que es la que instala la gente.
-        # Con solo la firma del linker los recursos no quedan sellados.
+        # Con solo la firma del linker los recursos no quedan sellados. `/usr/bin/codesign` a
+        # propósito: con el certificado propio hay un intermediario en el PATH.
         run: |
           set -euo pipefail
           suelta=$(jq -r '.[] | select(endswith(".app"))' <<<"$RUTAS_JSON")
           dmg=$(jq -r '.[] | select(endswith(".dmg"))' <<<"$RUTAS_JSON")
+          # Un .dmg firmado con un certificado propio puede no abrirse (tauri#12288).
+          if [ "$OPENLIGHT_FIRMA" != apple ] && /usr/bin/codesign --display "$dmg" 2>/dev/null; then
+            echo "::error::$dmg salió firmado: sin Developer ID tiene que quedar sin firmar."
+            exit 1
+          fi
           montaje=$(mktemp -d)
           hdiutil attach "$dmg" -nobrowse -readonly -mountpoint "$montaje"
           trap 'hdiutil detach "$montaje" -quiet || true' EXIT
           for app in "$suelta" "$montaje/$(basename "$suelta")"; do
             echo "== $app"
-            codesign --verify --deep --strict --verbose=2 "$app"
-            firma=$(codesign --display --verbose=4 "$app" 2>&1)
+            /usr/bin/codesign --verify --deep --strict --verbose=2 "$app"
+            firma=$(/usr/bin/codesign --display --verbose=4 "$app" 2>&1)
             echo "$firma"
             if ! grep -q '^Sealed Resources version=' <<<"$firma"; then
               echo "::error::$app no tiene los recursos sellados."
               exit 1
             fi
             # Si el `-` de tauri.conf.json le ganara a la identidad de los secrets, se vería acá.
-            if [ -n "${APPLE_SIGNING_IDENTITY:-}" ] && grep -q '^Signature=adhoc$' <<<"$firma"; then
-              echo "::error::hay identidad de Apple configurada pero $app salió con firma ad-hoc."
+            if [ "$OPENLIGHT_FIRMA" != adhoc ] && grep -q '^Signature=adhoc$' <<<"$firma"; then
+              echo "::error::hay identidad de firma configurada pero $app salió con firma ad-hoc."
+              exit 1
+            fi
+            # El requisito designado es lo que macOS guarda con cada permiso: con una identidad
+            # estable nombra al certificado; con el cdhash, cambia en cada build.
+            requisito=$(/usr/bin/codesign --display --requirements - "$app" 2>/dev/null)
+            echo "$requisito"
+            if [ "$OPENLIGHT_FIRMA" != adhoc ] && grep -q 'cdhash' <<<"$requisito"; then
+              echo "::error::el requisito de $app depende del cdhash: los permisos no sobrevivirían."
               exit 1
             fi
           done
+
+      - name: Borrar el llavero temporal (macOS)
+        if: always() && runner.os == 'macOS'
+        shell: bash
+        run: security delete-keychain "$RUNNER_TEMP/openlight-firma.keychain-db" 2>/dev/null || true
 
       - name: Subir instaladores como artifacts
         uses: actions/upload-artifact@v4

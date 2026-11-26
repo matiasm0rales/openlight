@@ -2,7 +2,7 @@
   // Paso 2: estado en vivo de los permisos del SO, con re-chequeo automático.
   import type { PermissionStatus_Serialize, UserFacingError } from "../../lib/bindings";
   import { attempt, commands } from "../../lib/ipc";
-  import { app } from "../../lib/app.svelte";
+  import { app, repairScreenPermission } from "../../lib/app.svelte";
   import { t } from "../../lib/i18n/index.svelte";
   import { everyWhileVisible } from "../../lib/visibility";
   import ErrorCard from "../../lib/components/ErrorCard.svelte";
@@ -62,6 +62,16 @@
             <Icon name="sliders" size={16} />{t(`fix.open_settings.${p.pane}`)}
           </button>
         {/if}
+        {#if p.kind === "screen_recording" && p.state === "denied"}
+          <!-- En macOS puede figurar activado y no servir: quedó atado a otra versión de la app. -->
+          <div class="repair">
+            <p class="muted">{t("permission.repair.hint")}</p>
+            <button type="button" class="btn ghost small" disabled={app.busy.repairScreen} onclick={() => repairScreenPermission()}>
+              {#if app.busy.repairScreen}<span class="spinner" aria-hidden="true"></span>{:else}<Icon name="refresh" size={16} />{/if}
+              {t("fix.repair_screen_permission")}
+            </button>
+          </div>
+        {/if}
       </li>
     {:else}
       <li class="card"><span class="state"><Icon name="check" size={18} /></span><p>{t("onboarding.permissions.none_needed")}</p></li>
@@ -88,6 +98,17 @@
     gap: 0.9rem;
     align-items: center;
     padding: 1rem 1.1rem;
+  }
+  .repair {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    align-items: center;
+    justify-content: space-between;
+    border-top: 1px solid var(--line);
+    padding-top: 0.7rem;
+    font-size: 0.9rem;
   }
   .state {
     display: grid;

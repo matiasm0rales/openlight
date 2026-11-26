@@ -148,7 +148,12 @@
   "error": {
     "screen_permission_denied": {
       "title": "Screen Recording permission missing",
-      "detail": "Without it the screen can't be read. Turn it on in Settings and reopen OpenLight."
+      "detail": "Without it the screen can't be read. Turn it on in Settings and reopen OpenLight.",
+      "detail_macos": "Without it the screen can't be read. Turn it on in Settings and reopen OpenLight. If it already shows as on (common after an update), choose “Repair permission”."
+    },
+    "screen_permission_stale": {
+      "title": "The screen permission is tied to another version",
+      "detail": "OpenLight is listed with Screen Recording permission, but macOS denies the capture. This usually happens after an update. Choose “Repair permission”, turn it on again and reopen OpenLight."
     },
     "local_network_denied": {
       "title": "Local Network permission missing",
@@ -340,6 +345,7 @@
       "firewall": "Open the firewall",
       "screen_cast_portal": "Open portal permissions"
     },
+    "repair_screen_permission": "Repair permission",
     "renew_key": "Renew key",
     "remove_from_effect": "Remove from effect",
     "retry": "Retry",
@@ -422,6 +428,11 @@
     "screen_cast_portal": {
       "title": "Screen sharing (portal)",
       "why": "On Wayland, the desktop asks which screen to share."
+    },
+    "repair": {
+      "title": "Screen permission reset",
+      "detail": "Turn OpenLight on again under Screen Recording (macOS may ask on its own). Then quit OpenLight from its menu bar icon and open it again. If it isn’t listed yet, reopen it first.",
+      "hint": "Already turned it on, reopened the app, and nothing changed?"
     },
     "state": {
       "granted": "Granted",

@@ -8,6 +8,10 @@
 //! Consultar el estado ([`check`]) nunca muestra diálogos del sistema ni toca nada: la UI lo
 //! llama en bucle para el re-chequeo automático. Lo único que pide algo es
 //! [`request_screen_recording`] (macOS), que usa `open_system_settings`.
+//!
+//! En macOS el permiso de Grabación de pantalla queda atado a la identidad de firma de la app:
+//! tras actualizar una app firmada ad-hoc puede figurar activado y no servir (permiso
+//! "fantasma"). [`repair_screen_recording`] lo olvida y lo vuelve a pedir.
 
 use openlight_types::ipc::{PermissionKind, PermissionStatus};
 use openlight_types::{
@@ -34,6 +38,75 @@ pub async fn check_blocking() -> Vec<PermissionStatus> {
 /// resultante. En los demás sistemas no hace nada.
 pub fn request_screen_recording() -> PermissionState {
     platform::request_screen_recording()
+}
+
+/// Argumentos de `tccutil` que olvidan el permiso de Grabación de pantalla de la app
+/// `identifier`. `None` si no es un identificador de app: sin él, `tccutil` borraría el permiso de
+/// todas las apps.
+fn tccutil_args(identifier: &str) -> Option<[&str; 3]> {
+    let valido = identifier.contains('.')
+        && identifier.starts_with(|c: char| c.is_ascii_alphanumeric())
+        && identifier
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-');
+    valido.then_some(["reset", "ScreenCapture", identifier])
+}
+
+/// Repara el permiso "fantasma" de Grabación de pantalla de la app `identifier` (macOS): borra la
+/// entrada que quedó atada a otra versión y lo vuelve a pedir. No necesita administrador. La app
+/// recién ve el permiso nuevo cuando se la vuelve a abrir.
+pub fn repair_screen_recording(identifier: &str) -> Result<(), UserFacingError> {
+    if Os::current() != Some(Os::MacOs) {
+        return Err(repair_failed("solo existe en macOS".to_owned()));
+    }
+    repair_with(identifier, run_tccutil, || {
+        request_screen_recording();
+    })
+}
+
+/// [`repair_screen_recording`] fuera del hilo del runtime async.
+pub async fn repair_screen_recording_blocking(identifier: String) -> Result<(), UserFacingError> {
+    tauri::async_runtime::spawn_blocking(move || repair_screen_recording(&identifier))
+        .await
+        .map_err(|e| repair_failed(e.to_string()))?
+}
+
+/// La reparación, con `tccutil` y el pedido del permiso inyectados para poder probarla.
+fn repair_with(
+    identifier: &str,
+    tccutil: impl FnOnce(&[&str]) -> Result<(), String>,
+    request: impl FnOnce(),
+) -> Result<(), UserFacingError> {
+    let args = tccutil_args(identifier)
+        .ok_or_else(|| repair_failed(format!("identificador inválido: {identifier:?}")))?;
+    tccutil(&args).map_err(repair_failed)?;
+    request();
+    Ok(())
+}
+
+fn run_tccutil(args: &[&str]) -> Result<(), String> {
+    let salida = std::process::Command::new("/usr/bin/tccutil")
+        .args(args)
+        .output()
+        .map_err(|e| format!("no se pudo correr tccutil: {e}"))?;
+    if salida.status.success() {
+        Ok(())
+    } else {
+        Err(format!(
+            "tccutil ({}): {}",
+            salida.status,
+            String::from_utf8_lossy(&salida.stderr).trim()
+        ))
+    }
+}
+
+/// No se pudo reparar: queda quitar la app de la lista a mano.
+fn repair_failed(detail: String) -> UserFacingError {
+    tracing::warn!(%detail, "no se pudo reparar el permiso de pantalla");
+    UserFacingError::new(ErrorCode::Internal)
+        .with_param("detail", detail)
+        .with_action(FixAction::OpenSettings(SystemPane::ScreenRecording))
+        .with_action(FixAction::ShowHelp(HelpTopic::Permissions))
 }
 
 /// Sistema operativo para el que se arma el destino de un panel de ajustes. Es un parámetro (y no
@@ -711,6 +784,83 @@ mod tests {
         SystemPane::Firewall,
         SystemPane::ScreenCastPortal,
     ];
+
+    #[test]
+    fn reparar_solo_toca_el_permiso_de_pantalla_de_esta_app() {
+        assert_eq!(
+            tccutil_args("io.github.matiasm0rales.openlight"),
+            Some([
+                "reset",
+                "ScreenCapture",
+                "io.github.matiasm0rales.openlight"
+            ])
+        );
+    }
+
+    // `tccutil reset ScreenCapture` sin identificador borra el permiso de TODAS las apps.
+    #[test]
+    fn sin_un_identificador_valido_no_se_llama_a_tccutil() {
+        for id in [
+            "",
+            " ",
+            "openlight",
+            "-v",
+            ".openlight",
+            "io.github.x openlight",
+            "io.github.x;rm",
+        ] {
+            assert_eq!(tccutil_args(id), None, "{id:?}");
+            let llamado = std::cell::Cell::new(false);
+            let resultado = repair_with(
+                id,
+                |_| {
+                    llamado.set(true);
+                    Ok(())
+                },
+                || llamado.set(true),
+            );
+            assert!(resultado.is_err() && !llamado.get(), "{id:?}");
+        }
+    }
+
+    #[test]
+    fn reparar_primero_olvida_el_permiso_y_despues_lo_pide() {
+        let pasos = std::cell::RefCell::new(Vec::new());
+        let resultado = repair_with(
+            "io.github.matiasm0rales.openlight",
+            |args| {
+                pasos.borrow_mut().push(args.join(" "));
+                Ok(())
+            },
+            || pasos.borrow_mut().push("pedir".to_owned()),
+        );
+        assert_eq!(resultado, Ok(()));
+        assert_eq!(
+            pasos.into_inner(),
+            [
+                "reset ScreenCapture io.github.matiasm0rales.openlight",
+                "pedir"
+            ]
+        );
+    }
+
+    #[test]
+    fn si_tccutil_falla_no_se_pide_y_el_error_dice_por_que() {
+        let pedido = std::cell::Cell::new(false);
+        let error = repair_with(
+            "io.github.matiasm0rales.openlight",
+            |_| Err("No such bundle identifier".to_owned()),
+            || pedido.set(true),
+        )
+        .unwrap_err();
+        assert!(!pedido.get());
+        assert!(error.params["detail"].contains("No such bundle identifier"));
+        // Queda el camino a mano: abrir Ajustes y quitar la app de la lista
+        assert_eq!(
+            error.actions[0],
+            FixAction::OpenSettings(SystemPane::ScreenRecording)
+        );
+    }
 
     #[test]
     fn macos_abre_los_paneles_de_privacidad() {

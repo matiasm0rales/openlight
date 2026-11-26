@@ -751,7 +751,9 @@
     "remove_from_effect": "Sacar este foco del efecto",
     "out_of_effect": "Este foco está fuera del efecto: queda como lo dejes.",
     "add_to_effect": "Volver a incluirlo en el efecto",
-    "no_devices": "Todavía no hay focos para controlar."
+    "no_devices": "Todavía no hay focos para controlar.",
+    "no_devices_help": "Agregá uno desde Dispositivos y vas a poder elegir su color y su brillo acá.",
+    "go_devices": "Ir a Dispositivos"
   },
   "diagnostics": {
     "title": "Diagnóstico",

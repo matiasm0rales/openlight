@@ -751,7 +751,9 @@
     "remove_from_effect": "Remove this light from the effect",
     "out_of_effect": "This light is not in the effect: it stays as you leave it.",
     "add_to_effect": "Add it back to the effect",
-    "no_devices": "No bulbs to control yet."
+    "no_devices": "No bulbs to control yet.",
+    "no_devices_help": "Add one in Devices and you can pick its color and brightness here.",
+    "go_devices": "Go to Devices"
   },
   "diagnostics": {
     "title": "Diagnostics",

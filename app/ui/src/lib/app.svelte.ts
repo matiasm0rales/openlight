@@ -41,6 +41,8 @@ export const app = $state({
   errors: [] as RaisedError[],
   help: null as HelpTopic | null,
   busy: {} as Record<string, boolean>,
+  /** Se reinició el permiso de pantalla: falta volver a darlo y reabrir la app. */
+  screenRepaired: false,
 });
 
 let uid = 0;
@@ -78,6 +80,8 @@ export async function runFix(action: FixAction, err: UserFacingError, retry?: ()
       if (!r.ok) raise(r.error);
       return false;
     }
+    case "repair_screen_permission":
+      return repairScreenPermission();
     case "renew_key": {
       const device = err.params.device ?? app.devices[0]?.id;
       if (!device) return false;
@@ -117,6 +121,26 @@ export async function runFix(action: FixAction, err: UserFacingError, retry?: ()
       app.help = action.value;
       return false;
   }
+}
+
+/**
+ * macOS: olvida el permiso de pantalla (el que quedó atado a otra versión) y lo vuelve a pedir.
+ * Si anda, saca los avisos del permiso y deja el de reabrir la app. `true` si anduvo.
+ */
+export async function repairScreenPermission(): Promise<boolean> {
+  // Dos botones iguales a la vista: la segunda vez volvería a borrar lo que se acaba de pedir.
+  if (app.busy.repairScreen) return false;
+  app.busy.repairScreen = true;
+  const r = await attempt(() => commands.repairScreenPermission());
+  app.busy.repairScreen = false;
+  if (!r.ok) {
+    raise(r.error);
+    return false;
+  }
+  dismissCode("screen_permission_denied");
+  dismissCode("screen_permission_stale");
+  app.screenRepaired = true;
+  return true;
 }
 
 export async function refreshDevices(): Promise<void> {

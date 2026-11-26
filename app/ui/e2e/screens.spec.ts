@@ -163,6 +163,26 @@ test("ayuda y errores: show_help abre la guía (contenido editable)", async ({ p
   await expect(dialog).toBeHidden();
 });
 
+test("permiso de pantalla: el error ofrece repararlo y después avisa que hay que reabrir", async ({ page }) => {
+  await open(page, "configured", "dashboard");
+  // El backend falso guarda su estado: se le saca el permiso y se recarga sin escenario
+  await page.evaluate(() => {
+    const state = JSON.parse(localStorage.getItem("openlight.mock")!);
+    state.permissions.screen_recording = "denied";
+    localStorage.setItem("openlight.mock", JSON.stringify(state));
+  });
+  await page.goto("/?fast=1#/dashboard");
+  await page.getByRole("switch", { name: "Arrancar" }).click();
+  const error = page.getByRole("alert").filter({ hasText: "screen_permission_denied" });
+  await expect(error).toContainText("Si ya figura activado");
+  await expectAccessible(page, "permiso de pantalla denegado");
+  await error.getByRole("button", { name: "Reparar permiso" }).click();
+  const notice = page.getByRole("status").filter({ hasText: "Permiso de pantalla reiniciado" });
+  await expect(notice).toContainText("volvé a abrirlo");
+  await expect(error).toBeHidden();
+  await expectAccessible(page, "aviso de permiso reiniciado");
+});
+
 test("tema oscuro, inglés y pantalla chica siguen siendo accesibles", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "dark" });
   await open(page, "configured", "dashboard");

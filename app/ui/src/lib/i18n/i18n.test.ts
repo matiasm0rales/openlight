@@ -47,6 +47,7 @@ describe("i18n: cobertura de la UI", () => {
     "disconnect.{}": ["peer_closed", "timeout", "no_response", "key_rejected", "refused", "io"],
     "disconnect_help.{}": ["peer_closed", "timeout", "no_response", "key_rejected", "refused", "io"],
     "fix.open_settings.{}": ["screen_recording", "local_network", "firewall", "screen_cast_portal"],
+    "error.screen_permission_denied.{}": ["title", "detail", "detail_macos"],
     "permission.{}.title": ["screen_recording", "local_network", "firewall", "screen_cast_portal"],
     "permission.state.{}": ["granted", "denied", "not_determined", "not_applicable"],
     "help.{}.title": ["tuya_account", "cloud_project", "data_center", "link_smart_life", "iot_core_trial", "device_troubleshooting", "permissions"],

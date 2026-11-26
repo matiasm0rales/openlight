@@ -29,6 +29,8 @@
     switch (a.kind) {
       case "open_settings":
         return t(`fix.open_settings.${a.value}`);
+      case "repair_screen_permission":
+        return t("fix.repair_screen_permission");
       case "renew_key":
         return t("fix.renew_key");
       case "retry":
@@ -50,7 +52,7 @@
     }
   }
 
-  const icons = { open_settings: "sliders", renew_key: "key", retry: "refresh", open_url: "external", show_help: "help", remove_from_effect: "power" } as const;
+  const icons = { open_settings: "sliders", repair_screen_permission: "refresh", renew_key: "key", retry: "refresh", open_url: "external", show_help: "help", remove_from_effect: "power" } as const;
 
   async function act(a: FixAction, i: number) {
     running = i;
@@ -73,7 +75,7 @@
           type="button"
           class="btn small"
           class:primary={i === 0}
-          disabled={running !== null || (a.kind === "renew_key" && renewing)}
+          disabled={running !== null || (a.kind === "renew_key" && renewing) || (a.kind === "repair_screen_permission" && app.busy.repairScreen)}
           onclick={() => act(a, i)}
         >
           {#if running === i || (a.kind === "renew_key" && renewing)}<span class="spinner" aria-hidden="true"></span>{:else}<Icon name={icons[a.kind]} size={16} />{/if}

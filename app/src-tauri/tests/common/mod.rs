@@ -25,7 +25,7 @@ use openlight_types::{
 use secrets::MemoryStore;
 use tokio::sync::watch;
 use tokio::task::JoinHandle;
-use tuya_device::NoLocator;
+use tuya_device::{Located, Locator, NoLocator};
 use tuya_sim::{SimConfig, SimHandle};
 
 /// Access ID y Access Secret falsos que acepta la nube falsa.
@@ -247,6 +247,18 @@ pub struct Overrides {
     pub local_key: Option<[u8; 16]>,
     /// Otra nube en lugar de la falsa.
     pub cloud: Option<openlight_lib::state::CloudFactory>,
+    /// Quién encuentra la IP de un foco que no la tiene (si no, nadie).
+    pub locator: Option<Arc<dyn Locator>>,
+}
+
+/// Encuentra a todos los focos en loopback, donde escuchan los simulados.
+pub struct Loopback;
+
+#[async_trait]
+impl Locator for Loopback {
+    async fn locate(&self, _id: &DeviceId) -> Option<Located> {
+        Some(Located::ip(std::net::Ipv4Addr::LOCALHOST.into()))
+    }
 }
 
 /// Como [`harness`], con los cambios de `overrides`.
@@ -346,7 +358,7 @@ async fn build(
         }),
         cloud: cloud_factory.clone(),
         scanner: Arc::new(scan.clone()),
-        locator: Arc::new(NoLocator),
+        locator: overrides.locator.unwrap_or_else(|| Arc::new(NoLocator)),
         options,
     })
     .unwrap();

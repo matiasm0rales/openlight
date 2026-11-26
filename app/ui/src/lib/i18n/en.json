@@ -809,7 +809,8 @@
       "calibration_unassigned": "I found a calibration but I don't know which bulb it belongs to. Calibrate each bulb from the dashboard.",
       "calibration_invalid": "I couldn't read calibracion.json, so I ignored it. You can calibrate again from the dashboard.",
       "skipped_non_light": "I skipped devices that are not lights (plugs, sensors).",
-      "ip_invalid": "An IP from the old setup is not valid and was ignored: it will be found automatically."
+      "ip_invalid": "An IP from the old setup is not valid and was ignored: it will be found automatically.",
+      "backup_zones_moved": "Some zones pointed to a monitor this computer doesn't have, so they moved to the main one. Check them under Zones."
     }
   },
   "update": {

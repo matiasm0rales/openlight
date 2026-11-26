@@ -809,7 +809,8 @@
       "calibration_unassigned": "Encontré una calibración pero no sé de qué foco es. Calibrá cada foco desde el panel.",
       "calibration_invalid": "No pude leer calibracion.json, así que lo ignoré. Podés calibrar de nuevo desde el panel.",
       "skipped_non_light": "Omití dispositivos que no son luces (enchufes, sensores).",
-      "ip_invalid": "Una IP del setup anterior no es válida y la ignoré: se va a buscar sola."
+      "ip_invalid": "Una IP del setup anterior no es válida y la ignoré: se va a buscar sola.",
+      "backup_zones_moved": "Alguna zona apuntaba a un monitor que no está en esta compu y la pasé al monitor principal. Revisala en Zonas."
     }
   },
   "update": {

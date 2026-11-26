@@ -235,14 +235,14 @@ fn format_lines(lines: &[LogLine]) -> String {
     out
 }
 
-fn now_secs() -> u64 {
+pub(crate) fn now_secs() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_or(0, |d| d.as_secs())
 }
 
 /// `2026-11-24T18:30:05Z` (UTC) a partir de segundos Unix.
-fn utc_stamp(secs: u64) -> String {
+pub(crate) fn utc_stamp(secs: u64) -> String {
     let days = (secs / 86_400) as i64;
     let rest = secs % 86_400;
     // Fecha civil desde días (algoritmo de Howard Hinnant)

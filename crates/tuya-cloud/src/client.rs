@@ -488,9 +488,14 @@ fn scrub(msg: &str, secrets: &[&str]) -> String {
     let mut out = msg.to_owned();
     for secret in secrets.iter().filter(|s| !s.is_empty()) {
         let needle = secret.to_ascii_lowercase();
+        // Se sigue después de cada reemplazo: un "secreto" mal escrito puede estar dentro de
+        // `HIDDEN` y no se terminaría nunca
+        let mut from = 0;
         // `to_ascii_lowercase` no cambia los largos: los índices valen para los dos textos
-        while let Some(at) = out.to_ascii_lowercase().find(&needle) {
+        while let Some(found) = out[from..].to_ascii_lowercase().find(&needle) {
+            let at = from + found;
             out.replace_range(at..at + needle.len(), HIDDEN);
+            from = at + HIDDEN.len();
         }
     }
     out
@@ -631,6 +636,12 @@ mod tests {
             scrub("id=AbC sign=ff00 y otra vez FF00", &["abc", "", "FF00"]),
             "id=[oculto] sign=[oculto] y otra vez [oculto]"
         );
+    }
+
+    #[test]
+    fn tapar_termina_aunque_el_secreto_este_dentro_del_reemplazo() {
+        // Un Access ID mal escrito puede ser cualquier cosa, también un pedazo de "[oculto]"
+        assert_eq!(scrub("no, Oso", &["o"]), "n[oculto], [oculto]s[oculto]");
     }
 
     #[test]

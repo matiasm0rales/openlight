@@ -292,6 +292,7 @@ fn los_campos_del_respaldo_son_exactamente_estos() {
         "smoothing_ms",
         "brightness_max",
         // foco
+        "order",
         "capabilities",
         "zones",
         "overrides",
@@ -350,6 +351,92 @@ fn un_campo_de_mas_en_los_archivos_de_la_app_no_llega_al_respaldo() {
     }
     let text = backup::render(&collect(&store, &[])).unwrap();
     assert!(!text.contains("COLADA"), "{text}");
+}
+
+// ---------- orden de la lista ----------
+
+/// Los ids de `store`, en el orden en que la app los muestra.
+fn listed(store: &Store) -> Vec<String> {
+    store
+        .load_devices()
+        .unwrap()
+        .into_iter()
+        .map(|d| d.id.0)
+        .collect()
+}
+
+/// Una compu con estos focos, ordenados a mano así.
+fn arranged(ids: &[&str]) -> (tempfile::TempDir, Store) {
+    let (tmp, store) = fresh();
+    let devices: Vec<DeviceRecord> = ids.iter().map(|id| record(id)).collect();
+    store.save_devices(&devices).unwrap();
+    let ids: Vec<DeviceId> = ids.iter().map(|id| dev(id)).collect();
+    store.reorder_devices(&ids).unwrap();
+    (tmp, store)
+}
+
+/// El respaldo de una compu con esos focos en ese orden (que no es el de sus nombres).
+fn arranged_backup(ids: &[&str]) -> String {
+    let (_tmp, store) = arranged(ids);
+    backup::render(&collect(&store, &[])).unwrap()
+}
+
+#[test]
+fn el_respaldo_lleva_el_orden_de_la_lista() {
+    let text = arranged_backup(&["fake3", "fake1", "fake2"]);
+    let backup = backup::parse(&text).unwrap();
+    let devices: Vec<(&str, u32)> = backup
+        .devices
+        .iter()
+        .map(|d| (d.id.0.as_str(), d.order))
+        .collect();
+    assert_eq!(devices, [("fake3", 0), ("fake1", 1), ("fake2", 2)]);
+}
+
+#[test]
+fn en_una_compu_nueva_la_lista_queda_en_el_mismo_orden() {
+    let text = arranged_backup(&["fake3", "fake1", "fake2"]);
+    let (_tmp, store) = fresh();
+    apply(&store, &text, DuplicatePolicy::Skip);
+    assert_eq!(listed(&store), ["fake3", "fake1", "fake2"]);
+}
+
+/// Manda el campo `order`, no el lugar en el archivo (que alguien puede haber cambiado a mano).
+#[test]
+fn el_orden_sale_del_campo_y_no_del_lugar_en_el_archivo() {
+    let mut value: Value =
+        serde_json::from_str(&arranged_backup(&["fake3", "fake1", "fake2"])).unwrap();
+    value["devices"].as_array_mut().unwrap().reverse();
+    let (_tmp, store) = fresh();
+    apply(&store, &value.to_string(), DuplicatePolicy::Skip);
+    assert_eq!(listed(&store), ["fake3", "fake1", "fake2"]);
+}
+
+#[test]
+fn saltear_deja_la_lista_como_esta_y_suma_los_nuevos_al_final() {
+    let text = arranged_backup(&["fake3", "fake1", "fake2"]);
+    let (_tmp, store) = arranged(&["soloaca", "fake1"]);
+    apply(&store, &text, DuplicatePolicy::Skip);
+    assert_eq!(listed(&store), ["soloaca", "fake1", "fake3", "fake2"]);
+}
+
+#[test]
+fn pisar_usa_el_orden_del_respaldo_y_lo_de_esta_compu_va_despues() {
+    let text = arranged_backup(&["fake3", "fake1", "fake2"]);
+    let (_tmp, store) = arranged(&["soloaca", "fake1", "otro"]);
+    apply(&store, &text, DuplicatePolicy::Replace);
+    assert_eq!(
+        listed(&store),
+        ["fake3", "fake1", "fake2", "soloaca", "otro"]
+    );
+    // Quedan numerados de corrido: un foco que se agregue después va al final
+    let orders: Vec<u32> = store
+        .load_devices()
+        .unwrap()
+        .iter()
+        .map(|d| d.order)
+        .collect();
+    assert_eq!(orders, [0, 1, 2, 3, 4]);
 }
 
 // ---------- leer ----------

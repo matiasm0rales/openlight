@@ -93,6 +93,9 @@ pub struct BackupDevice {
     /// Tabla de calibración, si tiene.
     #[serde(default)]
     pub calibration: Option<Vec<CalibrationPoint>>,
+    /// Lugar en la lista de focos (el menor va primero).
+    #[serde(default)]
+    pub order: u32,
 }
 
 /// Lo que hay en la compu donde se importa y no sale de la carpeta de datos.
@@ -145,6 +148,7 @@ pub fn collect(
             zones: record.zones.clone(),
             overrides: record.overrides.clone(),
             calibration: store.load_calibration(&record.id)?,
+            order: record.order,
         });
     }
     let mut excluded: Vec<DeviceId> = excluded
@@ -328,7 +332,10 @@ pub fn apply(
     let mut replaced = Vec::new();
     let mut calibrations = Vec::new();
     let mut zones_moved = false;
-    for mut device in backup.devices {
+    let mut incoming = backup.devices;
+    // Manda el campo; con empate (nunca se ordenó) queda el lugar que tenían en el archivo
+    incoming.sort_by_key(|d| d.order);
+    for mut device in incoming {
         let current = records.iter().position(|r| r.id == device.id);
         if current.is_some() && !replace {
             continue;
@@ -369,6 +376,20 @@ pub fn apply(
             }
         }
         imported.push(id);
+    }
+
+    if replace {
+        // El archivo manda también en el orden: sus focos primero y después los que solo están
+        // acá, como estaban
+        records.sort_by_key(|r| {
+            imported
+                .iter()
+                .position(|id| id == &r.id)
+                .unwrap_or(usize::MAX)
+        });
+        for (record, order) in records.iter_mut().zip(0..) {
+            record.order = order;
+        }
     }
 
     store.save_config(&config)?;

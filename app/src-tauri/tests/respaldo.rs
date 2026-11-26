@@ -211,6 +211,38 @@ async fn ida_y_vuelta_a_otra_compu_y_las_claves_bajan_de_la_nube() {
 }
 
 #[tokio::test]
+async fn el_orden_de_los_focos_viaja_con_el_respaldo() {
+    let old = harness(Setup { sims: 2, lan: true }).await;
+    configure(&old).await;
+    let ids = |h: &Harness| -> Vec<DeviceId> {
+        h.backend
+            .devices_list()
+            .unwrap()
+            .into_iter()
+            .map(|d| d.id)
+            .collect()
+    };
+    // Al revés que por nombre
+    let arranged = vec![sim_id(2), sim_id(1)];
+    old.backend.devices_reorder(arranged.clone()).unwrap();
+    let text = old.backend.backup_export().unwrap();
+
+    let new = new_computer(2).await;
+    let b = &new.backend;
+    b.backup_import(&text, DuplicatePolicy::Skip).await.unwrap();
+    assert_eq!(ids(&new), arranged);
+
+    let mine = vec![sim_id(1), sim_id(2)];
+    b.devices_reorder(mine.clone()).unwrap();
+    b.backup_import(&text, DuplicatePolicy::Skip).await.unwrap();
+    assert_eq!(ids(&new), mine, "saltear no reordena");
+    b.backup_import(&text, DuplicatePolicy::Replace)
+        .await
+        .unwrap();
+    assert_eq!(ids(&new), arranged, "pisar vuelve al orden del respaldo");
+}
+
+#[tokio::test]
 async fn un_foco_que_no_esta_en_la_cuenta_sigue_pendiente_y_se_dice_cual() {
     let old = harness(Setup { sims: 2, lan: true }).await;
     configure(&old).await;

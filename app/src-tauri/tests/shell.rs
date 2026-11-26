@@ -422,3 +422,33 @@ async fn salir_desde_el_tray_mientras_se_prepara_una_actualizacion_tampoco_se_pi
     let answered = tokio::time::timeout(Duration::from_millis(300), &mut preparing).await;
     assert!(answered.is_err());
 }
+
+#[tokio::test]
+async fn la_ventana_solo_se_retiene_mientras_la_pagina_lo_pide() {
+    let h = harness(Setup::default()).await;
+    let backend = &h.backend;
+    assert!(!backend.keeps_window());
+    backend.ui_hold(true);
+    assert!(backend.keeps_window());
+    backend.ui_hold(false);
+    assert!(!backend.keeps_window());
+    // Una página nueva (o ninguna) no tiene nada a medias
+    backend.ui_hold(true);
+    backend.ui_ready();
+    assert!(!backend.keeps_window());
+    backend.ui_hold(true);
+    backend.ui_closed();
+    assert!(!backend.keeps_window());
+}
+
+#[tokio::test]
+async fn el_aviso_de_reabrir_tras_reparar_el_permiso_sobrevive_a_la_ventana() {
+    let h = harness(Setup::default()).await;
+    let backend = &h.backend;
+    assert!(!backend.ui_ready());
+    backend.set_screen_repaired(true);
+    backend.ui_closed();
+    assert!(backend.ui_ready(), "la ventana nueva lo vuelve a mostrar");
+    backend.set_screen_repaired(false);
+    assert!(!backend.ui_ready(), "descartado no vuelve");
+}

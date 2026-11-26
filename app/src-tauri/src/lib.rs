@@ -43,7 +43,7 @@ pub fn run() {
         // Una sola instancia: abrir la app otra vez trae la ventana principal al frente. Tiene
         // que ser el primer plugin.
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            let _ = windows::show_main(app);
+            windows::show_main(app);
         }))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
@@ -77,18 +77,28 @@ pub fn run() {
             app.manage(backend.clone());
             let updated = backend.take_reopen_after_update();
             tray::install(app.handle(), Arc::new(tray_backend::AppTray::new(backend)))?;
-            if updated {
-                // Acaba de actualizarse desde la ventana: vuelve a mostrarse.
-                windows::show_main(app.handle())?;
-            } else if autostart::started_by_autostart() {
-                // Arrancó solo al iniciar sesión: queda en el tray, sin abrir la ventana.
-                windows::hide_main(app.handle())?;
+            // Arrancó sola al iniciar sesión: queda en el tray, sin crear la ventana (salvo que
+            // acabe de actualizarse desde ella).
+            if updated || !autostart::started_by_autostart() {
+                windows::open_main(app.handle())?;
+            } else {
+                windows::sync_visibility(app.handle(), None);
             }
             Ok(())
         })
         .build(context)
         .expect("error al iniciar OpenLight")
         .run(|app, event| {
+            windows::keep_running(&event);
+            // En macOS abrir la app de nuevo (Finder, Dock) no lanza otra instancia: avisa acá.
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Reopen {
+                has_visible_windows: false,
+                ..
+            } = event
+            {
+                windows::show_main(app);
+            }
             // Salir restaura los focos (Cmd+Q, "Salir" del tray, cerrar la sesión del sistema):
             // sin esto quedarían con el color del ambiente. Un reinicio no se puede frenar
             // (Tauri ignora `prevent_exit`), así que sus focos se restauran en `Exit`; después
@@ -98,9 +108,12 @@ pub fn run() {
             };
             let backend = Arc::clone(&backend);
             match event {
-                tauri::RunEvent::ExitRequested { api, code, .. }
-                    if code != Some(tauri::RESTART_EXIT_CODE) && !backend.is_shut_down() =>
-                {
+                // Sin código es que se cerró la última ventana (ver `keep_running`)
+                tauri::RunEvent::ExitRequested {
+                    api,
+                    code: Some(code),
+                    ..
+                } if code != tauri::RESTART_EXIT_CODE && !backend.is_shut_down() => {
                     api.prevent_exit();
                     if backend.begin_shutdown() {
                         let app = app.clone();

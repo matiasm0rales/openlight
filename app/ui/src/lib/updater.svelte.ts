@@ -151,11 +151,15 @@ export async function installUpdate(): Promise<void> {
   updates.error = null;
   updates.progress = { done: 0, total: null };
   updates.phase = "downloading";
+  // La instalación la lleva adelante esta página: mientras dure, cerrar la ventana la esconde en
+  // vez de destruirla.
+  await holdWindow(true);
   try {
     await update.download(onProgress, { timeout: DOWNLOAD_TIMEOUT_MS });
   } catch (cause) {
     updates.error = problem("download", cause);
     updates.phase = "idle";
+    await holdWindow(false);
     return;
   }
 
@@ -175,6 +179,7 @@ export async function installUpdate(): Promise<void> {
     }
     updates.error = problem("install", cause);
     updates.phase = "idle";
+    await holdWindow(false);
     return;
   }
 
@@ -189,6 +194,12 @@ export async function restartApp(): Promise<void> {
   updates.phase = "restoring";
   await attempt(() => commands.updatePrepare());
   await relaunchNow();
+}
+
+/** Si falla no se frena la actualización: a lo sumo, cerrar la ventana la interrumpe. */
+async function holdWindow(hold: boolean): Promise<void> {
+  const r = await attempt(() => commands.uiHold(hold));
+  if (!r.ok) console.warn("no se pudo retener la ventana:", r.error);
 }
 
 async function relaunchNow(): Promise<void> {

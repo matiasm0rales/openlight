@@ -198,7 +198,6 @@
     border: 2px dashed rgb(255 255 255 / 0.55);
     background: color-mix(in srgb, var(--c) 14%, transparent);
     cursor: grab;
-    transition: background 200ms;
   }
   .zone.active {
     border: 2px solid var(--c);

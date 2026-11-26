@@ -396,9 +396,7 @@ pub fn install<R: Runtime>(app: &AppHandle<R>, backend: Arc<dyn TrayBackend>) ->
             };
             match handle(handler_backend.as_ref(), action) {
                 Effect::None => refresh(app),
-                Effect::ShowMainWindow => {
-                    let _ = crate::windows::show_main(app);
-                }
+                Effect::ShowMainWindow => crate::windows::show_main(app),
                 Effect::Quit => {
                     let app = app.clone();
                     let quit = handler_backend.restore_and_quit();
@@ -416,7 +414,7 @@ pub fn install<R: Runtime>(app: &AppHandle<R>, backend: Arc<dyn TrayBackend>) ->
                 ..
             } = event
             {
-                let _ = crate::windows::show_main(tray.app_handle());
+                crate::windows::show_main(tray.app_handle());
             }
         });
     builder.build(app)?;

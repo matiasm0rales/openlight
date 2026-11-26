@@ -14,7 +14,8 @@ import type {
 } from "./bindings";
 import { EVENT_COLOR_LIVE, EVENT_DEVICE_HEALTH, EVENT_EFFECT_DEVICES, EVENT_ERROR_RAISED, EVENT_PIPELINE_STATS, EVENT_SESSION_STATE } from "./bindings";
 import { attempt, commands, on, openExternal, toUserFacing } from "./ipc";
-import { go } from "./router.svelte";
+import { frameMs, pacedByDevice } from "./pace";
+import { go, route } from "./router.svelte";
 import { pageHidden, whenVisible } from "./visibility";
 
 export interface RaisedError extends UserFacingError {
@@ -143,6 +144,16 @@ export async function repairScreenPermission(): Promise<boolean> {
   return true;
 }
 
+/**
+ * Descarta el aviso de reabrir la app. Lo recuerda el backend, así que hay que avisarle: si no,
+ * la próxima ventana lo volvería a mostrar.
+ */
+export async function dismissRepairNotice(): Promise<void> {
+  app.screenRepaired = false;
+  const r = await attempt(() => commands.screenRepairDismiss());
+  if (!r.ok) raise(r.error);
+}
+
 export async function refreshDevices(): Promise<void> {
   const r = await attempt(() => commands.devicesList());
   if (r.ok) app.devices = r.value;
@@ -199,8 +210,15 @@ export function deviceName(id: string): string {
   return app.devices.find((d) => d.id === id)?.name ?? id;
 }
 
+/** El color en vivo: de todos los focos junto, para redibujar una sola vez (ver `pace.ts`). */
+function liveColour(): (e: LiveColorEvent) => void {
+  return pacedByDevice<LiveColorEvent>((items) => {
+    for (const e of items) app.live[e.device] = e;
+  }, frameMs);
+}
+
 /**
- * El estado en vivo de cada foco. Con la página oculta solo se guarda lo último (sin tocar el
+ * La salud de cada foco. Con la página oculta solo se guarda lo último (sin tocar el
  * estado, así no se redibuja a escondidas) y se aplica al volver a verla. El backend ya no manda
  * estos eventos con las ventanas ocultas; esto cubre lo que él no detecta (una ventana tapada).
  */
@@ -245,7 +263,7 @@ export async function init(): Promise<void> {
       app.session = e.state;
     }),
     on(EVENT_DEVICE_HEALTH, liveStore(() => app.health)),
-    on(EVENT_COLOR_LIVE, liveStore(() => app.live)),
+    on(EVENT_COLOR_LIVE, liveColour()),
     on(EVENT_ERROR_RAISED, (e) => raise(e)),
     // También cuando se cambia desde el tray.
     on(EVENT_EFFECT_DEVICES, (e) => markInEffect((d) => !e.excluded.includes(d.id))),
@@ -259,6 +277,14 @@ export async function init(): Promise<void> {
       app.stats = [...recentStats().slice(-59), sample];
     }),
   ]);
+  // La ventana principal se destruye al cerrarla, así que cada vez que se abre esta página arranca
+  // de cero: ya con los oyentes puestos, el backend le manda lo último de cada foco y los errores
+  // que salieron mientras no estaba. La de calibración no lo pide: se los llevaría ella.
+  if (route.name !== "calibrate") {
+    const ready = await attempt(() => commands.uiReady());
+    if (!ready.ok) raise(ready.error);
+    else if (ready.value) app.screenRepaired = true;
+  }
   const session = await attempt(() => commands.sessionState());
   if (session.ok) app.session = session.value;
   await Promise.all([refreshOnboarding(), refreshDevices(), refreshSettings()]);

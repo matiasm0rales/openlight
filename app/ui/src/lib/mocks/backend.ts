@@ -151,6 +151,10 @@ class MockBackend {
   updater: MockUpdater;
   /** Entre `update_prepare` y `update_abort` el efecto no se puede arrancar (como en la app). */
   private updating = false;
+  /** La página pidió que cerrar la ventana no la destruya (`ui_hold`). */
+  held = false;
+  /** Se reparó el permiso de pantalla y el aviso de reabrir la app no se descartó. */
+  private repaired = false;
   private timers: ReturnType<typeof setInterval>[] = [];
   private videoT = 0;
   private sceneHue = 18;
@@ -381,7 +385,7 @@ class MockBackend {
     return "idle";
   }
 
-  private stopTimers(): void {
+  stopTimers(): void {
     this.timers.forEach(clearInterval);
     this.timers = [];
   }
@@ -739,6 +743,7 @@ class MockBackend {
     await this.wait(300);
     this.state.permissions.screen_recording = "denied";
     this.persist();
+    this.repaired = true;
     return null;
   }
 
@@ -759,6 +764,13 @@ class MockBackend {
       void emit(EVENT_ERROR_RAISED, err("no_display", [{ kind: "retry" }, { kind: "show_help", value: "permissions" }]));
     }
     this.persist();
+  }
+
+  /** Como el backend con una ventana nueva: el estado del efecto y de cada foco. */
+  private replay(): void {
+    if (this.session === "idle") return;
+    void emit(EVENT_SESSION_STATE, { state: this.session });
+    for (const d of this.inEffect()) this.emitHealth(d.id);
   }
 
   async handle(cmd: string, a: Record<string, any>): Promise<unknown> {
@@ -852,6 +864,16 @@ class MockBackend {
       case "update_abort":
         this.updater.calls.push("update_abort");
         this.updating = false;
+        return null;
+      case "ui_ready":
+        this.held = false;
+        this.replay();
+        return this.repaired;
+      case "screen_repair_dismiss":
+        this.repaired = false;
+        return null;
+      case "ui_hold":
+        this.held = a.hold;
         return null;
       // Plugins de Tauri que usa la UI (no son parte de ipc.rs).
       case "plugin:app|version":

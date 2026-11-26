@@ -20,6 +20,8 @@ export const commands = {
 	 *  lo vuelve a pedir). La app lo ve recién cuando se la vuelve a abrir.
 	 */
 	repairScreenPermission: (options?: InvokeOptions) => __TAURI_INVOKE<null>("repair_screen_permission", undefined, options),
+	/**  Se descartó el aviso de reabrir la app que deja `repair_screen_permission`. */
+	screenRepairDismiss: (options?: InvokeOptions) => __TAURI_INVOKE<null>("screen_repair_dismiss", undefined, options),
 	/**  Valida Access ID / Access Secret y guarda las credenciales en el llavero. */
 	cloudValidate: (credentials: CloudCredentialsInput, options?: InvokeOptions) => __TAURI_INVOKE<CloudAccount>("cloud_validate", { credentials }, options),
 	/**  Lista los dispositivos de la cuenta, cruzados con lo encontrado en la red local. */
@@ -88,6 +90,17 @@ export const commands = {
 	updatePrepare: (options?: InvokeOptions) => __TAURI_INVOKE<null>("update_prepare", undefined, options),
 	/**  La actualización no se instaló y la app sigue abierta: se puede volver a arrancar el efecto. */
 	updateAbort: (options?: InvokeOptions) => __TAURI_INVOKE<null>("update_abort", undefined, options),
+	/**
+	 *  La página de la ventana principal ya escucha los eventos: el backend le manda el estado
+	 *  completo y los errores que salieron mientras no estaba. `true` si además tiene que mostrar el
+	 *  aviso de reabrir la app (permiso de pantalla reparado).
+	 */
+	uiReady: (options?: InvokeOptions) => __TAURI_INVOKE<boolean>("ui_ready", undefined, options),
+	/**
+	 *  Mientras `hold` sea `true`, cerrar la ventana principal la esconde en vez de destruirla,
+	 *  porque la página tiene algo a medias (una actualización instalándose).
+	 */
+	uiHold: (hold: boolean, options?: InvokeOptions) => __TAURI_INVOKE<null>("ui_hold", { hold }, options),
 	/**  Importa el setup del script Python desde una carpeta. */
 	importLegacy: (folder: string, options?: InvokeOptions) => __TAURI_INVOKE<ImportReport>("import_legacy", { folder }, options),
 	/**  Últimas líneas del log (las más nuevas al final), para el visor del diagnóstico. */

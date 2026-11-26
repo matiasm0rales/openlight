@@ -1,13 +1,18 @@
-//! Ventanas de la app: la principal (que se esconde en vez de cerrarse) y la de calibración a
-//! pantalla completa.
+//! Ventanas de la app: la principal y la de calibración a pantalla completa.
+//!
+//! La principal **se destruye al cerrarla**: escondida, su proceso WebContent seguía ocupando
+//! cientos de MB. La app sigue en el tray y la ventana se vuelve a crear al abrirla, con el
+//! mismo tamaño y en el mismo lugar. Su estado vive en el backend: la página nueva lo pide al
+//! cargar (ver [`Backend::ui_ready`]). Solo se esconde en vez de destruirse mientras la página
+//! tiene algo a medias ([`Backend::ui_hold`]).
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
 use openlight_types::DisplayId;
 use tauri::{
-    AppHandle, LogicalPosition, Manager, Monitor, PhysicalPosition, PhysicalSize, Position,
-    Runtime, Size, WebviewUrl, WebviewWindowBuilder, Window, WindowEvent,
+    AppHandle, LogicalPosition, LogicalSize, Manager, Monitor, PhysicalPosition, PhysicalSize,
+    Position, Runtime, Size, WebviewUrl, WebviewWindow, WebviewWindowBuilder, Window, WindowEvent,
 };
 
 use crate::state::Backend;
@@ -25,38 +30,169 @@ pub const CALIBRATION: &str = "calibration";
 /// Ruta de la UI que se carga en la ventana de calibración (el router de la UI es por hash).
 pub const CALIBRATION_ROUTE: &str = "index.html#/calibrate";
 
-/// Muestra la ventana principal y le da el foco (desde el tray, o cuando se abre una segunda
-/// instancia). Si estaba escondida o minimizada, la recupera.
-pub fn show_main<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
-    if let Some(window) = app.get_webview_window(MAIN) {
-        window.unminimize()?;
-        window.show()?;
-        window.set_focus()?;
+/// Muestra la ventana principal y le da el foco (desde el tray, el Dock, o cuando se abre una
+/// segunda instancia). Si estaba escondida o minimizada, la recupera; si estaba cerrada, la
+/// vuelve a crear.
+///
+/// Se la puede llamar desde un manejador de eventos: en Windows crear una ventana ahí adentro
+/// traba la app (wry#583), así que la crea desde otro hilo.
+pub fn show_main<R: Runtime>(app: &AppHandle<R>) {
+    if app.get_webview_window(MAIN).is_some() {
+        open(app);
+    } else {
+        let app = app.clone();
+        tauri::async_runtime::spawn_blocking(move || open(&app));
     }
+}
+
+/// Crea la ventana principal (si hace falta) y la trae al frente. Directo solo al arrancar o
+/// fuera de un manejador de eventos; si no, [`show_main`].
+pub fn open_main<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
+    let window = match app.get_webview_window(MAIN) {
+        Some(window) => window,
+        None => create_main(app)?,
+    };
+    window.unminimize()?;
+    window.show()?;
+    window.set_focus()?;
     sync_visibility(app, None);
     Ok(())
 }
 
-/// Esconde la ventana principal; la app sigue en el tray.
-pub fn hide_main<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
-    if let Some(window) = app.get_webview_window(MAIN) {
-        window.hide()?;
+fn open<R: Runtime>(app: &AppHandle<R>) {
+    if let Err(error) = open_main(app) {
+        tracing::warn!(%error, "no se pudo abrir la ventana principal");
     }
-    sync_visibility(app, None);
-    Ok(())
 }
 
-/// Cerrar la ventana principal la esconde en vez de salir: la app sigue en el tray y los focos
+/// La ventana principal, con la configuración de `tauri.conf.json` (allí tiene `create: false`:
+/// al arrancar sola con la sesión del sistema ni se la crea) y donde había quedado.
+fn create_main<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<WebviewWindow<R>> {
+    let config = app
+        .config()
+        .app
+        .windows
+        .iter()
+        .find(|w| w.label == MAIN)
+        .ok_or(tauri::Error::WindowNotFound)?;
+    let place = remembered(app);
+    let window = WebviewWindowBuilder::from_config(app, config)?
+        // Escondida hasta que esté en su lugar, para que no salte
+        .visible(place.is_none() && config.visible)
+        .build()?;
+    if let Some(place) = place {
+        place.restore(&window);
+    }
+    Ok(window)
+}
+
+/// Dónde estaba la ventana principal al cerrarla, en píxeles físicos.
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct Place {
+    position: (i32, i32),
+    size: (u32, u32),
+    scale: f64,
+    maximized: bool,
+}
+
+/// El lugar de la última ventana principal que se cerró.
+#[derive(Default)]
+struct LastPlace(Mutex<Option<Place>>);
+
+impl Place {
+    fn of<R: Runtime>(window: &Window<R>) -> Option<Self> {
+        // Minimizada o a pantalla completa no dice dónde quedó
+        if window.is_minimized().unwrap_or(false) || window.is_fullscreen().unwrap_or(false) {
+            return None;
+        }
+        let position = window.outer_position().ok()?;
+        let size = window.inner_size().ok()?;
+        Some(Self {
+            position: (position.x, position.y),
+            size: (size.width, size.height),
+            scale: window.scale_factor().ok()?,
+            maximized: window.is_maximized().unwrap_or(false),
+        })
+    }
+
+    /// Pone la ventana donde estaba. Si ese lugar ya no está en ningún monitor, queda donde la
+    /// puso el sistema.
+    fn restore<R: Runtime>(&self, window: &WebviewWindow<R>) {
+        let monitors = window.available_monitors().unwrap_or_default();
+        let areas: Vec<_> = monitors
+            .iter()
+            .map(|m| {
+                let (p, s) = (m.position(), m.size());
+                ((p.x, p.y), (s.width, s.height))
+            })
+            .collect();
+        let place = || -> tauri::Result<()> {
+            if reachable(self.position, self.size, &areas) {
+                window.set_position(physical_position(self.position, self.scale))?;
+                window.set_size(physical_size(self.size, self.scale))?;
+            }
+            // Después de moverla, así se maximiza en el monitor donde estaba
+            if self.maximized {
+                window.maximize()?;
+            }
+            window.show()
+        };
+        if let Err(error) = place() {
+            tracing::warn!(%error, "no se pudo volver a poner la ventana donde estaba");
+        }
+    }
+}
+
+/// El rectángulo de un monitor en píxeles físicos: esquina y tamaño.
+type Area = ((i32, i32), (u32, u32));
+
+/// Si una ventana ahí se puede agarrar: algo de su borde de arriba cae dentro de un monitor.
+fn reachable((x, y): (i32, i32), (width, _): (u32, u32), monitors: &[Area]) -> bool {
+    let right = i64::from(x) + i64::from(width);
+    monitors.iter().any(|&((mx, my), (mw, mh))| {
+        let (mx, my) = (i64::from(mx), i64::from(my));
+        i64::from(x) < mx + i64::from(mw)
+            && right > mx
+            && i64::from(y) >= my
+            && i64::from(y) < my + i64::from(mh)
+    })
+}
+
+fn remember<R: Runtime>(app: &AppHandle<R>, window: &Window<R>) {
+    let Some(place) = Place::of(window) else {
+        return;
+    };
+    // `manage` no pisa lo que ya hay
+    app.manage(LastPlace::default());
+    let last = app.state::<LastPlace>();
+    *last.0.lock().unwrap_or_else(PoisonError::into_inner) = Some(place);
+}
+
+fn remembered<R: Runtime>(app: &AppHandle<R>) -> Option<Place> {
+    let last = app.try_state::<LastPlace>()?;
+    *last.0.lock().unwrap_or_else(PoisonError::into_inner)
+}
+
+/// Cerrar la ventana principal la destruye, salvo que la página tenga algo a medias
+/// ([`Backend::ui_hold`]): ahí se esconde. En los dos casos la app sigue en el tray y los focos
 /// siguen andando. Para salir de verdad está "Salir" del tray. Se engancha con
-/// `Builder::on_window_event`.
+/// `Builder::on_window_event`; que la app no termine al quedarse sin ventanas lo resuelve
+/// [`keep_running`].
 pub fn on_window_event<R: Runtime>(window: &Window<R>, event: &WindowEvent) {
-    if let WindowEvent::CloseRequested { api, .. } = event
-        && hides_on_close(window.label())
-    {
-        api.prevent_close();
-        let _ = window.hide();
-    }
     let app = window.app_handle();
+    if let WindowEvent::CloseRequested { api, .. } = event
+        && window.label() == MAIN
+    {
+        let holds = app
+            .try_state::<Arc<Backend>>()
+            .is_some_and(|backend| backend.keeps_window());
+        if holds {
+            api.prevent_close();
+            let _ = window.hide();
+        } else {
+            remember(app, window);
+        }
+    }
     match event {
         WindowEvent::CloseRequested { .. }
         | WindowEvent::Resized(_)
@@ -69,9 +205,44 @@ pub fn on_window_event<R: Runtime>(window: &Window<R>, event: &WindowEvent) {
                 sync_visibility(&app, None);
             });
         }
-        // La que se está destruyendo todavía figura entre las ventanas
-        WindowEvent::Destroyed => sync_visibility(app, Some(window.label())),
+        WindowEvent::Destroyed => destroyed(app, window.label()),
         _ => {}
+    }
+}
+
+/// Se destruyó la ventana `label` (que todavía puede figurar entre las ventanas).
+pub fn destroyed<R: Runtime>(app: &AppHandle<R>, label: &str) {
+    sync_visibility(app, Some(label));
+    let Some(backend) = app.try_state::<Arc<Backend>>() else {
+        return;
+    };
+    if label == MAIN {
+        backend.ui_closed();
+    }
+    // Sin ninguna ventana no hay desde dónde seguir una calibración: se cancela, así el foco
+    // vuelve a su estado y queda libre
+    if app.webview_windows().keys().all(|other| other == label) {
+        let backend = Arc::clone(&backend);
+        tauri::async_runtime::spawn(async move {
+            if let Err(error) = backend.calibration_cancel().await {
+                tracing::warn!(%error, "no se pudo cancelar la calibración sin ventanas");
+            }
+        });
+    }
+}
+
+/// Que se haya cerrado la última ventana no termina la app (sigue en el tray). Se llama con cada
+/// evento de `App::run`.
+///
+/// Un pedido de salida sin código sale solo de ahí (`tauri-runtime-wry`, al destruirse la última
+/// ventana). Salir de verdad no pasa por acá: "Salir" del tray y reiniciar traen código, y
+/// Cmd+Q (el `terminate:` del menú de macOS) no pide permiso y llega como `RunEvent::Exit`.
+pub fn keep_running(event: &tauri::RunEvent) {
+    if let tauri::RunEvent::ExitRequested {
+        code: None, api, ..
+    } = event
+    {
+        api.prevent_exit();
     }
 }
 
@@ -94,9 +265,16 @@ fn on_screen(visible: Option<bool>, minimized: Option<bool>) -> bool {
     visible.unwrap_or(true) && !minimized.unwrap_or(false)
 }
 
-/// Si cerrar esa ventana la esconde (la principal) o la cierra de verdad (la calibración).
-fn hides_on_close(label: &str) -> bool {
-    label == MAIN
+/// Un tamaño en píxeles físicos, en la misma unidad que [`physical_position`].
+fn physical_size((width, height): (u32, u32), scale: f64) -> Size {
+    if cfg!(target_os = "macos") {
+        Size::Logical(LogicalSize::new(
+            f64::from(width) / scale,
+            f64::from(height) / scale,
+        ))
+    } else {
+        Size::Physical(PhysicalSize::new(width, height))
+    }
 }
 
 // ---------- Calibración a pantalla completa ----------
@@ -218,16 +396,23 @@ fn open_calibration_in<R: Runtime>(app: &AppHandle<R>, display: &DisplayId) -> t
     window.set_focus()
 }
 
-/// Posición de la esquina del monitor, en la unidad que cada sistema interpreta bien.
+/// Posición de la esquina del monitor (ver [`physical_position`]).
+fn position_on(monitor: &Monitor) -> Position {
+    physical_position(
+        (monitor.position().x, monitor.position().y),
+        monitor.scale_factor(),
+    )
+}
+
+/// Una posición en píxeles físicos (de una pantalla de escala `scale`), en la unidad que cada
+/// sistema interpreta bien.
 ///
 /// macOS convierte una posición física con el factor de escala del monitor donde está la ventana
 /// *ahora*, no el de destino: al pasar de un monitor de escala 1 a uno Retina la ventana termina
 /// al doble de distancia. Con coordenadas lógicas (puntos, las de `CGDisplayBounds`) no hay
 /// conversión que equivocar. En Windows y Linux, en cambio, lo seguro son los píxeles físicos.
-fn position_on(monitor: &Monitor) -> Position {
-    let (x, y) = (monitor.position().x, monitor.position().y);
+fn physical_position((x, y): (i32, i32), scale: f64) -> Position {
     if cfg!(target_os = "macos") {
-        let scale = monitor.scale_factor();
         Position::Logical(LogicalPosition::new(
             f64::from(x) / scale,
             f64::from(y) / scale,
@@ -359,9 +544,21 @@ mod tests {
     }
 
     #[test]
-    fn solo_la_principal_se_esconde_al_cerrar() {
-        assert!(hides_on_close(MAIN));
-        assert!(!hides_on_close(CALIBRATION));
+    fn un_lugar_guardado_solo_vale_si_la_ventana_se_puede_agarrar() {
+        let monitores = [((0, 0), (1920, 1080)), ((1920, -200), (2560, 1440))];
+        let ventana = (960, 680);
+        assert!(reachable((100, 50), ventana, &monitores));
+        // En el segundo monitor, aunque empiece más arriba que el primero
+        assert!(reachable((3000, -150), ventana, &monitores));
+        // Asomando por un costado
+        assert!(reachable((-900, 10), ventana, &monitores));
+        // Del todo afuera, o con el borde de arriba fuera de la pantalla
+        assert!(!reachable((-960, 10), ventana, &monitores));
+        assert!(!reachable((100, -100), ventana, &monitores));
+        assert!(!reachable((100, 1080), ventana, &monitores));
+        // El segundo monitor se desconectó
+        assert!(!reachable((3000, 10), ventana, &monitores[..1]));
+        assert!(!reachable((100, 50), ventana, &[]));
     }
 
     #[test]

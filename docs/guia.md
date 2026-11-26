@@ -76,7 +76,8 @@ sistema (GNOME Keyring, KWallet u otro compatible con *Secret Service*).
 - La app abre el **asistente**. El idioma es español, salvo que el sistema esté en inglés; lo
   cambiás con el selector al pie de la barra de pasos.
 - OpenLight deja un ícono en la barra de menú (macOS) o en la bandeja del sistema (Windows y
-  Linux). **Cerrar la ventana no cierra la app**: sigue ahí.
+  Linux). **Cerrar la ventana no cierra la app**: sigue ahí. La ventana se libera (así ocupa menos
+  memoria) y al volver a abrirla aparece donde estaba, en el Panel.
 - Hay una sola instancia: abrirla de nuevo trae la ventana al frente.
 
 ## El asistente, paso a paso

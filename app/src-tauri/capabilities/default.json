@@ -26,6 +26,7 @@
     "allow-check-permissions",
     "allow-open-system-settings",
     "allow-repair-screen-permission",
+    "allow-screen-repair-dismiss",
     "allow-cloud-validate",
     "allow-cloud-list-devices",
     "allow-discover-lan",
@@ -57,6 +58,8 @@
     "allow-calibration-cancel",
     "allow-update-prepare",
     "allow-update-abort",
+    "allow-ui-ready",
+    "allow-ui-hold",
     "allow-import-legacy",
     "allow-diagnostics-log",
     "allow-diagnostics-export"

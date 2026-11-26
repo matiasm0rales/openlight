@@ -57,8 +57,20 @@ número.
 
 ## macOS: firma y notarización (opcional)
 
-El workflow firma y notariza **solo si existen los secrets**; si no, arma el `.dmg` sin firmar y
-avisa con un warning. Hace falta una cuenta de Apple Developer (USD 99 por año).
+El workflow firma con **Developer ID** y notariza **solo si existen los secrets**. Sin ellos avisa
+con un warning y la `.app` sale con **firma ad-hoc** (`bundle.macOS.signingIdentity: "-"` en
+`tauri.conf.json`); lo mismo pasa con `pnpm tauri build` en tu máquina. La variable
+`APPLE_SIGNING_IDENTITY`, cuando está definida, reemplaza a ese `-`.
+
+- La firma ad-hoc sella los recursos de la app. Sin ella queda solo la firma del linker,
+  `codesign --verify --deep --strict` falla y es probable que una descarga en Apple Silicon diga que
+  la app «está dañada». No identifica a nadie ni reemplaza a la notarización.
+- El `.dmg` queda **sin firmar a propósito**: Tauri no le pone firma ad-hoc porque un `.dmg`
+  autofirmado puede no abrirse ([tauri#12288](https://github.com/tauri-apps/tauri/issues/12288)).
+- El workflow verifica la `.app` suelta y la que va dentro del `.dmg`, y falla si los recursos no
+  quedaron sellados.
+
+Para firmar con Developer ID hace falta una cuenta de Apple Developer (USD 99 por año):
 
 1. Con tu cuenta, en <https://developer.apple.com/account/resources/certificates> creá un
    certificado **Developer ID Application** y descargalo, o exportalo desde *Acceso a Llaveros*
@@ -77,10 +89,19 @@ avisa con un warning. Hace falta una cuenta de Apple Developer (USD 99 por año)
 
 Con los tres primeros se firma; con los seis se firma y se notariza. Firmar siempre con la misma
 identidad es lo que hace que los permisos de Grabación de pantalla y Red local sobrevivan a las
-actualizaciones.
+actualizaciones. Con la firma ad-hoc cada build tiene una identidad distinta: después de actualizar,
+macOS puede volver a pedir esos permisos y la contraseña del llavero.
 
-Sin firma, macOS muestra "no se puede abrir porque no se puede verificar al desarrollador":
-se abre con clic derecho → *Abrir*, o `xattr -dr com.apple.quarantine /Applications/OpenLight.app`.
+### Abrir la app descargada sin Developer ID
+
+La primera vez, macOS avisa que no puede verificar la app y no la abre:
+
+- **macOS 15 o más nuevo:** intentá abrirla, cerrá el aviso (sin mandar la app a la papelera) y andá
+  a *Ajustes del Sistema → Privacidad y seguridad*. En la sección *Seguridad* tocá **Abrir
+  igualmente** y confirmá.
+- **macOS 14 o anterior:** clic derecho sobre OpenLight → *Abrir*.
+- Si en cambio dice que la app **«está dañada»**, no es lo esperado con la firma ad-hoc: reportalo.
+  Se destraba con `xattr -dr com.apple.quarantine /Applications/OpenLight.app`.
 
 `Info.plist` ya trae `NSLocalNetworkUsageDescription` y `NSScreenCaptureUsageDescription`
 (`app/src-tauri/Info.plist`, lo fusiona Tauri).

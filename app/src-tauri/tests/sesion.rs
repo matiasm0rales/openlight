@@ -197,8 +197,10 @@ async fn si_el_foco_corta_la_conexion_la_sesion_reconecta_y_sigue() {
     h.screen.paint([255, 0, 0]);
     h.backend.session_start().await.unwrap();
     let sim = &h.sims[0];
+    // El simulado ya arranca en modo color y la conexión se abre antes de estar lista: recién
+    // cuando llega el rojo la sesión está conectada. Cortar antes no cuenta como reconexión.
     eventually("conectado", Duration::from_secs(8), || {
-        sim.active_connections() == 1 && sim.dp("21") == Some(json!("colour"))
+        sim.active_connections() == 1 && colour_of(&h, 1) == "000003e803e8"
     })
     .await;
 

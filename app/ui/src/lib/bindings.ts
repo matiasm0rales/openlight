@@ -33,6 +33,11 @@ export const commands = {
 	deviceTest: (device: DeviceId, pattern: TestPattern, options?: InvokeOptions) => __TAURI_INVOKE<null>("device_test", { device, pattern }, options),
 	/**  Control manual de un foco. */
 	deviceManual: (device: DeviceId, set: ManualSet, options?: InvokeOptions) => __TAURI_INVOKE<null>("device_manual", { device, set }, options),
+	/**
+	 *  Incluye un foco en el efecto o lo saca (el "Sigue la pantalla" del panel y el tilde del
+	 *  tray). Con el efecto andando vale ya: al sacarlo, al volver el foco ya está libre.
+	 */
+	deviceSetInEffect: (device: DeviceId, enabled: boolean, options?: InvokeOptions) => __TAURI_INVOKE<null>("device_set_in_effect", { device, enabled }, options),
 	/**  Renueva la clave local con las credenciales guardadas (un clic; también lo ofrece el 914). */
 	renewKey: (device: DeviceId, options?: InvokeOptions) => __TAURI_INVOKE<null>("renew_key", { device }, options),
 	/**  Monitores disponibles. */
@@ -43,7 +48,7 @@ export const commands = {
 	zonesSet: (device: DeviceId, zones: Zone[], options?: InvokeOptions) => __TAURI_INVOKE<null>("zones_set", { device, zones }, options),
 	/**  Catálogo y valores de los ajustes. */
 	settingsGet: (options?: InvokeOptions) => __TAURI_INVOKE<SettingsSnapshot_Serialize>("settings_get", undefined, options),
-	/**  Cambia un ajuste (validado contra el catálogo). Vale desde la próxima sesión. */
+	/**  Cambia un ajuste (validado contra el catálogo). Con el efecto andando vale en seguida. */
 	settingsSet: (scope: SettingScope, id: SettingId, value: SettingValue, options?: InvokeOptions) => __TAURI_INVOKE<SettingsSnapshot_Serialize>("settings_set", { scope, id, value }, options),
 	/**  Vuelve un ajuste (o todos, con `id = None`) a su valor por defecto. */
 	settingsReset: (scope: SettingScope, id: SettingId | null, options?: InvokeOptions) => __TAURI_INVOKE<SettingsSnapshot_Serialize>("settings_reset", { scope, id }, options),
@@ -92,6 +97,8 @@ export const EVENT_COLOR_LIVE = "color://live" as const;
 export const EVENT_DEVICE_HEALTH = "device://health" as const;
 
 export const EVENT_DISCOVERY_FOUND = "discovery://found" as const;
+
+export const EVENT_EFFECT_DEVICES = "effect://devices" as const;
 
 export const EVENT_ERROR_RAISED = "error://raised" as const;
 
@@ -181,7 +188,7 @@ export type CloudAccount = {
 	region: Region,
 };
 
-/**  Credenciales tal como las escribe el usuario en el paso 6. `Debug` oculta el secreto. */
+/**  Credenciales tal como las escribe el usuario en el paso 6. `Debug` no muestra ninguna. */
 export type CloudCredentialsInput = {
 	/**  Access ID. */
 	access_id: string,
@@ -271,6 +278,8 @@ export type ConfiguredDevice_Deserialize = {
 	overrides: SettingsOverride,
 	/**  Si tiene calibración guardada. */
 	calibrated: boolean,
+	/**  Si participa del efecto: el usuario no lo sacó. Sin zonas tampoco sigue la pantalla. */
+	in_effect: boolean,
 };
 
 /**  Un foco configurado en la app. */
@@ -293,6 +302,8 @@ export type ConfiguredDevice_Serialize = {
 	overrides: SettingsOverride,
 	/**  Si tiene calibración guardada. */
 	calibrated: boolean,
+	/**  Si participa del efecto: el usuario no lo sacó. Sin zonas tampoco sigue la pantalla. */
+	in_effect: boolean,
 };
 
 /**  Pedido para agregar un foco (la clave sale de la nube o de la importación). */
@@ -455,6 +466,12 @@ export type DpRange = {
 	step: number,
 };
 
+/**  Evento `effect://devices`. */
+export type EffectDevicesEvent = {
+	/**  Los focos que el usuario sacó del efecto. */
+	excluded: DeviceId[],
+};
+
 /**  Código estable de un error visible. No se renombra nunca: aparece en la FAQ y en los logs. */
 export type ErrorCode = 
 /**  Falta el permiso de grabación de pantalla. */
@@ -479,6 +496,10 @@ export type ErrorCode =
 "device_timeout" | 
 /**  Otra app (Smart Life) ocupa la conexión local del foco. */
 "device_busy" | 
+/**  El foco está siguiendo la pantalla: para usarlo aparte hay que sacarlo del efecto. */
+"device_in_effect" | 
+/**  La propia app ya está usando el foco (calibración, prueba o control manual). */
+"device_in_use" | 
 /**  El foco no soporta color. */
 "device_no_colour" | 
 /**  Firma inválida (Access Secret mal copiado). */
@@ -518,6 +539,8 @@ export type FixAction =
 { kind: "renew_key" } | 
 /**  Reintentar. */
 { kind: "retry" } | 
+/**  Sacar del efecto el foco del error (`params.device`). */
+{ kind: "remove_from_effect" } | 
 /**  Abrir una URL externa. */
 { kind: "open_url"; value: string } | 
 /**  Mostrar una sección de la ayuda. */

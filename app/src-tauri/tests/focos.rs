@@ -6,7 +6,9 @@ mod common;
 
 use std::time::Duration;
 
-use common::{FAKE_ACCESS_ID, FAKE_ACCESS_SECRET, Harness, Setup, eventually, harness, sim_id};
+use common::{
+    FAKE_ACCESS_ID, FAKE_ACCESS_SECRET, Harness, Setup, eventually, harness, harness_with, sim_id,
+};
 use openlight_types::ipc::{
     CloudCredentialsInput, DeviceAddRequest, ManualSet, SettingScope, TestPattern,
 };
@@ -234,6 +236,32 @@ async fn el_control_manual_enciende_pone_color_y_blanco_y_suelta_la_conexion_sol
         sim.dp("20") == Some(json!(true))
     })
     .await;
+}
+
+#[tokio::test]
+async fn la_conexion_manual_se_cierra_apenas_el_efecto_toma_el_foco() {
+    // Como un foco real, que atiende una sola conexión: si la del control manual quedara
+    // abierta hasta vencer su plazo, el efecto no podría conectarse
+    let h = harness_with(Setup::default(), |o| {
+        o.manual_idle = Duration::from_secs(60)
+    })
+    .await;
+    let id = added(&h).await;
+    let sim = &h.sims[0];
+    sim.update_faults(|f| f.exclusive = true);
+    h.backend
+        .device_manual(id.clone(), ManualSet::Power(true))
+        .await
+        .unwrap();
+    assert_eq!(sim.active_connections(), 1);
+
+    h.screen.paint([255, 0, 0]);
+    h.backend.session_start().await.unwrap();
+    eventually("el efecto toma el foco", Duration::from_secs(8), || {
+        sim.dp("24") == Some(json!("000003e803e8"))
+    })
+    .await;
+    h.backend.session_stop().await.unwrap();
 }
 
 #[tokio::test]

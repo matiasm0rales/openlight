@@ -1,6 +1,7 @@
 <script lang="ts">
   import { app, toggleSession } from "../app.svelte";
   import { go, route, type RouteName } from "../router.svelte";
+  import { runtime } from "../mode";
   import { i18n, locales, setLocale, t, type Locale } from "../i18n/index.svelte";
   import { applyTheme, theme, type Theme } from "../theme.svelte";
   import Icon, { type IconName } from "./Icon.svelte";
@@ -12,7 +13,8 @@
     { name: "settings", icon: "sliders" },
     { name: "devices", icon: "devices" },
     { name: "diagnostics", icon: "pulse" },
-    { name: "tray", icon: "tray" },
+    // Maqueta del menú nativo y escenarios de prueba: solo con el backend falso.
+    ...(runtime.mock ? [{ name: "tray", icon: "tray" } as const] : []),
   ];
   const running = $derived(app.session === "active" || app.session === "connecting" || app.session === "paused");
   const themes: { v: Theme; icon: IconName }[] = [

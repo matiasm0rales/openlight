@@ -78,7 +78,7 @@ async fn calibrar_mueve_el_foco_en_vivo_guarda_la_tabla_y_restaura() {
         .device_manual(sim_id(1), openlight_types::ipc::ManualSet::Power(false))
         .await
         .unwrap_err();
-    assert_eq!(busy.code, ErrorCode::DeviceBusy);
+    assert_eq!(busy.code, ErrorCode::DeviceInUse);
 
     b.calibration_save().await.unwrap();
     for (dp, value) in &original {

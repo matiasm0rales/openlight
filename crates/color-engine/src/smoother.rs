@@ -45,6 +45,18 @@ impl Smoother {
         Self::new(decimal_f64(settings.smoothing_ms) / 1000.0)
     }
 
+    /// Cambia la constante de tiempo sin olvidar el color: el próximo paso sigue desde donde
+    /// estaba, a la velocidad nueva.
+    pub fn set_slow(&mut self, slow_s: f64) {
+        self.slow = slow_s;
+        self.fast = slow_s / 5.0;
+    }
+
+    /// [`Smoother::set_slow`] con el ajuste `smoothing_ms`.
+    pub fn set_settings(&mut self, settings: &Settings) {
+        self.set_slow(decimal_f64(settings.smoothing_ms) / 1000.0);
+    }
+
     /// El último color, o `None` antes del primer cuadro.
     pub fn color(&self) -> Option<Hsv> {
         self.color
@@ -87,5 +99,25 @@ impl Smoother {
         self.color = Some(color);
         self.t = now_s;
         Hsv::new(color[0] as f32, color[1] as f32, color[2] as f32)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cambiar_el_suavizado_conserva_el_color_y_cambia_la_velocidad() {
+        let (rojo, azul) = (Hsv::new(0.0, 1.0, 1.0), Hsv::new(0.6, 1.0, 1.0));
+        let mut smoother = Smoother::new(10.0);
+        smoother.update(rojo, 0.0);
+        smoother.set_slow(0.0);
+        assert_eq!(smoother.color(), Some(rojo), "no se olvida el color");
+        // Sin suavizado el próximo color llega directo
+        assert_eq!(smoother.update(azul, 0.001), azul);
+        // Y volver a suavizar parte del último color, sin saltos
+        smoother.set_slow(10.0);
+        let paso = smoother.update(rojo, 0.002);
+        assert!((paso.h - azul.h).abs() < 0.01, "{paso:?}");
     }
 }

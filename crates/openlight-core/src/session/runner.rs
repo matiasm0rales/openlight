@@ -9,10 +9,11 @@ use std::time::Duration;
 
 use openlight_types::ipc::LiveColorEvent;
 use openlight_types::{
-    DeviceError, DeviceId, DeviceSessionState, DisplayId, ErrorCode, Frame, LinkHealth,
+    DeviceError, DeviceId, DeviceSessionState, DisplayId, ErrorCode, Frame, LinkHealth, Settings,
+    Zone,
 };
 use tokio::sync::{mpsc, oneshot, watch};
-use tokio::time::{Instant, MissedTickBehavior, interval};
+use tokio::time::{Instant, Interval, MissedTickBehavior, interval};
 
 use super::shared::{SessionEvent, Shared};
 use crate::driver::LightDriver;
@@ -41,6 +42,27 @@ pub(crate) enum Command {
     Stop(oneshot::Sender<()>),
 }
 
+/// Lo que se le puede cambiar a la tarea de un foco sin soltarlo. Llega por un `watch`: nunca
+/// bloquea a la sesión y, si la tarea está ocupada, vale lo último.
+#[derive(Clone)]
+pub(crate) struct Tuning {
+    pub zones: Vec<Zone>,
+    pub settings: Settings,
+    /// Los cuadros de cada monitor que usan las zonas.
+    pub receivers: HashMap<DisplayId, watch::Receiver<Option<Frame>>>,
+}
+
+pub(crate) fn retry_every(settings: &Settings) -> Duration {
+    Duration::from_secs_f64(f64::from(settings.retry_every_s))
+}
+
+/// El reloj de pasos de un foco.
+fn frame_ticker(period_s: f64) -> Interval {
+    let mut ticker = interval(Duration::from_secs_f64(period_s));
+    ticker.set_missed_tick_behavior(MissedTickBehavior::Delay);
+    ticker
+}
+
 pub(crate) struct DeviceRunner {
     pub id: DeviceId,
     pub engine: DeviceEngine,
@@ -60,12 +82,23 @@ pub(crate) struct DeviceRunner {
 }
 
 impl DeviceRunner {
-    pub(crate) async fn run(mut self, mut commands: mpsc::Receiver<Command>) {
+    pub(crate) async fn run(
+        mut self,
+        mut commands: mpsc::Receiver<Command>,
+        mut tuning: watch::Receiver<Tuning>,
+    ) {
         self.begin().await;
-        let mut ticker = interval(Duration::from_secs_f64(self.engine.timing().frame_period_s));
-        ticker.set_missed_tick_behavior(MissedTickBehavior::Delay);
+        let mut ticker = frame_ticker(self.engine.timing().frame_period_s);
         loop {
             tokio::select! {
+                Ok(()) = tuning.changed() => {
+                    let period = self.engine.timing().frame_period_s;
+                    let new = tuning.borrow_and_update().clone();
+                    self.retune(new);
+                    if self.engine.timing().frame_period_s != period {
+                        ticker = frame_ticker(self.engine.timing().frame_period_s);
+                    }
+                }
                 _ = ticker.tick() => self.step().await,
                 command = commands.recv() => match command {
                     Some(Command::Suspend(done)) => {
@@ -86,6 +119,14 @@ impl DeviceRunner {
                 },
             }
         }
+    }
+
+    fn retune(&mut self, tuning: Tuning) {
+        self.engine.apply_settings(&tuning.settings);
+        self.engine.set_zones(tuning.zones);
+        self.receivers = tuning.receivers;
+        self.retry_every = retry_every(&tuning.settings);
+        self.driver.apply_settings(&tuning.settings);
     }
 
     fn now_s(&self) -> f64 {

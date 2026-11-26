@@ -224,3 +224,52 @@ fn ajustes_efectivos_apilan_globales_perfil_y_foco() {
     assert_eq!(s.max_sends_per_s, 3.0, "el foco pisa todo");
     assert_eq!(s.capture_fps, Settings::default().capture_fps);
 }
+
+// ---------- Rango de brillo ----------
+
+#[test]
+fn un_brillo_maximo_en_cero_guardado_antes_se_sigue_leyendo() {
+    let (_tmp, store) = store();
+    fs::write(
+        store.dir().join("config.json"),
+        r#"{"version": 1, "global": {"brightness_max": 0.0},
+            "profiles": [{"id": "mio", "name": "Mío", "values": {"brightness_max": 0.01},
+                          "shortcut": null, "builtin": false}]}"#,
+    )
+    .unwrap();
+    fs::write(
+        store.dir().join("devices.json"),
+        r#"{"version": 1, "devices": [{"id": "fake1", "name": "Foco", "version": "3.5",
+            "overrides": {"brightness_max": 0.0}}]}"#,
+    )
+    .unwrap();
+    let config = store.load_config().unwrap();
+    assert_eq!(config.global.0[&SettingId::BrightnessMax], number(0.05));
+    assert_eq!(
+        config.profiles[0].values.0[&SettingId::BrightnessMax],
+        number(0.05)
+    );
+    let devices = store.load_devices().unwrap();
+    assert_eq!(
+        devices[0].overrides.0[&SettingId::BrightnessMax],
+        number(0.05)
+    );
+    // Y se puede volver a guardar
+    store.save_config(&config).unwrap();
+    store.save_devices(&devices).unwrap();
+}
+
+#[test]
+fn con_el_minimo_por_encima_del_maximo_manda_el_maximo() {
+    // Puede pasar al combinar capas: el mínimo global alto con el máximo bajo de un perfil
+    let mut config = Config::default();
+    config
+        .global
+        .0
+        .insert(SettingId::BrightnessMin, number(0.7));
+    let mut own = SettingsOverride::default();
+    own.0.insert(SettingId::BrightnessMax, number(0.5));
+    let settings = config.effective_settings(Some(&own)).unwrap();
+    assert_eq!(settings.brightness_max, 0.5);
+    assert_eq!(settings.brightness_min, 0.5);
+}

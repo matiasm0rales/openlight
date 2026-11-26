@@ -61,7 +61,8 @@ impl Backend {
         })
     }
 
-    /// Define las zonas que sigue un foco. Vale desde la próxima sesión.
+    /// Define las zonas que sigue un foco. Con el efecto andando vale en seguida: sin zonas el
+    /// foco sale del efecto y al volver a tenerlas entra.
     pub fn zones_set(&self, device: DeviceId, zones: Vec<Zone>) -> CmdResult<()> {
         if zones.len() > MAX_ZONES {
             return Err(invalid("zones", format!("como mucho {MAX_ZONES} zonas")));
@@ -80,6 +81,7 @@ impl Backend {
             .ok_or_else(|| unknown_device(&device))?;
         record.zones = zones;
         self.store.save_devices(&records)?;
+        self.config_changed();
         Ok(())
     }
 }

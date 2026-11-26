@@ -187,6 +187,10 @@ impl Backend {
         self.store.update_state(|state| {
             state.devices.remove(&device);
         })?;
+        // Si se lo vuelve a agregar, participa del efecto como cualquier foco nuevo
+        if self.save_excluded(&device, false)? {
+            self.effect_changed();
+        }
         self.notify_changed();
         Ok(())
     }
@@ -259,16 +263,21 @@ impl Backend {
             return;
         }
         let backend = self.clone();
-        let (id, slot) = (conn.id.clone(), conn.slot.clone());
+        // Débil: si alguien suelta la conexión antes (la sesión toma el foco), se cierra ya
+        let (id, slot) = (conn.id.clone(), Arc::downgrade(&conn.slot));
         let idle = self.options.manual_idle;
         tokio::spawn(async move {
             loop {
+                let Some(slot) = slot.upgrade() else {
+                    return;
+                };
                 let used = *slot.last_used.lock().unwrap_or_else(|e| e.into_inner());
                 let wait = idle.saturating_sub(used.elapsed());
                 if wait.is_zero() {
                     backend.release_manual_slot(&id, &slot);
                     return;
                 }
+                drop(slot);
                 tokio::time::sleep(wait).await;
             }
         });
@@ -355,6 +364,10 @@ impl Backend {
         if self.session_uses(&device).await {
             self.session_stop().await?;
             self.session_start().await?;
+        } else {
+            // Si se había quedado afuera por la clave, ahora puede entrar
+            self.forget_skipped(&device).await;
+            self.config_changed();
         }
         Ok(())
     }

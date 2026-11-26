@@ -20,12 +20,29 @@ export function overridesFor(snapshot: SettingsSnapshot, scope: SettingScope, pr
   return {};
 }
 
-/** Valor que se ve en un ámbito: lo propio del ámbito, o lo heredado. */
+/** Valor que se ve en un ámbito: lo propio del ámbito, o lo heredado. Los globales se ven como
+ * están guardados (un perfil activo los tapa, pero no los cambia). */
 export function valueIn(snapshot: SettingsSnapshot, scope: SettingScope, id: SettingId, profiles: { id: string; values: SettingsOverride }[]): { value: SettingValue; inherited: boolean } {
   const own = overridesFor(snapshot, scope, profiles)[id];
   if (own !== undefined) return { value: own, inherited: false };
-  const base = scope.kind === "profile" ? snapshot.global : snapshot.effective;
+  const base = scope.kind === "device" ? snapshot.effective : snapshot.global;
   return { value: base[id] as SettingValue, inherited: scope.kind !== "global" };
+}
+
+/** Quién tapa lo que se cambie en un ámbito: el perfil activo y los focos con valor propio. */
+export function shadowedBy(snapshot: SettingsSnapshot, scope: SettingScope, id: SettingId, profiles: { id: string; values: SettingsOverride }[]): { profile: string | null; devices: string[] } {
+  const active = profiles.find((p) => p.id === snapshot.active_profile);
+  const profile = scope.kind === "global" && active?.values[id] !== undefined ? active.id : null;
+  const inUse = scope.kind === "global" || (scope.kind === "profile" && scope.id === snapshot.active_profile);
+  const devices = inUse ? snapshot.devices.filter((d) => d.overrides[id] !== undefined).map((d) => d.device) : [];
+  return { profile, devices };
+}
+
+/** Topes que dependen de otro ajuste: el brillo máximo no baja del mínimo, ni el mínimo lo pasa. */
+export function limitsFor(snapshot: SettingsSnapshot, scope: SettingScope, id: SettingId, profiles: { id: string; values: SettingsOverride }[]): { floor?: number; ceil?: number } {
+  if (id === "brightness_max") return { floor: Number(valueIn(snapshot, scope, "brightness_min", profiles).value) };
+  if (id === "brightness_min") return { ceil: Number(valueIn(snapshot, scope, "brightness_max", profiles).value) };
+  return {};
 }
 
 export function isDefault(def: SettingDef, value: SettingValue): boolean {

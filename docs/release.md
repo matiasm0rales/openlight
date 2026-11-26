@@ -19,12 +19,14 @@ los mismos instaladores, pero la app instalada **no puede actualizarse sola** (e
 - **Probar sin publicar:** pestaña *Actions → Release → Run workflow*, o
   `gh workflow run release.yml --ref <rama>`. Los instaladores quedan como *artifacts* del run
   (`instalador-macos`, `instalador-windows`, `instalador-linux`). No se crea ninguna Release.
-  También corre solo en los PR que tocan el workflow, `tauri.conf.json`, `Info.plist` o los íconos.
+  También corre solo en los PR que tocan el workflow, `tools/release/`, `tauri.conf.json`,
+  `Info.plist` o los íconos.
 - **Publicar:** empujar un tag `v*`. Ver [Publicar una versión](#publicar-una-versión).
 
 ## Publicar una versión
 
-Antes de la primera, hacé una sola vez [la clave del updater](#la-clave-del-updater-una-sola-vez).
+Antes de la primera, hacé una sola vez [la clave del updater](#la-clave-del-updater-una-sola-vez)
+y [el certificado de macOS](#el-certificado-propio-una-sola-vez).
 
 1. Subí la versión en `app/src-tauri/tauri.conf.json` (`version`, es la que compara el updater) y
    en el `Cargo.toml` raíz (`[workspace.package] version`). Corré `cargo test -p openlight` para que
@@ -55,22 +57,31 @@ Los tags con guion (`v0.2.0-1`) salen como pre-release y **no** llegan a nadie. 
 acepta pre-releases alfanuméricos (`0.2.0-rc1`) en el campo de versión: para un candidato usá un
 número.
 
-## macOS: firma y notarización (opcional)
+## macOS: con qué se firma
 
-El workflow firma con **Developer ID** y notariza **solo si existen los secrets**. Sin ellos avisa
-con un warning y la `.app` sale con **firma ad-hoc** (`bundle.macOS.signingIdentity: "-"` en
-`tauri.conf.json`); lo mismo pasa con `pnpm tauri build` en tu máquina. La variable
-`APPLE_SIGNING_IDENTITY`, cuando está definida, reemplaza a ese `-`.
+macOS guarda cada permiso (Grabación de pantalla, entre otros) junto con el **requisito designado**
+de la app: la regla que dice si una versión nueva es «la misma app»
+([TN3127](https://developer.apple.com/documentation/technotes/tn3127-inside-code-signing-requirements)).
+Si la versión nueva no la cumple, el permiso queda en la lista de Ajustes, con el interruptor
+prendido, pero macOS niega la captura. Por eso importa con qué se firma, sobre todo con el
+[updater](#actualizaciones-automáticas-updater) reemplazando la app solo.
 
-- La firma ad-hoc sella los recursos de la app. Sin ella queda solo la firma del linker,
-  `codesign --verify --deep --strict` falla y es probable que una descarga en Apple Silicon diga que
-  la app «está dañada». No identifica a nadie ni reemplaza a la notarización.
-- El `.dmg` queda **sin firmar a propósito**: Tauri no le pone firma ad-hoc porque un `.dmg`
-  autofirmado puede no abrirse ([tauri#12288](https://github.com/tauri-apps/tauri/issues/12288)).
-- El workflow verifica la `.app` suelta y la que va dentro del `.dmg`, y falla si los recursos no
-  quedaron sellados.
+El workflow usa la primera de estas opciones que tenga sus secrets cargados
+(`tools/release/preparar-firma-macos.sh`):
 
-Para firmar con Developer ID hace falta una cuenta de Apple Developer (USD 99 por año):
+| Opción | Secrets | Costo | Permiso al actualizar | Abrir la app descargada |
+|---|---|---|---|---|
+| 1. [Developer ID](#1-developer-id-y-notarización) | `APPLE_*` | USD 99 por año | se conserva | sin avisos si está notarizada |
+| 2. [Certificado propio](#2-certificado-propio) (**la que conviene sin cuenta de Apple**) | `MACOS_*` | gratis | se conserva | [hay que autorizarla](#abrir-la-app-descargada-sin-developer-id) |
+| 3. [Ad-hoc](#3-ad-hoc) | ninguno | gratis | **se rompe en cada versión** | [hay que autorizarla](#abrir-la-app-descargada-sin-developer-id) |
+
+En las tres, el workflow verifica con `codesign --verify --deep --strict` la `.app` suelta y la que
+va dentro del `.dmg`; en la 1 y la 2 falla además si el requisito depende del `cdhash` (la huella
+del binario, que cambia en cada build).
+
+### 1. Developer ID y notarización
+
+Hace falta una cuenta de Apple Developer:
 
 1. Con tu cuenta, en <https://developer.apple.com/account/resources/certificates> creá un
    certificado **Developer ID Application** y descargalo, o exportalo desde *Acceso a Llaveros*
@@ -87,10 +98,103 @@ Para firmar con Developer ID hace falta una cuenta de Apple Developer (USD 99 po
 | `APPLE_PASSWORD` | una **contraseña de aplicación** de <https://account.apple.com> (no la del Apple ID) |
 | `APPLE_TEAM_ID` | el Team ID de 10 caracteres |
 
-Con los tres primeros se firma; con los seis se firma y se notariza. Firmar siempre con la misma
-identidad es lo que hace que los permisos de Grabación de pantalla y Red local sobrevivan a las
-actualizaciones. Con la firma ad-hoc cada build tiene una identidad distinta: después de actualizar,
-macOS puede volver a pedir esos permisos y la contraseña del llavero.
+Con los tres primeros se firma; con los seis se firma y se notariza.
+
+### 2. Certificado propio
+
+Un certificado de firma de código **autofirmado**, siempre el mismo. No lo respalda Apple ni evita
+los avisos al abrir la app, pero le da una identidad estable: el requisito designado nombra al
+certificado y no a un build en particular.
+
+```text
+ad-hoc:             cdhash H"5fb8cf42…"                                   (otro en cada build)
+certificado propio: identifier "io.github.matiasm0rales.openlight" and certificate root = H"…"
+```
+
+#### El certificado propio (una sola vez)
+
+1. En tu Mac, desde la carpeta del repo:
+
+   ```bash
+   tools/release/crear-certificado-macos.sh
+   ```
+
+   Pide una contraseña (12 caracteres o más) y deja `~/openlight-firma/openlight-firma.p12`. Se
+   niega a escribir dentro de un repositorio y a pisar un certificado que ya exista.
+2. Guardá el `.p12` y la contraseña en tu gestor de contraseñas.
+3. Cargá los secrets (el script imprime estos comandos con tus rutas):
+
+   ```bash
+   base64 -i ~/openlight-firma/openlight-firma.p12 | gh secret set MACOS_CERTIFICATE
+   ```
+
+   ```bash
+   gh secret set MACOS_CERTIFICATE_PASSWORD
+   ```
+
+   ```bash
+   gh secret set MACOS_SIGNING_IDENTITY --body "OpenLight Code Signing"
+   ```
+
+4. Probalo sin publicar:
+
+   ```bash
+   gh workflow run release.yml
+   ```
+
+   El job de macOS tiene que decir *Se firma con el certificado propio* y mostrar un requisito con
+   `certificate root = H"…"`.
+
+| Secret | Qué es |
+|---|---|
+| `MACOS_CERTIFICATE` | el `.p12` en base64 |
+| `MACOS_CERTIFICATE_PASSWORD` | la contraseña del `.p12` |
+| `MACOS_SIGNING_IDENTITY` | el nombre del certificado: `OpenLight Code Signing` |
+
+Con uno o dos de los tres el job **falla**, para no publicar por error una versión ad-hoc. El
+workflow importa el `.p12` a un llavero temporal del runner y lo borra al terminar. El `.dmg` queda
+sin firmar: un `.dmg` firmado con un certificado propio puede no abrirse
+([tauri#12288](https://github.com/tauri-apps/tauri/issues/12288)), así que se saltea ese paso de
+Tauri.
+
+Para tener en cuenta:
+
+- **No cambies de certificado.** Con uno nuevo, todas las personas con la app pierden el permiso en
+  esa actualización. Vence a los 20 años.
+- **Cuidalo como una contraseña.** Quien tenga el `.p12` y su clave puede firmar una app que macOS
+  tome por OpenLight, con sus permisos.
+- **Pasar a este certificado desde una versión ad-hoc** (o, más adelante, a Developer ID) cambia la
+  identidad una vez: el permiso se pierde en esa actualización y se arregla con
+  [«Reparar permiso»](errores.md#screen_permission_stale).
+- El llavero también identifica a la app por su firma. Con certificado propio **no está comprobado**
+  que deje de pedir la contraseña después de actualizar.
+
+Para comprobar en tu Mac que dos builds firmadas igual piden el mismo requisito (usa un certificado
+descartable y no toca tu llavero):
+
+```bash
+tools/release/probar-firma-macos.sh
+```
+
+Y para ver el de una app instalada:
+
+```bash
+codesign -d -r- /Applications/OpenLight.app
+```
+
+### 3. Ad-hoc
+
+Sin secrets el workflow avisa con un warning y la `.app` sale con **firma ad-hoc**
+(`bundle.macOS.signingIdentity: "-"` en `tauri.conf.json`); lo mismo pasa con `pnpm tauri build` en
+tu máquina. La variable `APPLE_SIGNING_IDENTITY`, cuando está definida, reemplaza a ese `-`.
+
+- Sella los recursos de la app. Sin ella queda solo la firma del linker,
+  `codesign --verify --deep --strict` falla y es probable que una descarga en Apple Silicon diga que
+  la app «está dañada». No identifica a nadie ni reemplaza a la notarización.
+- El `.dmg` queda **sin firmar a propósito** (mismo motivo que con el certificado propio).
+- Cada build tiene una identidad distinta: **cada actualización rompe el permiso de Grabación de
+  pantalla** y macOS puede volver a pedir la contraseña del llavero. Sirve para probar, no para
+  repartir versiones que se actualizan solas.
 
 ### Abrir la app descargada sin Developer ID
 
@@ -148,9 +252,9 @@ quitado del tray, así que se reinicia sola para no quedar inalcanzable.
 | Linux AppImage | reemplaza el archivo `.AppImage` |
 | Linux `.deb` / `.rpm` | instala el paquete nuevo; el sistema pide la contraseña |
 
-Sin firma de Apple, cada versión tiene una firma de código distinta para macOS: después de
-actualizar puede volver a pedir el permiso de Grabación de pantalla (si queda activado pero no
-anda, quitá OpenLight de la lista y agregalo de nuevo).
+En macOS el permiso de Grabación de pantalla sobrevive a la actualización solo si las dos versiones
+se firmaron con la misma identidad ([con qué se firma](#macos-con-qué-se-firma)). Si quedó roto, la
+app ofrece [«Reparar permiso»](errores.md#screen_permission_stale).
 
 ### La clave del updater (una sola vez)
 

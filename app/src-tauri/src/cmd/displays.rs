@@ -4,6 +4,7 @@ use std::time::Duration;
 
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD;
+use openlight_core::MAX_ZONES;
 use openlight_types::ipc::PreviewImage;
 use openlight_types::{CaptureError, DeviceId, DisplayId, DisplayInfo, Frame, Zone};
 
@@ -12,8 +13,6 @@ use crate::state::Backend;
 
 /// Cuánto se espera el primer cuadro de la vista previa.
 const PREVIEW_WAIT: Duration = Duration::from_secs(4);
-/// Máximo de zonas por foco.
-const MAX_ZONES: usize = 8;
 
 impl Backend {
     /// Monitores disponibles ahora.

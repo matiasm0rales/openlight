@@ -7,6 +7,7 @@
 //! Lo nativo queda detrás de traits para poder probarlo sin hardware: la pantalla es un
 //! [`openlight_types::ScreenSource`] y el foco un `LightDriver`.
 
+pub mod backup;
 pub mod driver;
 pub mod engine;
 pub mod error;
@@ -27,4 +28,4 @@ pub use power::{NativePower, NoNativePower, PowerEvent, PowerEvents};
 pub use session::{
     CAPTURE_SIZE, DeviceSpec, DeviceTuning, Session, SessionEvent, SessionOptions, SourceFactory,
 };
-pub use store::{Config, DeviceRecord, DeviceState, State, Store};
+pub use store::{Config, DeviceRecord, DeviceState, MAX_ZONES, State, Store};

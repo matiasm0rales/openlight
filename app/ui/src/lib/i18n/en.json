@@ -422,7 +422,7 @@
     },
     "repair": {
       "title": "Screen permission reset",
-      "detail": "Turn OpenLight on again under Screen Recording (macOS may ask on its own). Then quit OpenLight from its menu bar icon and open it again.",
+      "detail": "Turn OpenLight on again under Screen Recording (macOS may ask on its own). Then quit OpenLight from its menu bar icon and open it again. If it isn’t listed yet, reopen it first.",
       "hint": "Already turned it on, reopened the app, and nothing changed?"
     },
     "state": {

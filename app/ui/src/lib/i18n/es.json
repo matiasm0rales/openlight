@@ -422,7 +422,7 @@
     },
     "repair": {
       "title": "Permiso de pantalla reiniciado",
-      "detail": "Volvé a activar OpenLight en Grabación de pantalla (macOS puede preguntártelo solo). Después salí de OpenLight desde su ícono en la barra de menú y volvé a abrirlo.",
+      "detail": "Volvé a activar OpenLight en Grabación de pantalla (macOS puede preguntártelo solo). Después salí de OpenLight desde su ícono en la barra de menú y volvé a abrirlo. Si todavía no figura en la lista, reabrilo primero.",
       "hint": "¿Ya lo activaste, reabriste la app y sigue igual?"
     },
     "state": {

@@ -1,0 +1,54 @@
+name: Dependencias
+
+# Avisos de seguridad de las dependencias (Rust, app/ui y web). Corre cuando cambia un lockfile y
+# una vez por semana: así un aviso nuevo se ve sin frenar los PR que no tocan dependencias.
+# Qué se sabe y se acepta hoy está en docs/seguridad.md.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Cargo.lock"
+      - "pnpm-lock.yaml"
+      - "web/package-lock.json"
+      - ".github/workflows/dependencias.yml"
+  pull_request:
+    paths:
+      - "Cargo.lock"
+      - "pnpm-lock.yaml"
+      - "web/package-lock.json"
+      - ".github/workflows/dependencias.yml"
+  schedule:
+    - cron: "17 12 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rust:
+    name: cargo audit
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+      # Falla con una vulnerabilidad; los avisos de "sin mantenimiento" solo se muestran.
+      - run: cargo audit
+
+  javascript:
+    name: pnpm y npm audit
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: app/ui
+        run: pnpm audit
+      - name: web
+        working-directory: web
+        run: npm audit

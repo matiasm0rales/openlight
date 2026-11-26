@@ -3,12 +3,32 @@
 
 /** Cada cuánto se busca una versión nueva con la búsqueda automática prendida. */
 export const CHECK_EVERY_MS = 6 * 60 * 60 * 1000;
-/** Cada cuánto se mira si ya toca buscar (y se reintenta una búsqueda que falló). */
-export const TICK_MS = 15 * 60 * 1000;
+/** Espera antes de reintentar una búsqueda que falló; se duplica con cada fallo seguido. */
+export const RETRY_MIN_MS = 60 * 1000;
+/** Tope de la espera entre reintentos. */
+export const RETRY_MAX_MS = 60 * 60 * 1000;
+/** Volver a mostrar la ventana no busca si la última búsqueda fue hace menos que esto. */
+export const REOPEN_MIN_MS = 60 * 60 * 1000;
+/** Cada cuánto se mira si ya toca buscar. */
+export const TICK_MS = 60 * 1000;
 export const CHECK_TIMEOUT_MS = 30 * 1000;
 export const DOWNLOAD_TIMEOUT_MS = 15 * 60 * 1000;
 /** De dónde bajar la versión nueva a mano. */
 export const RELEASES_URL = "https://github.com/matiasm0rales/openlight/releases/latest";
+
+/** Cuánto esperar antes de reintentar después de `failures` búsquedas fallidas seguidas. */
+export function retryDelay(failures: number): number {
+  return Math.min(RETRY_MIN_MS * 2 ** (failures - 1), RETRY_MAX_MS);
+}
+
+/**
+ * El servidor contestó pero no hay ninguna versión para leer: todavía no se publicó ninguna
+ * (`releases/latest/download/latest.json` da 404). El plugin no pasa el código HTTP, así que un
+ * 500 o un 429 de GitHub dan este mismo mensaje.
+ */
+export function noRelease(cause: unknown): boolean {
+  return /could not fetch a valid release json/i.test(String(cause instanceof Error ? cause.message : cause));
+}
 
 export type UpdateStep = "check" | "download" | "install";
 export type UpdateErrorKind = "network" | "unavailable" | "signature" | "unsupported" | "permission" | "auth" | "install" | "restart";

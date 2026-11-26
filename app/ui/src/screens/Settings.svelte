@@ -45,14 +45,32 @@
   const own = $derived(snapshot ? overridesFor(snapshot, scope, app.profiles) : {});
   const hidden = $derived(snapshot ? snapshot.catalog.length - visibleDefs(snapshot.catalog, level).length : 0);
 
-  // Dónde no se va a notar lo que se cambie en este ámbito.
+  // En «Todos los focos»: los que tienen un valor propio y por eso no cambian con este.
+  function overriding(def: SettingDef) {
+    if (!snapshot || scope.kind !== "global") return [];
+    return snapshot.devices.flatMap(({ device, overrides }) => {
+      const value = overrides[def.id];
+      return value === undefined ? [] : [{ device, name: deviceName(device), value }];
+    });
+  }
+
+  // En un foco: si el valor es propio y cuál usaría sin él (el de todos, o el del perfil activo).
+  function source(def: SettingDef) {
+    if (!snapshot || scope.kind !== "device") return undefined;
+    const active = app.profiles.find((p) => p.id === snapshot.active_profile);
+    const profile = active?.values[def.id] !== undefined ? profileName(active) : undefined;
+    return { own: own[def.id] !== undefined, common: snapshot.effective[def.id] as SettingValue, profile };
+  }
+
+  // Dónde no se va a notar lo que se cambie en este ámbito (en «Todos los focos», los focos con
+  // valor propio se muestran aparte, con su acción).
   function note(def: SettingDef): string | undefined {
     if (!snapshot) return undefined;
     const hidden = shadowedBy(snapshot, scope, def.id, app.profiles);
     const profile = app.profiles.find((p) => p.id === hidden.profile);
     const lines = [
       profile ? t("settings.shadowed_profile", { name: profileName(profile) }) : "",
-      hidden.devices.length ? t("settings.shadowed_devices", { names: hidden.devices.map(deviceName).join(", ") }) : "",
+      scope.kind !== "global" && hidden.devices.length ? t("settings.shadowed_devices", { names: hidden.devices.map(deviceName).join(", ") }) : "",
     ];
     return lines.filter(Boolean).join(" ") || undefined;
   }
@@ -67,11 +85,11 @@
     } else raise(r.error, r.error.code === "invalid_setting" ? undefined : () => set(def, value));
   }
 
-  async function reset(def: SettingDef | null) {
-    const r = await attempt(() => commands.settingsReset(scope, def?.id ?? null));
+  async function reset(def: SettingDef | null, target: SettingScope = scope) {
+    const r = await attempt(() => commands.settingsReset(target, def?.id ?? null));
     if (r.ok) {
       app.settings = r.value;
-      if (scope.kind === "profile") await refreshProfiles();
+      if (target.kind === "profile") await refreshProfiles();
       syncDevice();
     } else raise(r.error);
   }
@@ -188,7 +206,7 @@
             <div class="list">
               {#each g.defs as def (def.id)}
                 {@const v = valueIn(snapshot, scope, def.id, app.profiles)}
-                <SettingControl {def} value={v.value} inherited={v.inherited} canReset={scope.kind === "global" ? undefined : own[def.id] !== undefined} {...limitsFor(snapshot, scope, def.id, app.profiles)} note={note(def)} onchange={(val) => set(def, val)} onreset={() => reset(def)} />
+                <SettingControl {def} value={v.value} inherited={v.inherited} canReset={scope.kind === "global" ? undefined : own[def.id] !== undefined} {...limitsFor(snapshot, scope, def.id, app.profiles)} note={note(def)} overrides={overriding(def)} source={source(def)} onchange={(val) => set(def, val)} onreset={() => reset(def)} onusecommon={(id) => reset(def, { kind: "device", id })} />
               {/each}
             </div>
           </section>

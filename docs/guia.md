@@ -288,7 +288,9 @@ valor por defecto, y se aplica a uno de estos ámbitos:
 
 Si el mismo ajuste está en varios, gana el más específico: foco, después perfil activo, después
 global y por último el valor por defecto. En **Todos los focos** se ve el valor global, con un
-aviso cuando el perfil activo o algún foco usan el suyo (ahí el cambio no se nota).
+aviso cuando el perfil activo o algún foco usan el suyo (ahí el cambio no se nota). Por cada foco
+con valor propio aparece **Usar el valor de todos**, que lo borra. En un foco, cada ajuste dice si
+es un **Valor propio** (y cuál usaría sin él) o si viene **De todos los focos** o del perfil activo.
 
 El brillo máximo no puede quedar por debajo del brillo mínimo. Si al combinar un perfil y los
 valores de un foco el mínimo quedara arriba, manda el máximo.

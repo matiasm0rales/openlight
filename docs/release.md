@@ -135,6 +135,11 @@ Buscar actualizaciones automáticamente*; ahí también está la versión actual
 mano). Si hay una, el panel muestra la versión, las novedades y **Actualizar y reiniciar**. Nada se
 instala sin que se toque ese botón.
 
+Si la búsqueda automática falla (por ejemplo, sin red), reintenta al minuto y duplica la espera en
+cada fallo, hasta una hora. Volver a mostrar la ventana no busca si la última búsqueda fue hace menos
+de una hora. Mientras no haya ninguna Release publicada, `latest.json` da 404 y la app dice que está
+al día (el plugin no informa el código HTTP, así que un 500 de GitHub se ve igual).
+
 Al tocarlo: descarga el paquete y verifica la firma, devuelve los focos a como estaban (el mismo
 camino que *Salir*), instala y vuelve a abrir la app. Si algo falla, sigue andando la versión de
 antes, el efecto se retoma si estaba prendido, y se sugiere qué hacer. En Windows hay un caso

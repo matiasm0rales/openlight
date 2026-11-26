@@ -14,6 +14,7 @@ import type {
 } from "./bindings";
 import { EVENT_COLOR_LIVE, EVENT_DEVICE_HEALTH, EVENT_EFFECT_DEVICES, EVENT_ERROR_RAISED, EVENT_PIPELINE_STATS, EVENT_SESSION_STATE } from "./bindings";
 import { attempt, commands, on, openExternal, toUserFacing } from "./ipc";
+import { frameMs, pacedByDevice } from "./pace";
 import { go, route } from "./router.svelte";
 import { pageHidden, whenVisible } from "./visibility";
 
@@ -175,8 +176,15 @@ export function deviceName(id: string): string {
   return app.devices.find((d) => d.id === id)?.name ?? id;
 }
 
+/** El color en vivo: de todos los focos junto, para redibujar una sola vez (ver `pace.ts`). */
+function liveColour(): (e: LiveColorEvent) => void {
+  return pacedByDevice<LiveColorEvent>((items) => {
+    for (const e of items) app.live[e.device] = e;
+  }, frameMs);
+}
+
 /**
- * El estado en vivo de cada foco. Con la página oculta solo se guarda lo último (sin tocar el
+ * La salud de cada foco. Con la página oculta solo se guarda lo último (sin tocar el
  * estado, así no se redibuja a escondidas) y se aplica al volver a verla. El backend ya no manda
  * estos eventos con las ventanas ocultas; esto cubre lo que él no detecta (una ventana tapada).
  */
@@ -221,7 +229,7 @@ export async function init(): Promise<void> {
       app.session = e.state;
     }),
     on(EVENT_DEVICE_HEALTH, liveStore(() => app.health)),
-    on(EVENT_COLOR_LIVE, liveStore(() => app.live)),
+    on(EVENT_COLOR_LIVE, liveColour()),
     on(EVENT_ERROR_RAISED, (e) => raise(e)),
     // También cuando se cambia desde el tray.
     on(EVENT_EFFECT_DEVICES, (e) => markInEffect((d) => !e.excluded.includes(d.id))),

@@ -62,6 +62,23 @@ Lo que sostiene esto en el código:
 - En macOS todos los secretos van en una sola entrada del llavero (PR #29); en Windows y Linux,
   una por secreto. Los errores del llavero nombran la entrada, no su valor.
 
+### Respaldo para llevar los focos a otra compu
+
+Agregado después de la revisión, con la misma regla: **ningún secreto sale del llavero**.
+
+- El tipo del archivo (`openlight_core::backup::Backup`) no tiene campos para claves, Access ID,
+  Access Secret ni IPs, así que no se pueden serializar. Tampoco lleva el mapeo de DPs, que tiene
+  un campo de JSON libre: se vuelve a bajar junto con la clave. Una prueba enumera todos los
+  campos del archivo y falla si aparece uno nuevo.
+- [`tests/respaldo.rs`](../app/src-tauri/tests/respaldo.rs) guarda claves, credenciales e IPs
+  falsas, exporta y falla si alguna aparece (en claro, hexadecimal, base64 o como bytes, y
+  cualquier cosa con forma de IPv4).
+- Un archivo importado se valida entero antes de escribir (versión, ids, zonas, rangos). Los
+  errores dicen la línea y la columna, nunca el contenido.
+- El archivo se elige con diálogos del sistema. La ventana no puede pedirle al backend que lea o
+  escriba una ruta, y ninguna capability le da los comandos de `tauri-plugin-dialog`.
+- El respaldo sí tiene nombres e ids de los focos y de los perfiles.
+
 El zip **no tiene secretos, pero sí datos personales**: nombres e ids de los focos, sus IP de la
 red local y rutas de archivos (que incluyen el nombre de usuario). Conviene mirarlo antes de
 publicarlo, como ya pide [`CONTRIBUTING.md`](../CONTRIBUTING.md).

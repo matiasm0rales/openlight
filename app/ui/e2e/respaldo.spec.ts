@@ -6,7 +6,7 @@ import { expectAccessible, open } from "./helpers";
 const LIVING = "bf3a9c1e7d2b4f6a8c0e1d";
 const STRIP = "bf5e6a7c8d9e0f1a2b3c4d";
 
-const device = (id: string, name: string) => ({ id, name, version: "3.5", capabilities: null, zones: [], overrides: {}, calibration: null });
+const device = (id: string, name: string, order: number) => ({ id, name, version: "3.5", capabilities: null, zones: [], overrides: {}, calibration: null, order });
 
 /** Un respaldo con un foco que ya está (living) y uno nuevo (la tira). */
 const BACKUP = {
@@ -16,7 +16,8 @@ const BACKUP = {
   app_version: "0.1.0",
   settings: { global: {}, active_profile: null },
   profiles: [],
-  devices: [device(LIVING, "Living del respaldo"), device(STRIP, "Tira LED tele")],
+  // En su compu la tira iba primero (manda `order`, no el lugar en el archivo).
+  devices: [device(LIVING, "Living del respaldo", 1), device(STRIP, "Tira LED tele", 0)],
   excluded_devices: [],
 };
 
@@ -29,6 +30,9 @@ async function pick(page: Page, content: unknown) {
 }
 
 const backup = (page: Page) => page.getByRole("region", { name: "Respaldo" });
+
+/** Los nombres de las tarjetas, en el orden en que se ven. */
+const listed = (page: Page) => page.locator(".device h2");
 
 test("exportar: dice dónde quedó y que no lleva claves", async ({ page }) => {
   await open(page, "configured", "devices");
@@ -59,6 +63,8 @@ test("importar: resumen antes de aplicar, saltear y bajar las claves que faltan"
   await expect(backup(page)).toContainText("Respaldo importado. Focos: 1.");
   await expect(page.getByRole("heading", { name: "Tira LED tele" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Living del respaldo" })).toHaveCount(0);
+  // Saltear no reordena: lo nuevo va al final
+  await expect(listed(page)).toHaveText(["Foco living", "Lámpara escritorio", "Tira LED tele"]);
 
   const strip = page.getByRole("listitem").filter({ has: page.getByRole("heading", { name: "Tira LED tele" }) });
   await expect(strip.getByText("Sin clave")).toBeVisible();
@@ -74,10 +80,12 @@ test("importar pisando: los repetidos quedan como en el respaldo", async ({ page
   await open(page, "configured", "devices");
   await pick(page, BACKUP);
   const dialog = page.getByRole("dialog", { name: "Importar respaldo" });
+  await expect(dialog.getByRole("radio", { name: /^Pisar/ })).toHaveAccessibleName(/su orden/);
   await dialog.getByRole("radio", { name: /^Pisar/ }).check();
   await dialog.getByRole("button", { name: "Importar", exact: true }).click();
   await expect(backup(page)).toContainText("Respaldo importado. Focos: 2.");
-  await expect(page.getByRole("heading", { name: "Living del respaldo" })).toBeVisible();
+  // Primero los del respaldo, en su orden; después lo que solo está en esta compu
+  await expect(listed(page)).toHaveText(["Tira LED tele", "Living del respaldo", "Lámpara escritorio"]);
 });
 
 test("cancelar el resumen no importa nada", async ({ page }) => {

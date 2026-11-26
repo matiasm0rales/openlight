@@ -153,7 +153,7 @@ interface MockBackup {
   version: number;
   created_at: string;
   app_version: string;
-  devices: Pick<ConfiguredDevice_Serialize, "id" | "name" | "version" | "zones" | "overrides">[];
+  devices: (Pick<ConfiguredDevice_Serialize, "id" | "name" | "version" | "zones" | "overrides"> & { order?: number })[];
 }
 
 /** Copia profunda que también acepta los proxies reactivos de Svelte (como el IPC real, vía JSON). */
@@ -788,7 +788,8 @@ class MockBackend {
     const file = this.parseBackup(content);
     await this.wait(400);
     const imported: string[] = [];
-    for (const d of file.devices) {
+    // Como el backend: manda `order`, y los que entran van al final de la lista.
+    for (const d of [...file.devices].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))) {
       const current = this.state.devices.find((x) => x.id === d.id);
       if (current && duplicates === "skip") continue;
       const fields = { name: d.name, version: d.version, zones: d.zones ?? [], overrides: d.overrides ?? {} };
@@ -800,6 +801,11 @@ class MockBackend {
       }
       this.state.deviceOverrides[d.id] = { ...fields.overrides };
       imported.push(d.id);
+    }
+    // Pisando, los del archivo van primero en su orden y después los que solo están acá.
+    if (duplicates === "replace") {
+      const place = (id: string) => (imported.includes(id) ? imported.indexOf(id) : imported.length);
+      this.state.devices.sort((a, b) => place(a.id) - place(b.id));
     }
     this.persist();
     return { devices: imported, calibrations: 0, settings_applied: duplicates === "replace", warnings: [] };

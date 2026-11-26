@@ -869,7 +869,7 @@
     "skip": "Saltear",
     "skip_help": "Lo que ya tenés acá no cambia. Solo se suma lo que falta.",
     "replace": "Pisar",
-    "replace_help": "Los focos repetidos, los ajustes y los perfiles quedan como en el respaldo. No se borra nada.",
+    "replace_help": "Los focos repetidos, su orden, los ajustes y los perfiles quedan como en el respaldo. No se borra nada.",
     "keys_later": "Los focos nuevos quedan sin clave hasta que la bajes de la nube de Tuya.",
     "confirm": "Importar",
     "done": "Respaldo importado. Focos: {devices}. Calibraciones: {calibrations}.",

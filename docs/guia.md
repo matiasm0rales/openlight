@@ -296,8 +296,9 @@ Para apagar un foco usá **Apagar** (fuera del efecto): el brillo máximo en lo 
 
 #### Llevar tus focos a otra compu
 
-**Exportar respaldo** guarda un `.json` con tus focos (nombre, protocolo, zonas, ajustes propios
-y calibración), los ajustes globales, los perfiles y qué focos sacaste del efecto.
+**Exportar respaldo** guarda un `.json` con tus focos (nombre, protocolo, zonas, ajustes propios,
+calibración y el orden de la lista), los ajustes globales, los perfiles y qué focos sacaste del
+efecto.
 
 El archivo **no incluye** las claves de los focos, el Access ID, el Access Secret ni las
 direcciones IP. Sí incluye nombres e ids de tus focos: miralo antes de compartirlo.
@@ -305,9 +306,10 @@ direcciones IP. Sí incluye nombres e ids de tus focos: miralo antes de comparti
 En la otra compu, **Importar respaldo** muestra primero cuántos focos son nuevos y cuántos ya
 están, y te deja elegir:
 
-- **Saltear:** lo que ya tenés no cambia; solo se suma lo que falta. En una compu recién
-  instalada entra todo.
+- **Saltear:** lo que ya tenés no cambia; solo se suma lo que falta, y los focos nuevos van al
+  final de la lista. En una compu recién instalada entra todo, en el mismo orden.
 - **Pisar:** los focos repetidos, los ajustes globales y los perfiles quedan como en el archivo.
+  La lista toma el orden del archivo; los focos que solo están en esta compu van después.
 
 En ningún caso se borra un foco, un perfil o una calibración que el archivo no tenga. Si una zona
 apuntaba a un monitor que no está, pasa al monitor principal.

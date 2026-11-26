@@ -869,7 +869,7 @@
     "skip": "Skip",
     "skip_help": "What you already have here doesn't change. Only what's missing is added.",
     "replace": "Overwrite",
-    "replace_help": "Repeated bulbs, settings and profiles become what the backup says. Nothing is deleted.",
+    "replace_help": "Repeated bulbs, their order, settings and profiles become what the backup says. Nothing is deleted.",
     "keys_later": "New bulbs have no key until you download it from the Tuya cloud.",
     "confirm": "Import",
     "done": "Backup imported. Bulbs: {devices}. Calibrations: {calibrations}.",

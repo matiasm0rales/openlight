@@ -115,7 +115,7 @@ test("valores propios en inglés", async ({ page }) => {
   await expect(card(page, "saturation").getByText("From all bulbs", { exact: true })).toBeVisible();
 });
 
-test("perfiles: crear, renombrar, asignar atajo, activar y borrar", async ({ page }) => {
+test("perfiles: crear, renombrar, asignar atajo, activar y eliminar", async ({ page }) => {
   await open(page, "configured", "settings");
   const profiles = page.getByRole("complementary", { name: "Perfiles" });
   await profiles.getByLabel("Perfil nuevo").fill("Series");
@@ -124,7 +124,8 @@ test("perfiles: crear, renombrar, asignar atajo, activar y borrar", async ({ pag
 
   const item = profiles.locator("li", { hasText: "Series" });
   await expect(item).toBeVisible();
-  await item.getByRole("button", { name: "Renombrar" }).click();
+  await item.getByRole("button", { name: "Más acciones de Series" }).click();
+  await page.getByRole("menuitem", { name: "Renombrar" }).click();
   await expect(item.getByRole("textbox")).toHaveValue("Series");
   await item.getByRole("textbox").fill("Series de noche");
   await item.getByRole("button", { name: "Guardar" }).click();
@@ -140,7 +141,8 @@ test("perfiles: crear, renombrar, asignar atajo, activar y borrar", async ({ pag
   await profiles.locator("li", { hasText: "Películas" }).getByRole("button", { name: "Duplicar" }).click();
   await expect(profiles.locator("li", { hasText: "Copia de Películas" })).toBeVisible();
 
-  await renamed.getByRole("button", { name: "Borrar Series de noche" }).click();
+  await renamed.getByRole("button", { name: "Eliminar el perfil Series de noche" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Eliminar perfil" }).click();
   await expect(profiles.locator("li", { hasText: "Series de noche" })).toHaveCount(0);
 });
 

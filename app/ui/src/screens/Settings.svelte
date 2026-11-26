@@ -1,7 +1,8 @@
 <script lang="ts">
   // D. Ajustes generados desde el catálogo que devuelve `settings_get`: nada de esta pantalla
   // conoce un ajuste concreto. Niveles Básico/Avanzado/Experto, ámbito global/foco/perfil,
-  // restaurar, vista previa en vivo y perfiles (crear, duplicar, renombrar, atajo, borrar).
+  // restaurar, vista previa en vivo y perfiles (crear, duplicar, renombrar, atajo, eliminar).
+  import { tick } from "svelte";
   import type { Profile_Serialize, SettingDef, SettingLevel, SettingScope, SettingValue } from "../lib/bindings";
   import { activateProfile, app, deviceName, raise, refreshSettings } from "../lib/app.svelte";
   import { attempt, commands } from "../lib/ipc";
@@ -10,6 +11,7 @@
   import { LEVELS, groupByLevel, limitsFor, overridesFor, shadowedBy, valueIn, visibleDefs } from "../lib/settings";
   import Eclipse from "../lib/components/Eclipse.svelte";
   import Icon from "../lib/components/Icon.svelte";
+  import MoreMenu from "../lib/components/MoreMenu.svelte";
   import SettingControl from "../lib/components/SettingControl.svelte";
   import UpdatesPanel from "../lib/components/UpdatesPanel.svelte";
 
@@ -110,6 +112,16 @@
   let renaming = $state<string | null>(null);
   let renameValue = $state("");
   let capturing = $state<string | null>(null);
+  let deleting = $state<Profile_Serialize | null>(null);
+  let dialog: HTMLDialogElement | undefined = $state();
+  let profilesTitle: HTMLElement | undefined = $state();
+  let scopeSelect: HTMLSelectElement | undefined = $state();
+
+  $effect(() => {
+    if (!dialog) return;
+    if (deleting && !dialog.open) dialog.showModal();
+    if (!deleting && dialog.open) dialog.close();
+  });
   const profileName = (p: Profile_Serialize) => (p.builtin ? t(p.name) : p.name);
 
   async function createProfile(from: string | null) {
@@ -129,11 +141,42 @@
     await refreshProfiles();
   }
 
-  async function remove(p: Profile_Serialize) {
+  async function remove() {
+    const p = deleting;
+    deleting = null;
+    if (!p) return;
     const r = await attempt(() => commands.profilesDelete(p.id));
     if (!r.ok) return raise(r.error);
     if (scopeKey === `profile:${p.id}`) scopeKey = "global";
     await Promise.all([refreshProfiles(), refreshSettings()]);
+    // La tarjeta que tenía el foco ya no está: queda en el título de la lista.
+    await tick();
+    profilesTitle?.focus();
+  }
+
+  function startRename(p: Profile_Serialize) {
+    renaming = p.id;
+    renameValue = p.name;
+  }
+
+  /** Cierra el renombrado (guardando o no) y devuelve el foco al menú del perfil. */
+  async function endRename(p: Profile_Serialize, save: boolean) {
+    renaming = null;
+    if (save) void update(p, { name: renameValue.trim() || p.name });
+    await tick();
+    document.querySelector<HTMLElement>(`[data-profile="${CSS.escape(p.id)}"] [aria-haspopup="menu"]`)?.focus();
+  }
+
+  const selectAll = (input: HTMLInputElement) => {
+    input.focus();
+    input.select();
+  };
+
+  /** El selector de ámbito puede quedar lejos de la lista: el foco va ahí y se ve qué se edita. */
+  async function edit(p: Profile_Serialize) {
+    scopeKey = `profile:${p.id}`;
+    await tick();
+    scopeSelect?.focus();
   }
 
   function captureKey(e: KeyboardEvent, p: Profile_Serialize) {
@@ -172,7 +215,7 @@
   <div class="bar">
     <div class="field scope">
       <label for="scope">{t("settings.scope")}</label>
-      <select id="scope" bind:value={scopeKey}>
+      <select id="scope" bind:this={scopeSelect} bind:value={scopeKey}>
         <option value="global">{t("settings.scope_global")}</option>
         <optgroup label={t("settings.scope_devices")}>
           {#each app.devices as d (d.id)}<option value="device:{d.id}">{d.name}</option>{/each}
@@ -218,42 +261,51 @@
     </div>
 
     <aside class="profiles card" aria-labelledby="profiles-title">
-      <h2 id="profiles-title">{t("settings.profiles.title")}</h2>
+      <h2 id="profiles-title" bind:this={profilesTitle} tabindex="-1">{t("settings.profiles.title")}</h2>
       <p class="muted small">{t("settings.profiles.help")}</p>
       <ul>
         {#each app.profiles as p (p.id)}
-          <li class:active={snapshot?.active_profile === p.id}>
+          {@const active = snapshot?.active_profile === p.id}
+          <li class:active data-profile={p.id}>
             {#if renaming === p.id}
-              <form class="rename" onsubmit={(e) => { e.preventDefault(); void update(p, { name: renameValue.trim() || p.name }); renaming = null; }}>
+              <form class="rename" onsubmit={(e) => { e.preventDefault(); void endRename(p, true); }}>
                 <label class="sr-only" for="rename-{p.id}">{t("settings.profiles.rename")}</label>
-                <input id="rename-{p.id}" type="text" bind:value={renameValue} />
+                <input id="rename-{p.id}" type="text" autocomplete="off" bind:value={renameValue} {@attach selectAll} onkeydown={(e) => e.key === "Escape" && void endRename(p, false)} />
                 <button type="submit" class="btn small primary">{t("common.save")}</button>
               </form>
             {:else}
               <div class="pname">
                 <span class="n">{profileName(p)}</span>
                 {#if p.builtin}<span class="chip">{t("settings.profiles.builtin")}</span>{/if}
-                {#if snapshot?.active_profile === p.id}<span class="chip accent">{t("settings.profiles.active")}</span>{/if}
+                {#if active}<span class="chip ok badge"><Icon name="check" size={13} />{t("settings.profiles.active")}</span>{/if}
               </div>
             {/if}
-            <div class="pactions">
-              {#if snapshot?.active_profile !== p.id}
-                <button type="button" class="btn small" onclick={() => activateProfile(p.id)}>{t("settings.profiles.activate")}</button>
+            <div class="pactions" role="group" aria-label={t("settings.profiles.actions_of", { name: profileName(p) })}>
+              <!-- Un solo botón que cambia: así el foco no se pierde al activar o desactivar. -->
+              <button type="button" class="btn small" class:primary={!active} class:secondary={active} onclick={() => activateProfile(active ? null : p.id)}>
+                <Icon name={active ? "stop" : "play"} size={14} />{active ? t("settings.profiles.deactivate") : t("settings.profiles.activate")}
+              </button>
+              <button type="button" class="btn secondary small" title={t("settings.profiles.edit_help")} onclick={() => edit(p)}><Icon name="sliders" size={14} />{t("settings.profiles.edit")}</button>
+              <!-- Los de fábrica solo se pueden duplicar: no hace falta un menú. -->
+              {#if p.builtin}
+                <button type="button" class="btn secondary small" onclick={() => createProfile(p.id)}><Icon name="copy" size={14} />{t("settings.profiles.duplicate")}</button>
               {:else}
-                <button type="button" class="btn small" onclick={() => activateProfile(null)}>{t("settings.profiles.deactivate")}</button>
-              {/if}
-              <button type="button" class="btn ghost small" onclick={() => (scopeKey = `profile:${p.id}`)}>{t("settings.profiles.edit")}</button>
-              <button type="button" class="btn ghost small" onclick={() => createProfile(p.id)}>{t("settings.profiles.duplicate")}</button>
-              {#if !p.builtin}
-                <button type="button" class="btn ghost small" onclick={() => { renaming = p.id; renameValue = p.name; }}>{t("settings.profiles.rename")}</button>
-                <button type="button" class="btn ghost small danger" onclick={() => remove(p)} aria-label={t("settings.profiles.delete_named", { name: p.name })}><Icon name="trash" size={15} /></button>
+                <MoreMenu
+                  text={t("settings.profiles.more")}
+                  label={t("settings.profiles.more_named", { name: p.name })}
+                  items={[
+                    { label: t("settings.profiles.duplicate"), icon: "copy", run: () => createProfile(p.id) },
+                    { label: t("settings.profiles.rename"), icon: "pencil", run: () => startRename(p) },
+                  ]}
+                />
+                <button type="button" class="btn destructive small remove" title={t("settings.profiles.delete")} aria-label={t("settings.profiles.delete_named", { name: p.name })} onclick={() => (deleting = p)}><Icon name="trash" size={16} /></button>
               {/if}
             </div>
             <div class="shortcut">
               <span class="muted small">{t("settings.profiles.shortcut")}</span>
               <button
                 type="button"
-                class="btn small key"
+                class="btn secondary small key"
                 class:listening={capturing === p.id}
                 onclick={() => (capturing = capturing === p.id ? null : p.id)}
                 onkeydown={(e) => capturing === p.id && captureKey(e, p)}
@@ -277,6 +329,17 @@
 
   <UpdatesPanel />
 </div>
+
+<dialog bind:this={dialog} class="confirm card" aria-labelledby="del-title" aria-describedby="del-text" onclose={() => (deleting = null)}>
+  {#if deleting}
+    <h2 id="del-title">{t("settings.profiles.delete_title", { name: deleting.name })}</h2>
+    <p id="del-text" class="muted">{t("settings.profiles.delete_text")}</p>
+    <div class="answers">
+      <button type="button" class="btn secondary" onclick={() => (deleting = null)}>{t("common.cancel")}</button>
+      <button type="button" class="btn destructive solid" onclick={remove}><Icon name="trash" size={15} />{t("settings.profiles.delete_confirm")}</button>
+    </div>
+  {/if}
+</dialog>
 
 <style>
   .page {
@@ -350,7 +413,7 @@
   }
   .layout {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 360px;
+    grid-template-columns: minmax(0, 1fr) 390px;
     gap: 1.5rem;
     align-items: start;
   }
@@ -392,7 +455,7 @@
     background: var(--surface-2);
   }
   .profiles li.active {
-    box-shadow: inset 4px 0 0 var(--accent);
+    box-shadow: inset 0 0 0 2px var(--ok);
   }
   .pname {
     display: flex;
@@ -402,11 +465,29 @@
   }
   .n {
     font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+  /* La tarjeta ya es gris: la etiqueta necesita fondo propio. */
+  .pname .chip:not(.ok) {
+    background: var(--surface);
+  }
+  .badge {
+    margin-left: auto;
   }
   .pactions {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.25rem;
+    gap: 0.4rem;
+    align-items: center;
+  }
+  .pactions > .btn {
+    padding-inline: 0.8em;
+  }
+  /* Eliminar va apartado del resto. */
+  .pactions > .remove {
+    width: 36px;
+    margin-left: auto;
+    padding: 0;
   }
   .shortcut {
     display: flex;
@@ -415,13 +496,33 @@
     justify-content: space-between;
   }
   .key.listening {
-    border-color: var(--accent);
+    box-shadow: inset 0 0 0 2px var(--accent);
     animation: pulse 1s infinite;
   }
   .rename,
   .row {
     display: flex;
     gap: 0.4rem;
+  }
+  .confirm {
+    max-width: 440px;
+    padding: 1.4rem;
+    color: var(--text);
+  }
+  .confirm::backdrop {
+    background: rgb(8 6 4 / 0.55);
+  }
+  .confirm h2 {
+    overflow-wrap: anywhere;
+  }
+  .confirm p {
+    margin: 0.6rem 0 1.2rem;
+  }
+  .answers {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.5rem;
   }
   .new {
     display: grid;

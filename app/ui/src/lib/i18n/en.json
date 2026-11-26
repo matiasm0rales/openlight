@@ -207,6 +207,10 @@
       "title": "This device can't show colors",
       "detail": "It only has white light, so it can't follow the screen."
     },
+    "device_order_mismatch": {
+      "title": "The list of lights changed",
+      "detail": "The order wasn't saved because the list of lights changed while you were arranging it. Move it again."
+    },
     "cloud_invalid_signature": {
       "title": "The Access Secret doesn't match",
       "detail": "It was probably copied wrong. Copy it again from iot.tuya.com."

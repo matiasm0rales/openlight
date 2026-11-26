@@ -23,7 +23,20 @@ fn record(id: &str) -> DeviceRecord {
         capabilities: None,
         zones: vec![Zone::from_preset(DisplayId("1".into()), ZonePreset::Left)],
         overrides: SettingsOverride::default(),
+        order: 0,
     }
+}
+
+fn ordered(id: &str, name: &str, order: u32) -> DeviceRecord {
+    DeviceRecord {
+        name: name.to_owned(),
+        order,
+        ..record(id)
+    }
+}
+
+fn ids(devices: &[DeviceRecord]) -> Vec<&str> {
+    devices.iter().map(|d| d.id.0.as_str()).collect()
 }
 
 fn number(value: f64) -> SettingValue {
@@ -272,4 +285,116 @@ fn con_el_minimo_por_encima_del_maximo_manda_el_maximo() {
     let settings = config.effective_settings(Some(&own)).unwrap();
     assert_eq!(settings.brightness_max, 0.5);
     assert_eq!(settings.brightness_min, 0.5);
+}
+
+// ---------- Orden de los focos ----------
+
+#[test]
+fn los_focos_salen_por_orden_y_no_por_como_se_guardaron() {
+    let (_tmp, store) = store();
+    store
+        .save_devices(&[
+            ordered("a", "Primero", 2),
+            ordered("b", "Segundo", 0),
+            ordered("c", "Tercero", 1),
+        ])
+        .unwrap();
+    assert_eq!(ids(&store.load_devices().unwrap()), ["b", "c", "a"]);
+}
+
+#[test]
+fn con_el_mismo_orden_desempata_el_nombre_sin_mirar_mayusculas() {
+    let (_tmp, store) = store();
+    store
+        .save_devices(&[
+            ordered("a", "velador", 0),
+            ordered("b", "Techo", 0),
+            ordered("c", "escritorio", 0),
+        ])
+        .unwrap();
+    assert_eq!(ids(&store.load_devices().unwrap()), ["c", "b", "a"]);
+}
+
+#[test]
+fn un_devices_json_sin_el_campo_se_sigue_leyendo() {
+    let (_tmp, store) = store();
+    fs::write(
+        store.dir().join("devices.json"),
+        r#"{"version": 1, "devices": [
+            {"id": "fake1", "name": "Velador", "version": "3.5"},
+            {"id": "fake2", "name": "Techo", "version": "3.3"}]}"#,
+    )
+    .unwrap();
+    let devices = store.load_devices().unwrap();
+    assert!(devices.iter().all(|d| d.order == 0));
+    assert_eq!(ids(&devices), ["fake2", "fake1"]);
+}
+
+#[test]
+fn un_foco_nuevo_va_despues_de_todos() {
+    assert_eq!(next_order(&[]), 0);
+    let devices = [ordered("a", "A", 4), ordered("b", "B", 1)];
+    assert_eq!(next_order(&devices), 5);
+    // Un archivo de antes, con todos en cero: el nuevo igual queda último
+    assert_eq!(next_order(&[ordered("a", "A", 0)]), 1);
+    assert_eq!(next_order(&[ordered("a", "A", u32::MAX)]), u32::MAX);
+}
+
+#[test]
+fn reordenar_cambia_el_orden_y_nada_mas() {
+    let (_tmp, store) = store();
+    store
+        .save_devices(&[
+            ordered("a", "A", 0),
+            ordered("b", "B", 1),
+            ordered("c", "C", 2),
+        ])
+        .unwrap();
+    store
+        .reorder_devices(&[dev("c"), dev("a"), dev("b")])
+        .unwrap();
+    let devices = store.load_devices().unwrap();
+    assert_eq!(
+        devices,
+        [
+            ordered("c", "C", 0),
+            ordered("a", "A", 1),
+            ordered("b", "B", 2),
+        ]
+    );
+}
+
+#[test]
+fn reordenar_exige_exactamente_los_focos_configurados() {
+    let (_tmp, store) = store();
+    let before = [ordered("a", "A", 0), ordered("b", "B", 1)];
+    store.save_devices(&before).unwrap();
+    for (list, why) in [
+        (vec![dev("b")], "falta"),
+        (vec![dev("b"), dev("a"), dev("x")], "sobra"),
+        (vec![dev("b"), dev("x")], "otro"),
+        (vec![dev("b"), dev("b")], "repetido"),
+        (vec![dev("b"), dev("a"), dev("a")], "repetido y de más"),
+        (vec![], "vacía"),
+    ] {
+        assert!(
+            matches!(
+                store.reorder_devices(&list),
+                Err(CoreError::DeviceOrderMismatch)
+            ),
+            "{why}"
+        );
+        assert_eq!(
+            store.load_devices().unwrap(),
+            before,
+            "{why}: no se tocó nada"
+        );
+    }
+}
+
+#[test]
+fn reordenar_sin_focos_acepta_una_lista_vacia() {
+    let (_tmp, store) = store();
+    store.reorder_devices(&[]).unwrap();
+    assert!(store.load_devices().unwrap().is_empty());
 }

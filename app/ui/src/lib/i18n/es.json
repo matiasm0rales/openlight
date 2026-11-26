@@ -207,6 +207,10 @@
       "title": "Este dispositivo no muestra colores",
       "detail": "Solo tiene luz blanca, así que no puede seguir la pantalla."
     },
+    "device_order_mismatch": {
+      "title": "La lista de focos cambió",
+      "detail": "No guardé el orden porque la lista de focos cambió mientras lo acomodabas. Volvé a moverlo."
+    },
     "cloud_invalid_signature": {
       "title": "El Access Secret no coincide",
       "detail": "Seguramente quedó mal copiado. Copialo de nuevo desde iot.tuya.com."

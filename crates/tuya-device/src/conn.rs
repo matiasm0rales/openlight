@@ -31,14 +31,25 @@ use crate::health::Counters;
 /// Tamaño de cada lectura del socket (`sock.recv(4096)` del script).
 const READ_CHUNK: usize = 4096;
 
-/// Qué hace falta para abrir una conexión.
-#[derive(Debug, Clone)]
+/// Qué hace falta para abrir una conexión. `Debug` no muestra la clave.
+#[derive(Clone)]
 pub(crate) struct ConnParams {
     pub version: ProtocolVersion,
     pub key: Key,
     pub dev_id: String,
     pub io_timeout: Duration,
     pub connect_timeout: Duration,
+}
+
+impl std::fmt::Debug for ConnParams {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ConnParams")
+            .field("version", &self.version)
+            .field("dev_id", &self.dev_id)
+            .field("io_timeout", &self.io_timeout)
+            .field("connect_timeout", &self.connect_timeout)
+            .finish_non_exhaustive()
+    }
 }
 
 /// Contenido de un frame que mandó el foco.
@@ -427,6 +438,17 @@ mod tests {
 
     async fn open(sim: &SimHandle) -> Result<Conn, DeviceError> {
         Conn::open(sim.addr(), &params(sim), Arc::default()).await
+    }
+
+    #[tokio::test]
+    async fn el_debug_de_los_parametros_no_muestra_la_clave() {
+        let sim = sim(ProtocolVersion::V35).await;
+        let params = params(&sim);
+        let text = format!("{params:?}");
+        assert!(text.contains(&sim.dev_id().0), "{text}");
+        // Un `derive(Debug)` escribiría la clave como `[79, 112, ...]`
+        let bytes = format!("{KEY:?}");
+        assert!(!text.contains(bytes.trim_matches(['[', ']'])), "{text}");
     }
 
     fn dps_json(value: Value) -> PayloadData {

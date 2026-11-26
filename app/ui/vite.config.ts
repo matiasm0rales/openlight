@@ -20,6 +20,8 @@ export default defineConfig({
   build: {
     target: "es2022",
     sourcemap: !!process.env.TAURI_ENV_DEBUG,
+    // Las fuentes van siempre como archivos: la CSP (tauri.conf.json) no admite fuentes `data:`.
+    assetsInlineLimit: (file) => (/\.woff2?$/.test(file) ? false : undefined),
   },
   test: {
     environment: "node",

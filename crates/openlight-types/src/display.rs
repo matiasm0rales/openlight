@@ -88,6 +88,9 @@ pub enum CaptureError {
     /// Falta el permiso de captura.
     #[error("falta el permiso de captura de pantalla")]
     PermissionDenied,
+    /// El sistema dice que hay permiso, pero niega la captura (macOS).
+    #[error("el permiso de captura figura concedido, pero el sistema niega la captura")]
+    PermissionStale,
     /// El monitor pedido no está (desconectado o dormido).
     #[error("el monitor {0} no está disponible")]
     DisplayNotFound(DisplayId),

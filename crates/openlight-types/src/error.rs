@@ -15,6 +15,9 @@ use specta::Type;
 pub enum ErrorCode {
     /// Falta el permiso de grabación de pantalla.
     ScreenPermissionDenied,
+    /// macOS dice que hay permiso de grabación de pantalla, pero niega la captura: quedó atado a
+    /// otra versión de la app (permiso "fantasma").
+    ScreenPermissionStale,
     /// macOS bloquea la red local.
     LocalNetworkDenied,
     /// El firewall bloquea el discovery UDP.
@@ -73,8 +76,9 @@ pub enum ErrorCode {
 
 impl ErrorCode {
     /// Todos los códigos (para verificar que cada uno tenga sus textos).
-    pub const ALL: [Self; 28] = [
+    pub const ALL: [Self; 29] = [
         Self::ScreenPermissionDenied,
+        Self::ScreenPermissionStale,
         Self::LocalNetworkDenied,
         Self::FirewallBlocked,
         Self::CaptureUnsupported,
@@ -163,6 +167,8 @@ pub enum HelpTopic {
 pub enum FixAction {
     /// Abrir un panel de ajustes del sistema.
     OpenSettings(SystemPane),
+    /// macOS: olvidar el permiso de Grabación de pantalla de la app y volver a pedirlo.
+    RepairScreenPermission,
     /// Renovar la clave local con las credenciales guardadas.
     RenewKey,
     /// Reintentar.

@@ -139,7 +139,12 @@
   "error": {
     "screen_permission_denied": {
       "title": "Falta el permiso de Grabación de pantalla",
-      "detail": "Sin ese permiso no se puede ver la pantalla. Activalo en Ajustes y volvé a abrir OpenLight."
+      "detail": "Sin ese permiso no se puede ver la pantalla. Activalo en Ajustes y volvé a abrir OpenLight.",
+      "detail_macos": "Sin ese permiso no se puede ver la pantalla. Activalo en Ajustes y volvé a abrir OpenLight. Si ya figura activado (suele pasar después de actualizar), tocá «Reparar permiso»."
+    },
+    "screen_permission_stale": {
+      "title": "El permiso de pantalla quedó atado a otra versión",
+      "detail": "OpenLight figura con permiso de Grabación de pantalla, pero macOS le niega la captura. Suele pasar después de actualizar. Tocá «Reparar permiso», volvé a activarlo y reabrí OpenLight."
     },
     "local_network_denied": {
       "title": "Falta el permiso de Red local",
@@ -331,6 +336,7 @@
       "firewall": "Abrir el firewall",
       "screen_cast_portal": "Abrir permisos del portal"
     },
+    "repair_screen_permission": "Reparar permiso",
     "renew_key": "Renovar clave",
     "remove_from_effect": "Sacar del efecto",
     "retry": "Reintentar",
@@ -413,6 +419,11 @@
     "screen_cast_portal": {
       "title": "Compartir pantalla (portal)",
       "why": "En Wayland, el escritorio pregunta qué pantalla compartir."
+    },
+    "repair": {
+      "title": "Permiso de pantalla reiniciado",
+      "detail": "Volvé a activar OpenLight en Grabación de pantalla (macOS puede preguntártelo solo). Después salí de OpenLight desde su ícono en la barra de menú y volvé a abrirlo.",
+      "hint": "¿Ya lo activaste, reabriste la app y sigue igual?"
     },
     "state": {
       "granted": "Concedido",

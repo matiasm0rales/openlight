@@ -1,11 +1,20 @@
 //! Ventanas de la app: la principal (que se esconde en vez de cerrarse) y la de calibración a
 //! pantalla completa.
 
+use std::sync::Arc;
+use std::time::Duration;
+
 use openlight_types::DisplayId;
 use tauri::{
     AppHandle, LogicalPosition, Manager, Monitor, PhysicalPosition, PhysicalSize, Position,
     Runtime, Size, WebviewUrl, WebviewWindowBuilder, Window, WindowEvent,
 };
+
+use crate::state::Backend;
+
+/// Cuánto se espera, al perder el foco una ventana, para volver a mirar si sigue a la vista: al
+/// minimizar (macOS) el foco se pierde antes de que la ventana figure minimizada.
+const SETTLE: Duration = Duration::from_millis(800);
 
 /// Etiqueta de la ventana principal (la de `tauri.conf.json`).
 pub const MAIN: &str = "main";
@@ -24,6 +33,7 @@ pub fn show_main<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
         window.show()?;
         window.set_focus()?;
     }
+    sync_visibility(app, None);
     Ok(())
 }
 
@@ -32,6 +42,7 @@ pub fn hide_main<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     if let Some(window) = app.get_webview_window(MAIN) {
         window.hide()?;
     }
+    sync_visibility(app, None);
     Ok(())
 }
 
@@ -45,6 +56,42 @@ pub fn on_window_event<R: Runtime>(window: &Window<R>, event: &WindowEvent) {
         api.prevent_close();
         let _ = window.hide();
     }
+    let app = window.app_handle();
+    match event {
+        WindowEvent::CloseRequested { .. }
+        | WindowEvent::Resized(_)
+        | WindowEvent::Focused(true) => sync_visibility(app, None),
+        WindowEvent::Focused(false) => {
+            sync_visibility(app, None);
+            let app = app.clone();
+            tauri::async_runtime::spawn(async move {
+                tokio::time::sleep(SETTLE).await;
+                sync_visibility(&app, None);
+            });
+        }
+        // La que se está destruyendo todavía figura entre las ventanas
+        WindowEvent::Destroyed => sync_visibility(app, Some(window.label())),
+        _ => {}
+    }
+}
+
+/// Le dice al backend si queda alguna ventana a la vista (sin contar `closing`): con ninguna, deja
+/// de mandarle a la UI lo que solo sirve para dibujar (ver [`crate::events::UiGate`]).
+pub fn sync_visibility<R: Runtime>(app: &AppHandle<R>, closing: Option<&str>) {
+    let Some(backend) = app.try_state::<Arc<Backend>>() else {
+        return;
+    };
+    let visible = app.webview_windows().iter().any(|(label, window)| {
+        Some(label.as_str()) != closing
+            && on_screen(window.is_visible().ok(), window.is_minimized().ok())
+    });
+    backend.set_ui_visible(visible);
+}
+
+/// Si una ventana está a la vista: ni escondida ni minimizada. Si el sistema no contesta, se
+/// asume que sí: es peor dejar la UI sin datos que mandarle de más.
+fn on_screen(visible: Option<bool>, minimized: Option<bool>) -> bool {
+    visible.unwrap_or(true) && !minimized.unwrap_or(false)
 }
 
 /// Si cerrar esa ventana la esconde (la principal) o la cierra de verdad (la calibración).
@@ -301,6 +348,14 @@ mod tests {
             None
         );
         assert_eq!(find_monitor(&id("x"), None, &[]), None);
+    }
+
+    #[test]
+    fn escondida_o_minimizada_no_esta_a_la_vista() {
+        assert!(on_screen(Some(true), Some(false)));
+        assert!(!on_screen(Some(false), Some(false)));
+        assert!(!on_screen(Some(true), Some(true)));
+        assert!(on_screen(None, None));
     }
 
     #[test]

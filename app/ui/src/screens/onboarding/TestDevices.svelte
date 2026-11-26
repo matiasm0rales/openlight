@@ -5,6 +5,7 @@
   import { app, refreshDevices } from "../../lib/app.svelte";
   import { t } from "../../lib/i18n/index.svelte";
   import { wizard } from "../../lib/wizard.svelte";
+  import { everyWhileVisible } from "../../lib/visibility";
   import ErrorCard from "../../lib/components/ErrorCard.svelte";
   import Icon from "../../lib/components/Icon.svelte";
 
@@ -23,9 +24,9 @@
     running[id] = pattern;
     errors[id] = null;
     phase[id] = 0;
-    const tick = setInterval(() => (phase[id] = ((phase[id] ?? 0) + 1) % 3), 1500);
+    const stopTick = everyWhileVisible(() => (phase[id] = ((phase[id] ?? 0) + 1) % 3), 1500);
     const r = await attempt(() => commands.deviceTest(id, pattern));
-    clearInterval(tick);
+    stopTick();
     running[id] = null;
     if (!r.ok) {
       errors[id] = r.error;

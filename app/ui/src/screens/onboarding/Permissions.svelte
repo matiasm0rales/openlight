@@ -4,6 +4,7 @@
   import { attempt, commands } from "../../lib/ipc";
   import { app } from "../../lib/app.svelte";
   import { t } from "../../lib/i18n/index.svelte";
+  import { everyWhileVisible } from "../../lib/visibility";
   import ErrorCard from "../../lib/components/ErrorCard.svelte";
   import Icon from "../../lib/components/Icon.svelte";
 
@@ -21,8 +22,7 @@
 
   $effect(() => {
     void check();
-    const id = setInterval(check, 1500);
-    return () => clearInterval(id);
+    return everyWhileVisible(check, 1500);
   });
 
   async function open(pane: NonNullable<PermissionStatus_Serialize["pane"]>) {

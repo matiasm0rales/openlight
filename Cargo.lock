@@ -3513,6 +3513,7 @@ dependencies = [
  "capture",
  "color-engine",
  "glob",
+ "objc2",
  "objc2-core-graphics",
  "openlight-core",
  "openlight-types",

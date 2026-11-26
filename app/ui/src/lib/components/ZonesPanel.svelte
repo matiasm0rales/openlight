@@ -4,6 +4,7 @@
   import { attempt, commands } from "../ipc";
   import { app } from "../app.svelte";
   import { screenCss } from "../format";
+  import { everyWhileVisible } from "../visibility";
   import { t } from "../i18n/index.svelte";
   import { rectOf } from "../zones";
   import ErrorCard from "./ErrorCard.svelte";
@@ -33,8 +34,8 @@
 
   $effect(() => {
     void loadDisplays();
-    const timer = setInterval(() => chosen && loadPreview(chosen), 2500);
-    return () => clearInterval(timer);
+    // La vista previa es una captura entera: con la ventana oculta no se pide
+    return everyWhileVisible(() => chosen && loadPreview(chosen), 2500);
   });
 
   const display = $derived(displays.find((d) => d.id === chosen));

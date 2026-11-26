@@ -28,7 +28,7 @@ use tuya_device::{
 use crate::bridge::lan::LanScanner;
 use crate::bridge::state_store::CoreStateStore;
 use crate::errors::{CmdResult, device_error, unknown_device};
-use crate::events::{AppEvent, EventSink};
+use crate::events::{AppEvent, EventSink, UiGate};
 
 /// Cómo se crea el cliente de la nube a partir de las credenciales.
 pub type CloudFactory =
@@ -174,7 +174,7 @@ pub(crate) struct ManualSlot {
 pub struct Backend {
     pub(crate) store: Store,
     pub(crate) secrets: Arc<dyn SecretStore>,
-    pub(crate) events: Arc<dyn EventSink>,
+    pub(crate) events: Arc<UiGate>,
     pub(crate) sources: SourceFactory,
     pub(crate) cloud_factory: CloudFactory,
     pub(crate) scanner: Arc<dyn LanScanner>,
@@ -212,7 +212,7 @@ impl Backend {
         let backend = Arc::new(Self {
             store,
             secrets: parts.secrets,
-            events: parts.events,
+            events: Arc::new(UiGate::new(parts.events)),
             sources: parts.sources,
             cloud_factory: parts.cloud,
             scanner: parts.scanner,
@@ -253,6 +253,11 @@ impl Backend {
 
     pub(crate) fn emit(&self, event: AppEvent) {
         self.events.emit(event);
+    }
+
+    /// Avisa si hay alguna ventana a la vista (ver [`UiGate`]). Sin avisos, se asume que sí.
+    pub fn set_ui_visible(&self, visible: bool) {
+        self.events.set_visible(visible);
     }
 
     /// Avisa un error que no vino de un comando (el usuario lo ve como aviso).

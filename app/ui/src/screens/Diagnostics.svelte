@@ -6,6 +6,7 @@
   import { attempt, commands } from "../lib/ipc";
   import { i18n, t } from "../lib/i18n/index.svelte";
   import { formatAgo, formatBytes, formatTime } from "../lib/format";
+  import { everyWhileVisible } from "../lib/visibility";
   import Chart from "../lib/components/Chart.svelte";
   import ErrorCard from "../lib/components/ErrorCard.svelte";
   import Icon from "../lib/components/Icon.svelte";
@@ -30,8 +31,7 @@
 
   $effect(() => {
     void loadLog();
-    const id = setInterval(loadLog, 3000);
-    return () => clearInterval(id);
+    return everyWhileVisible(loadLog, 3000);
   });
 
   const filtered = $derived(log.filter((l) => levels.includes(l.level) && (!query || `${l.target} ${l.message}`.toLowerCase().includes(query.toLowerCase()))));

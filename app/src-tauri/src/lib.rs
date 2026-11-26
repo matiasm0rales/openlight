@@ -20,6 +20,13 @@ pub mod tray_backend;
 pub mod updater;
 pub mod windows;
 
+/// El contexto de Tauri (configuración, íconos y archivos de la UI). Es una función aparte para
+/// que `examples/banco.rs` use el mismo: generarlo dos veces embebe `Info.plist` dos veces.
+#[doc(hidden)]
+pub fn context() -> tauri::Context {
+    tauri::generate_context!()
+}
+
 /// Arranca la app.
 pub fn run() {
     use tauri::Manager;
@@ -28,7 +35,7 @@ pub fn run() {
     #[cfg(debug_assertions)]
     ipc::export_bindings(&specta).expect("no se pudieron exportar los bindings de TypeScript");
 
-    let mut context = tauri::generate_context!();
+    let mut context = context();
     // Solo en desarrollo: probar el updater contra un `latest.json` local (docs/release.md).
     let dev_endpoint = updater::apply_dev_endpoint(&mut context.config_mut().plugins);
 

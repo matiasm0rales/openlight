@@ -469,6 +469,10 @@
       "right": "Derecha",
       "top": "Arriba",
       "bottom": "Abajo",
+      "top_left": "Arriba izquierda",
+      "top_right": "Arriba derecha",
+      "bottom_left": "Abajo izquierda",
+      "bottom_right": "Abajo derecha",
       "center": "Centro",
       "custom": "A mano"
     }

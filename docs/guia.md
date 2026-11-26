@@ -179,8 +179,9 @@ hacerlo parpadear o quitarlo.
 ### 9. Monitor y zonas
 
 Elegí el monitor y qué parte sigue cada foco: **Toda**, **Izquierda**, **Derecha**, **Arriba**,
-**Abajo**, **Centro**, o arrastrá el rectángulo. Con el teclado: flechas para moverlo,
-Mayús + flechas para el tamaño y Alt para pasos finos.
+**Abajo**, una de las cuatro esquinas (**Arriba izquierda**, **Arriba derecha**, **Abajo
+izquierda**, **Abajo derecha**), **Centro**, o arrastrá el rectángulo. Con el teclado: flechas
+para moverlo, Mayús + flechas para el tamaño y Alt para pasos finos.
 
 Un foco nuevo arranca siguiendo todo el primer monitor externo (o el integrado, si no hay otro).
 Con dos focos, izquierda y derecha queda muy bien.

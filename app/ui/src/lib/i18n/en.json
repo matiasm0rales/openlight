@@ -469,6 +469,10 @@
       "right": "Right",
       "top": "Top",
       "bottom": "Bottom",
+      "top_left": "Top left",
+      "top_right": "Top right",
+      "bottom_left": "Bottom left",
+      "bottom_right": "Bottom right",
       "center": "Center",
       "custom": "Custom"
     }

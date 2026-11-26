@@ -1201,6 +1201,14 @@ export type ZonePreset =
 "top" | 
 /**  Mitad de abajo. */
 "bottom" | 
+/**  Cuarto de arriba a la izquierda. */
+"top_left" | 
+/**  Cuarto de arriba a la derecha. */
+"top_right" | 
+/**  Cuarto de abajo a la izquierda. */
+"bottom_left" | 
+/**  Cuarto de abajo a la derecha. */
+"bottom_right" | 
 /**  El centro (la mitad del ancho y del alto). */
 "center" | 
 /**  Rectángulo dibujado a mano. */

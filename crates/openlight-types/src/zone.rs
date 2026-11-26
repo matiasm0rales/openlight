@@ -72,6 +72,14 @@ pub enum ZonePreset {
     Top,
     /// Mitad de abajo.
     Bottom,
+    /// Cuarto de arriba a la izquierda.
+    TopLeft,
+    /// Cuarto de arriba a la derecha.
+    TopRight,
+    /// Cuarto de abajo a la izquierda.
+    BottomLeft,
+    /// Cuarto de abajo a la derecha.
+    BottomRight,
     /// El centro (la mitad del ancho y del alto).
     Center,
     /// Rectángulo dibujado a mano.
@@ -87,6 +95,10 @@ impl ZonePreset {
             Self::Right => NormRect::new(0.5, 0.0, 0.5, 1.0),
             Self::Top => NormRect::new(0.0, 0.0, 1.0, 0.5),
             Self::Bottom => NormRect::new(0.0, 0.5, 1.0, 0.5),
+            Self::TopLeft => NormRect::new(0.0, 0.0, 0.5, 0.5),
+            Self::TopRight => NormRect::new(0.5, 0.0, 0.5, 0.5),
+            Self::BottomLeft => NormRect::new(0.0, 0.5, 0.5, 0.5),
+            Self::BottomRight => NormRect::new(0.5, 0.5, 0.5, 0.5),
             Self::Center => NormRect::new(0.25, 0.25, 0.5, 0.5),
             Self::Custom => return None,
         })
@@ -128,10 +140,28 @@ mod tests {
             ZonePreset::Top,
             ZonePreset::Bottom,
             ZonePreset::Center,
+            ZonePreset::TopLeft,
+            ZonePreset::TopRight,
+            ZonePreset::BottomLeft,
+            ZonePreset::BottomRight,
         ] {
             assert!(p.rect().unwrap().is_valid(), "{p:?}");
         }
         assert!(ZonePreset::Custom.rect().is_none());
+    }
+
+    #[test]
+    fn las_esquinas_son_los_cuatro_cuartos() {
+        for (preset, x, y, name) in [
+            (ZonePreset::TopLeft, 0.0, 0.0, "top_left"),
+            (ZonePreset::TopRight, 0.5, 0.0, "top_right"),
+            (ZonePreset::BottomLeft, 0.0, 0.5, "bottom_left"),
+            (ZonePreset::BottomRight, 0.5, 0.5, "bottom_right"),
+        ] {
+            assert_eq!(preset.rect(), Some(NormRect::new(x, y, 0.5, 0.5)), "{name}");
+            // Es lo que escriben `devices.json` y la UI
+            assert_eq!(serde_json::to_value(preset).unwrap(), name);
+        }
     }
 
     #[test]

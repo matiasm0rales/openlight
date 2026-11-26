@@ -1,7 +1,7 @@
 // Rectángulos de los atajos de zona (según la documentación de `ZonePreset` en el contrato).
 import type { NormRect, Zone, ZonePreset } from "./bindings";
 
-export const PRESETS: Exclude<ZonePreset, "custom">[] = ["full", "left", "right", "top", "bottom", "center"];
+export const PRESETS: Exclude<ZonePreset, "custom">[] = ["full", "left", "right", "top", "bottom", "top_left", "top_right", "bottom_left", "bottom_right", "center"];
 
 export const PRESET_RECTS: Record<Exclude<ZonePreset, "custom">, Required<{ [K in keyof NormRect]: number }>> = {
   full: { x: 0, y: 0, w: 1, h: 1 },
@@ -9,6 +9,10 @@ export const PRESET_RECTS: Record<Exclude<ZonePreset, "custom">, Required<{ [K i
   right: { x: 0.5, y: 0, w: 0.5, h: 1 },
   top: { x: 0, y: 0, w: 1, h: 0.5 },
   bottom: { x: 0, y: 0.5, w: 1, h: 0.5 },
+  top_left: { x: 0, y: 0, w: 0.5, h: 0.5 },
+  top_right: { x: 0.5, y: 0, w: 0.5, h: 0.5 },
+  bottom_left: { x: 0, y: 0.5, w: 0.5, h: 0.5 },
+  bottom_right: { x: 0.5, y: 0.5, w: 0.5, h: 0.5 },
   center: { x: 0.25, y: 0.25, w: 0.5, h: 0.5 },
 };
 

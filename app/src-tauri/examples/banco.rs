@@ -642,6 +642,13 @@ const PAGINA: &str = "({ruta: location.hash, oculta: document.hidden, \
     colores: [...document.querySelectorAll('.eclipse')].map(e => e.style.getPropertyValue('--core')), \
     ancho: innerWidth, alto: innerHeight, escala: devicePixelRatio})";
 
+/// Con la pantalla bloqueada o dormida la página se da por oculta y no dibuja: esto la hace
+/// comportarse como a la vista, para comprobar que lo que tiene que mostrar le llegó.
+const SIMULAR_VISTA: &str = "(() => { if (!document.hidden) return false; \
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => false }); \
+    window.requestAnimationFrame = (f) => setTimeout(f, 16); \
+    document.dispatchEvent(new Event('visibilitychange')); return true; })()";
+
 /// Cierra la ventana (si la hay), la abre como desde el tray y la vuelve a cerrar, y cuenta los
 /// eventos de dibujo en cada tramo. Cerrar pasa por `on_window_event`, como en la app.
 fn ciclo(app: &tauri::AppHandle, cuenta: &Cuenta) -> Value {
@@ -664,7 +671,11 @@ fn ciclo(app: &tauri::AppHandle, cuenta: &Cuenta) -> Value {
     openlight_lib::windows::show_main(app);
     esperar(3000);
     let abierta = tramo();
-    let pagina = ventana().map(|w| evaluar(&w, PAGINA));
+    let pagina = ventana().map(|window| {
+        let simulada = evaluar(&window, SIMULAR_VISTA);
+        esperar(1500);
+        json!({ "vista_simulada": simulada, "contenido": evaluar(&window, PAGINA) })
+    });
     cerrar();
     let cerrada = tramo();
     json!({

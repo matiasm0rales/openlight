@@ -679,7 +679,18 @@
     "no_zone": "Sin zona: elegí qué sigue en Dispositivos.",
     "white": "Blanco",
     "turn_off": "Apagar",
-    "device_settings": "Ajustes del foco"
+    "device_settings": "Ajustes del foco",
+    "bulbs": "Tus focos",
+    "reorder": "Reordenar {name}",
+    "reorder_help": "Usá las flechas para cambiarlo de lugar, arrastralo, o activá este botón para ver «Mover antes» y «Mover después».",
+    "reorder_tooltip": "Arrastrá para reordenar (o usá las flechas)",
+    "move_before": "Mover antes",
+    "move_after": "Mover después",
+    "moved": "{name} pasó al lugar {n} de {total}.",
+    "already_first": "{name} ya está primero.",
+    "already_last": "{name} ya está al final.",
+    "move_failed": "No se pudo guardar el orden. Volvió a como estaba.",
+    "drop_here": "{name} va acá"
   },
   "devices": {
     "title": "Tus focos",

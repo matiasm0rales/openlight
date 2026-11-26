@@ -1,5 +1,6 @@
 <script lang="ts">
   // Tarjeta de un foco en el panel: estado, color de pantalla vs. enviado, latencia, cortes y brillo rápido.
+  import type { Snippet } from "svelte";
   import type { ConfiguredDevice_Serialize, ManualSet, UserFacingError } from "../bindings";
   import { app, dismiss, raise, refreshSettings, setInEffect } from "../app.svelte";
   import { attempt, commands } from "../ipc";
@@ -11,7 +12,8 @@
   import Icon from "./Icon.svelte";
   import Switch from "./Switch.svelte";
 
-  let { device }: { device: ConfiguredDevice_Serialize } = $props();
+  // `lead` va antes del nombre (en el panel, el asa para reordenar).
+  let { device, lead }: { device: ConfiguredDevice_Serialize; lead?: Snippet } = $props();
 
   const health = $derived(app.health[device.id]);
   const live = $derived(app.live[device.id]);
@@ -69,7 +71,8 @@
 
 <article class="card device" data-state={kind} aria-labelledby="dev-{device.id}-name">
   <header>
-    <div>
+    {@render lead?.()}
+    <div class="name">
       <h3 id="dev-{device.id}-name">{device.name}</h3>
       <p class="muted mono small">{device.ip ?? t("devices.auto_ip")} · v{device.version}{device.calibrated ? "" : ` · ${t("devices.not_calibrated")}`}</p>
     </div>
@@ -134,9 +137,12 @@
   }
   header {
     display: flex;
-    justify-content: space-between;
-    gap: 1rem;
+    gap: 0.75rem;
     align-items: start;
+  }
+  .name {
+    flex: 1;
+    min-width: 0;
   }
   h3 {
     font-size: 1.35rem;

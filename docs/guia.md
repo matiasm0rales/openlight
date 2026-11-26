@@ -235,6 +235,11 @@ y tocá **Arrancar**.
   Es lo mismo que tildarlo en el menú del tray, y OpenLight lo recuerda.
 - Con un foco fuera del efecto, la tarjeta tiene **Blanco** y **Apagar** para usarlo aparte.
 - Desde la tarjeta vas a **Control manual**, **Calibrar** y **Ajustes del foco**.
+- **El orden lo elegís vos** (con dos focos o más): arrastrá una tarjeta desde su asa (los seis
+  puntos) y soltala en el lugar que quieras; Esc cancela. Con el teclado, poné el foco en el asa
+  y usá las flechas. También podés tocar el asa y usar **Mover antes** o **Mover después**. El
+  mismo orden se ve en Dispositivos y en el tray, y es el que usan las distribuciones de zonas.
+  Un foco recién agregado aparece al final.
 
 > Los cambios de ajustes, brillo, perfil y zonas **valen al instante**, también con el efecto
 > andando. Cambiar los cuadros por segundo o de monitor rearma la captura sin desconectar los
@@ -257,7 +262,7 @@ sistema se va a dormir.
 | Estado | si el efecto está apagado, conectando, activo, en pausa o restaurando |
 | Arrancar / Detener | lo mismo que el interruptor del panel |
 | Perfil | elegir un perfil, o ninguno |
-| Focos | tildar o destildar cada foco del efecto (vale al instante) |
+| Focos | tildar o destildar cada foco del efecto (vale al instante), en el orden del Panel |
 | Abrir OpenLight | trae la ventana |
 | Salir (restaura los focos) | devuelve los focos a su estado y cierra la app |
 

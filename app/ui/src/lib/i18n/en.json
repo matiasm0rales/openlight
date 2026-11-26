@@ -679,7 +679,18 @@
     "no_zone": "No area yet: choose what it follows in Devices.",
     "white": "White",
     "turn_off": "Turn off",
-    "device_settings": "Bulb settings"
+    "device_settings": "Bulb settings",
+    "bulbs": "Your bulbs",
+    "reorder": "Reorder {name}",
+    "reorder_help": "Use the arrow keys to move it, drag it, or press this button to show “Move before” and “Move after”.",
+    "reorder_tooltip": "Drag to reorder (or use the arrow keys)",
+    "move_before": "Move before",
+    "move_after": "Move after",
+    "moved": "{name} moved to position {n} of {total}.",
+    "already_first": "{name} is already first.",
+    "already_last": "{name} is already last.",
+    "move_failed": "The order couldn't be saved. It's back to how it was.",
+    "drop_here": "{name} goes here"
   },
   "devices": {
     "title": "Your bulbs",

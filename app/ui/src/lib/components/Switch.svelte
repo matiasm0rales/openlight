@@ -45,6 +45,8 @@
   .switch[aria-checked="true"] {
     background: var(--live);
     box-shadow: 0 8px 22px -8px var(--live);
+    /* El color en vivo cambia 10 veces por segundo: sin transición, que no dejaría de redibujar */
+    transition: none;
   }
   .switch[aria-checked="true"] .knob {
     transform: translateX(calc(var(--w) - var(--h)));

@@ -37,7 +37,11 @@
   .core {
     position: absolute;
     border-radius: 50%;
-    transition: background 260ms var(--ease), box-shadow 260ms var(--ease), opacity 260ms var(--ease);
+  }
+  /* Los colores llegan 10 veces por segundo y ya vienen suavizados: no llevan transición. Con una,
+     cada color reiniciaba la anterior y la ventana se redibujaba sin parar. */
+  .halo {
+    transition: opacity 260ms var(--ease);
   }
   /* Halo grande y difuso, como el círculo de color de la referencia, teñido con lo que recibe el foco. */
   .halo {

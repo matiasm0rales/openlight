@@ -167,7 +167,10 @@
     document.querySelector<HTMLElement>(`[data-profile="${CSS.escape(p.id)}"] [aria-haspopup="menu"]`)?.focus();
   }
 
-  const selectAll = (input: HTMLInputElement) => input.select();
+  const selectAll = (input: HTMLInputElement) => {
+    input.focus();
+    input.select();
+  };
 
   /** El selector de ámbito puede quedar lejos de la lista: el foco va ahí y se ve qué se edita. */
   async function edit(p: Profile_Serialize) {
@@ -267,7 +270,7 @@
             {#if renaming === p.id}
               <form class="rename" onsubmit={(e) => { e.preventDefault(); void endRename(p, true); }}>
                 <label class="sr-only" for="rename-{p.id}">{t("settings.profiles.rename")}</label>
-                <input id="rename-{p.id}" type="text" bind:value={renameValue} {@attach selectAll} onkeydown={(e) => e.key === "Escape" && void endRename(p, false)} />
+                <input id="rename-{p.id}" type="text" autocomplete="off" bind:value={renameValue} {@attach selectAll} onkeydown={(e) => e.key === "Escape" && void endRename(p, false)} />
                 <button type="submit" class="btn small primary">{t("common.save")}</button>
               </form>
             {:else}

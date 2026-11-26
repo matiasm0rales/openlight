@@ -181,6 +181,8 @@
     display: flex;
     gap: 0.6rem;
     align-items: center;
+    /* El alto del selector de foco: quedan centrados entre sí. */
+    min-height: 46px;
     font-weight: 700;
   }
   .notice {

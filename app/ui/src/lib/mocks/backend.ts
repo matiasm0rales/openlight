@@ -309,7 +309,11 @@ class MockBackend {
       throw err("device_not_found", [{ kind: "show_help", value: "device_troubleshooting" }, { kind: "retry" }]);
     }
     if (this.state.permissions.screen_recording !== "granted") {
-      throw err("screen_permission_denied", [{ kind: "open_settings", value: "screen_recording" }, { kind: "show_help", value: "permissions" }]);
+      // Como la app en macOS: además de abrir Ajustes, se puede reparar el permiso.
+      throw {
+        ...err("screen_permission_denied", [{ kind: "open_settings", value: "screen_recording" }, { kind: "repair_screen_permission" }]),
+        detail: "error.screen_permission_denied.detail_macos",
+      };
     }
     if (this.inEffect().length === 0) {
       throw err("no_zones", [{ kind: "show_help", value: "device_troubleshooting" }, { kind: "retry" }]);
@@ -732,6 +736,14 @@ class MockBackend {
     return null;
   }
 
+  async repairScreenPermission() {
+    // Como `tccutil reset` seguido del pedido: queda sin dar hasta que se vuelva a activar.
+    await this.wait(300);
+    this.state.permissions.screen_recording = "denied";
+    this.persist();
+    return null;
+  }
+
   /** Para el panel de escenarios del mock: inyecta una falla visible. */
   inject(kind: "key_rejected" | "disconnect" | "no_display"): void {
     const d = this.state.devices[0];
@@ -770,6 +782,8 @@ class MockBackend {
         return this.permissions();
       case "open_system_settings":
         return this.openSystemSettings(a.pane);
+      case "repair_screen_permission":
+        return this.repairScreenPermission();
       case "cloud_validate":
         return this.cloudValidate(a.credentials);
       case "cloud_list_devices":

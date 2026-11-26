@@ -64,6 +64,15 @@ pub async fn open_system_settings(pane: SystemPane) -> CmdResult<()> {
     crate::permissions::open_settings_blocking(pane).await
 }
 
+/// macOS: repara el permiso de Grabación de pantalla que quedó atado a otra versión (lo olvida y
+/// lo vuelve a pedir). La app lo ve recién cuando se la vuelve a abrir.
+#[tauri::command]
+#[specta::specta]
+pub async fn repair_screen_permission(handle: tauri::AppHandle) -> CmdResult<()> {
+    let identifier = handle.config().identifier.clone();
+    crate::permissions::repair_screen_recording_blocking(identifier).await
+}
+
 // ---------- Nube y red local ----------
 
 /// Valida Access ID / Access Secret y guarda las credenciales en el llavero.
@@ -378,6 +387,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             onboarding_save,
             check_permissions,
             open_system_settings,
+            repair_screen_permission,
             cloud_validate,
             cloud_list_devices,
             discover_lan,

@@ -74,6 +74,7 @@
       "intro": "OpenLight necesita ver la pantalla y hablar con los focos de tu red. Nada sale de tu compu.",
       "steps": [
         "macOS: Ajustes del Sistema → Privacidad y seguridad → Grabación de pantalla → activá OpenLight. Después hay que reabrir la app: macOS lo exige.",
+        "macOS: si Grabación de pantalla figura activada pero no anda (suele pasar después de actualizar), tocá «Reparar permiso», volvé a activarla y reabrí la app.",
         "macOS: en la misma sección, «Red local» → activá OpenLight.",
         "Windows: si aparece el aviso del firewall, permití «Redes privadas».",
         "Linux (Wayland): cuando el escritorio pregunte qué pantalla compartir, elegí el monitor. OpenLight recuerda la elección."

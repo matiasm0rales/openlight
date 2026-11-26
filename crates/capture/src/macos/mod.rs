@@ -6,6 +6,8 @@
 //! - Un hilo supervisor revisa cada [`REVISAR_CADA`] qué monitores hay (como `Captura._revisar`
 //!   del script): si el monitor seguido se va o se duerme, corta el stream y publica `None`; si
 //!   vuelve, lo arranca de nuevo.
+//! - Si CoreGraphics dice que hay permiso pero ScreenCaptureKit lo niega (el permiso quedó atado
+//!   a otra versión de la app), `start` falla con [`CaptureError::PermissionStale`].
 //! - Las ventanas de la propia app se excluyen del filtro (se puede apagar con
 //!   [`MacosCapture::set_exclude_own_app`]).
 
@@ -30,6 +32,10 @@ pub use displays::active_displays;
 /// Cada cuánto el supervisor revisa qué monitores hay. El script lo hacía cada 3 s; revisar
 /// cuesta microsegundos, así que acá es más seguido para reaccionar rápido al enchufar.
 pub const REVISAR_CADA: Duration = Duration::from_millis(1000);
+
+/// Cuánto espera [`MacosCapture::start`] a saber si el sistema negó la captura. Suele tardar
+/// milisegundos.
+const ESPERA_PRIMER_INTENTO: Duration = Duration::from_secs(3);
 
 /// Implementación de [`ScreenSource`] con ScreenCaptureKit.
 pub struct MacosCapture {
@@ -67,6 +73,16 @@ impl MacosCapture {
     }
 }
 
+/// Qué devuelve `start` según el primer intento de abrir el stream (`true`: ScreenCaptureKit negó
+/// el permiso aunque CoreGraphics decía que estaba). Si no hay respuesta a tiempo se sigue: el
+/// supervisor reintenta solo.
+fn primer_intento(aviso: &mpsc::Receiver<bool>, espera: Duration) -> Result<(), CaptureError> {
+    match aviso.recv_timeout(espera) {
+        Ok(true) => Err(CaptureError::PermissionStale),
+        _ => Ok(()),
+    }
+}
+
 /// Convierte un [`DisplayId`] de macOS (el `CGDirectDisplayID` en decimal) a número.
 pub fn parse_display_id(id: &DisplayId) -> Result<u32, CaptureError> {
     id.0.parse()
@@ -101,6 +117,7 @@ impl ScreenSource for MacosCapture {
 
         let (tx, rx) = watch::channel(None);
         let (stop_tx, stop_rx) = mpsc::channel();
+        let (aviso_tx, aviso_rx) = mpsc::sync_channel(1);
         let params = stream::Params {
             display: cg_id,
             target,
@@ -109,12 +126,16 @@ impl ScreenSource for MacosCapture {
         };
         let handle = std::thread::Builder::new()
             .name(format!("captura-{cg_id}"))
-            .spawn(move || stream::supervise(params, tx, stop_rx))
+            .spawn(move || stream::supervise(params, tx, stop_rx, aviso_tx))
             .map_err(|e| CaptureError::Backend(format!("no se pudo crear el hilo: {e}")))?;
         self.worker = Some(Worker {
             stop: stop_tx,
             handle,
         });
+        if let Err(error) = primer_intento(&aviso_rx, ESPERA_PRIMER_INTENTO) {
+            self.stop();
+            return Err(error);
+        }
         Ok(rx)
     }
 
@@ -196,6 +217,27 @@ mod tests {
             fuente.start(id.clone(), (96, 54), 20.0).err(),
             Some(CaptureError::DisplayNotFound(id))
         );
+    }
+
+    #[test]
+    fn si_el_primer_intento_es_negado_el_permiso_es_fantasma() {
+        let (aviso, espera) = mpsc::sync_channel(1);
+        aviso.send(true).unwrap();
+        assert_eq!(
+            primer_intento(&espera, Duration::from_secs(1)),
+            Err(CaptureError::PermissionStale)
+        );
+    }
+
+    #[test]
+    fn cualquier_otro_primer_intento_deja_seguir_al_supervisor() {
+        let (aviso, espera) = mpsc::sync_channel(1);
+        aviso.send(false).unwrap();
+        assert_eq!(primer_intento(&espera, Duration::from_secs(1)), Ok(()));
+        // ScreenCaptureKit tarda en contestar, o el hilo terminó sin avisar
+        assert_eq!(primer_intento(&espera, Duration::from_millis(10)), Ok(()));
+        drop(aviso);
+        assert_eq!(primer_intento(&espera, Duration::from_secs(1)), Ok(()));
     }
 
     #[test]

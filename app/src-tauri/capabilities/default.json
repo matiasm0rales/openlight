@@ -25,6 +25,7 @@
     "allow-onboarding-save",
     "allow-check-permissions",
     "allow-open-system-settings",
+    "allow-repair-screen-permission",
     "allow-cloud-validate",
     "allow-cloud-list-devices",
     "allow-discover-lan",

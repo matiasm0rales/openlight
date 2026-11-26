@@ -16,8 +16,11 @@
     floor,
     ceil,
     note,
+    overrides = [],
+    source,
     onchange,
     onreset,
+    onusecommon,
   }: {
     def: SettingDef;
     value: SettingValue;
@@ -28,9 +31,22 @@
     ceil?: number;
     /** Aviso: dónde no se va a notar un cambio hecho acá. */
     note?: string;
+    /** En «Todos los focos»: los que tienen un valor propio y por eso no cambian con este. */
+    overrides?: { device: string; name: string; value: SettingValue }[];
+    /** En un foco: si el valor es propio y cuál usaría sin él (`profile` si lo pone un perfil). */
+    source?: { own: boolean; common: SettingValue; profile?: string };
     onchange: (v: SettingValue) => void;
     onreset: () => void;
+    /** Borra el valor propio de un foco (en «Todos los focos»). */
+    onusecommon?: (device: string) => void;
   } = $props();
+
+  let root: HTMLDivElement;
+  // El botón desaparece al usarlo: el foco del teclado pasa al control del ajuste.
+  function useCommon(action: () => void) {
+    (root.querySelector<HTMLInputElement>("input:checked") ?? root.querySelector("input"))?.focus();
+    action();
+  }
 
   let local = $state<SettingValue>(null);
   let dragging = false;
@@ -86,19 +102,48 @@
     dragging = false;
   }
   const optionLabel = (o: string) => t(`settings.${def.id}.option.${o}`);
+  const show = (v: SettingValue) => (def.kind.kind === "number" ? formatSetting(v, def.kind, i18n.locale) : optionLabel(String(v)));
+  const describedBy = $derived(
+    [`${id}-help`, ...overrides.map((_, i) => `${id}-override-${i}`), source?.own ? `${id}-own` : "", `${id}-default`].filter(Boolean).join(" "),
+  );
 </script>
 
-<div class="setting" class:inherited data-setting={def.id}>
+<div class="setting" class:inherited class:overridden={overrides.length > 0} data-setting={def.id} bind:this={root}>
   <div class="head">
-    {#if def.kind.kind === "number"}
-      <label class="title" for={id}>{t(def.title_key)}</label>
-    {:else}
-      <span class="title" id="{id}-legend">{t(def.title_key)}</span>
-    {/if}
+    <div class="name">
+      {#if def.kind.kind === "number"}
+        <label class="title" for={id}>{t(def.title_key)}</label>
+      {:else}
+        <span class="title" id="{id}-legend">{t(def.title_key)}</span>
+      {/if}
+      {#if source}
+        <span class="chip source" class:accent={source.own}>
+          {source.own ? t("settings.own") : source.profile ? t("settings.from_profile", { name: source.profile }) : t("settings.from_common")}
+        </span>
+      {/if}
+    </div>
     <output class="value tabular" for={id} aria-live="off">{def.kind.kind === "number" ? shown : optionLabel(String(local))}</output>
   </div>
   <p class="help" id="{id}-help">{t(def.help_key)}</p>
   {#if note}<p class="note">{note}</p>{/if}
+  {#if overrides.length}
+    <ul class="overrides">
+      {#each overrides as o, i (o.device)}
+        <li>
+          <span class="mark" aria-hidden="true"><Icon name="alert" size={16} /></span>
+          <span id="{id}-override-{i}">{t("settings.device_override", { name: o.name, value: show(o.value) })}</span>
+          <button type="button" class="btn small" onclick={() => useCommon(() => onusecommon?.(o.device))} aria-label={t("settings.use_common_on", { device: o.name, name: t(def.title_key) })}>
+            {t("settings.use_common")}
+          </button>
+        </li>
+      {/each}
+    </ul>
+  {/if}
+  {#if source?.own}
+    <p class="note" id="{id}-own">
+      {source.profile ? t("settings.without_own_profile", { value: show(source.common), name: source.profile }) : t("settings.without_own", { value: show(source.common) })}
+    </p>
+  {/if}
 
   {#if def.kind.kind === "number"}
     <input
@@ -109,7 +154,7 @@
       step={def.kind.step}
       value={local}
       style:--fill={fill}
-      aria-describedby="{id}-help {id}-default"
+      aria-describedby={describedBy}
       aria-valuetext={shown}
       oninput={onInput}
       onchange={onCommit}
@@ -117,7 +162,7 @@
       onblur={onCommit}
     />
   {:else}
-    <div class="choices" role="radiogroup" aria-labelledby="{id}-legend" aria-describedby="{id}-help {id}-default">
+    <div class="choices" role="radiogroup" aria-labelledby="{id}-legend" aria-describedby={describedBy}>
       {#each def.kind.options as o (o)}
         <label class="choice" class:on={local === o}>
           <input type="radio" name={id} value={o} checked={local === o} onchange={() => { local = o; onchange(o); }} />
@@ -128,10 +173,14 @@
   {/if}
 
   <div class="foot">
-    <span id="{id}-default" class="default">
-      {t("settings.default_is", { value: def.kind.kind === "number" ? formatSetting(def.default, def.kind, i18n.locale) : optionLabel(String(def.default)) })}
-    </span>
-    {#if inherited}
+    <span id="{id}-default" class="default">{t("settings.default_is", { value: show(def.default) })}</span>
+    {#if source}
+      {#if source.own}
+        <button type="button" class="btn small" onclick={() => useCommon(onreset)} aria-label={t("settings.use_common_named", { name: t(def.title_key) })}>
+          <Icon name="refresh" size={15} />{t("settings.use_common")}
+        </button>
+      {/if}
+    {:else if inherited}
       <span class="chip">{t("settings.inherited")}</span>
     {:else}
       <button type="button" class="btn ghost small" disabled={!(canReset ?? !atDefault)} onclick={onreset} aria-label={t("settings.restore_named", { name: t(def.title_key) })}>
@@ -144,6 +193,8 @@
 <style>
   .setting {
     display: grid;
+    /* En una fila con otra tarjeta más alta, el contenido no se estira. */
+    align-content: start;
     gap: 0.45rem;
     padding: 1rem 1.1rem;
     border-radius: var(--radius);
@@ -154,16 +205,54 @@
     background: transparent;
     border-style: dashed;
   }
+  .setting.overridden {
+    border-color: color-mix(in srgb, var(--warn) 55%, var(--line));
+  }
   .head {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
     gap: 1rem;
   }
+  .name {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .source {
+    white-space: normal;
+  }
+  .overrides {
+    display: grid;
+    gap: 0.4rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .overrides li {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.4rem 0.55rem;
+    padding: 0.6rem 0.7rem;
+    border-radius: var(--radius-sm);
+    background: var(--warn-soft);
+    font-size: 0.86rem;
+    font-weight: 600;
+  }
+  .overrides .mark {
+    color: var(--warn);
+    padding-top: 0.1rem;
+  }
+  .overrides button {
+    grid-column: 2;
+    justify-self: start;
+  }
   .title {
     font-weight: 700;
   }
   .value {
+    white-space: nowrap;
     color: var(--accent);
     font-size: 0.95rem;
   }
@@ -214,6 +303,7 @@
   }
   .foot {
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
     align-items: center;
     gap: 0.5rem;

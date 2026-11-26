@@ -6,6 +6,7 @@ const COMMANDS: &[&str] = &[
     "onboarding_save",
     "check_permissions",
     "open_system_settings",
+    "repair_screen_permission",
     "cloud_validate",
     "cloud_list_devices",
     "discover_lan",

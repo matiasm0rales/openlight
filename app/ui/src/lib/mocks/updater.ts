@@ -3,6 +3,7 @@
 // Se elige por URL con `?update=<escenario>` (por defecto no hay versión nueva):
 // - `available`: hay una versión nueva y todo sale bien.
 // - `hang`: la descarga se queda al 40 % hasta llamar a `finishDownload()`.
+// - `no_release`: no hay ninguna versión publicada (`latest.json` da 404).
 // - `offline`: no hay red ni para buscar.
 // - `offline_download`: la red se corta en medio de la descarga.
 // - `bad_signature`: el paquete no pasa la verificación de la firma.
@@ -11,7 +12,7 @@
 import type { Channel } from "@tauri-apps/api/core";
 import type { DownloadEvent } from "@tauri-apps/plugin-updater";
 
-export const UPDATE_SCENARIOS = ["none", "available", "hang", "offline", "offline_download", "bad_signature", "install_fails", "restart_fails"] as const;
+export const UPDATE_SCENARIOS = ["none", "available", "hang", "no_release", "offline", "offline_download", "bad_signature", "install_fails", "restart_fails"] as const;
 export type UpdateScenario = (typeof UPDATE_SCENARIOS)[number];
 
 export const MOCK_VERSION = "0.1.0";
@@ -44,6 +45,8 @@ export class MockUpdater {
   async check() {
     this.calls.push("check");
     await this.wait(300);
+    // Lo que contesta el plugin ante cualquier respuesta HTTP sin éxito (un 404, por ejemplo).
+    if (this.scenario === "no_release") throw "Could not fetch a valid release JSON from the remote";
     if (this.scenario === "offline") throw "error sending request for url (https://github.com/matiasm0rales/openlight/releases/latest/download/latest.json)";
     if (this.scenario === "none") return null;
     return { rid: 1, currentVersion: MOCK_VERSION, version: MOCK_NEXT_VERSION, body: MOCK_NOTES, rawJson: {} };

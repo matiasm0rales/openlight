@@ -108,6 +108,10 @@ El estado se vuelve a revisar solo cada pocos segundos.
 
 La imagen de tu pantalla se procesa en tu compu y no se manda a ningún lado.
 
+En macOS, si la grabación de pantalla figura activada pero OpenLight no ve nada (puede pasar después
+de actualizar), tocá **Reparar permiso**, volvé a activarla y reabrí la app
+([detalle](errores.md#screen_permission_stale)).
+
 ### 3. Cuenta en Tuya Developer
 
 Cada foco tiene una **clave local** que solo se puede leer desde el portal de Tuya. OpenLight la
@@ -289,7 +293,9 @@ valor por defecto, y se aplica a uno de estos ámbitos:
 
 Si el mismo ajuste está en varios, gana el más específico: foco, después perfil activo, después
 global y por último el valor por defecto. En **Todos los focos** se ve el valor global, con un
-aviso cuando el perfil activo o algún foco usan el suyo (ahí el cambio no se nota).
+aviso cuando el perfil activo o algún foco usan el suyo (ahí el cambio no se nota). Por cada foco
+con valor propio aparece **Usar el valor de todos**, que lo borra. En un foco, cada ajuste dice si
+es un **Valor propio** (y cuál usaría sin él) o si viene **De todos los focos** o del perfil activo.
 
 El brillo máximo no puede quedar por debajo del brillo mínimo. Si al combinar un perfil y los
 valores de un foco el mínimo quedara arriba, manda el máximo.
@@ -352,9 +358,11 @@ disponible** y no hay versiones publicadas.
 Para actualizar a mano, salí de la app e instalá la versión nueva encima: la configuración, la
 calibración y las claves se conservan.
 
-En macOS, como la app no está firmada con un certificado de Apple, después de actualizar el sistema
-puede volver a pedir el permiso de **Grabación de pantalla** (quitá OpenLight de la lista y agregalo
-de nuevo) y la contraseña del **llavero**. Elegí **Permitir siempre**.
+En macOS, si la versión nueva viene firmada distinto que la anterior, el permiso de **Grabación de
+pantalla** deja de servir aunque figure activado: tocá **Reparar permiso**
+([detalle](errores.md#screen_permission_stale)). También puede volver a pedir la contraseña del
+**llavero**: elegí **Permitir siempre**. Las versiones firmadas siempre con el mismo certificado
+conservan el permiso ([cómo se firman](release.md#macos-con-qué-se-firma)).
 
 ## Dónde se guardan las cosas
 

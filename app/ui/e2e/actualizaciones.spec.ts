@@ -128,6 +128,24 @@ test("Ajustes: versión actual y búsqueda a mano", async ({ page }) => {
   await expect(notice(page).getByRole("heading", { level: 3 })).toHaveText("Hay una versión nueva: 0.2.0");
 });
 
+test("sin versiones publicadas está al día, y la ventana que reaparece no repite la búsqueda", async ({ page }) => {
+  await open(page, "configured", "settings", "update=no_release");
+  const panel = page.getByRole("region", { name: "Actualizaciones" });
+  await expect(panel.getByRole("status")).toHaveText("Ya tenés la última versión.");
+  // macOS puede volver a mostrar la ventana muchas veces seguidas.
+  await page.evaluate(async () => {
+    for (let i = 0; i < 20; i++) {
+      document.dispatchEvent(new Event("visibilitychange"));
+      await new Promise((r) => setTimeout(r, 60));
+    }
+  });
+  expect(await calls(page)).toEqual(["check"]);
+  await panel.getByRole("button", { name: "Buscar actualizaciones" }).click();
+  await expect.poll(() => calls(page)).toEqual(["check", "check"]);
+  await expect(panel.getByRole("status")).toHaveText("Ya tenés la última versión.");
+  await expect(panel.getByRole("alert")).toHaveCount(0);
+});
+
 test("la búsqueda automática se puede apagar y se recuerda", async ({ page }) => {
   await open(page, "configured", "settings", "update=available");
   const auto = page.getByRole("switch", { name: "Buscar actualizaciones automáticamente" });

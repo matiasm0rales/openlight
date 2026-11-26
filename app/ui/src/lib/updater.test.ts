@@ -3,7 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { clearMocks } from "@tauri-apps/api/mocks";
 import type { UpdateScenario } from "./mocks/updater";
 
-const HOUR = 60 * 60 * 1000;
+const MINUTE = 60 * 1000;
+const HOUR = 60 * MINUTE;
 
 /** Una app recién abierta: módulos nuevos (el estado del updater es global) y backend falso. */
 async function boot(update: UpdateScenario, stored: Record<string, string> = {}) {
@@ -18,6 +19,8 @@ async function boot(update: UpdateScenario, stored: Record<string, string> = {})
 }
 
 const asked = (calls: string[], what: string) => calls.filter((c) => c === what).length;
+/** macOS vuelve a mostrar la ventana. */
+const flap = () => document.dispatchEvent(new Event("visibilitychange"));
 
 beforeEach(() => vi.spyOn(console, "warn").mockImplementation(() => {}));
 afterEach(() => {
@@ -56,6 +59,29 @@ describe("buscar actualizaciones", () => {
     expect(u.updates.available?.version).toBe("0.2.0");
   });
 
+  it("sin ninguna versión publicada (404) está al día, sin error", async () => {
+    const u = await boot("no_release");
+    for (const manual of [false, true]) {
+      await u.checkForUpdates(manual);
+      expect(u.updates.upToDate).toBe(true);
+      expect(u.updates.error).toBeNull();
+      expect(u.updates.available).toBeNull();
+    }
+    expect(console.warn).not.toHaveBeenCalled();
+  });
+
+  it("si el servidor deja de contestar, la versión ya ofrecida no se pierde", async () => {
+    const u = await boot("available");
+    await u.checkForUpdates();
+    u.mock.scenario = "no_release";
+    await u.checkForUpdates();
+    expect(u.updates.available?.version).toBe("0.2.0");
+    expect(u.updates.upToDate).toBe(false);
+    await u.checkForUpdates(true);
+    expect(u.updates.error).toMatchObject({ step: "check", kind: "unavailable" });
+    expect(u.updates.available?.version).toBe("0.2.0");
+  });
+
   it("no encima dos búsquedas", async () => {
     const u = await boot("available");
     await Promise.all([u.checkForUpdates(), u.checkForUpdates()]);
@@ -81,12 +107,95 @@ describe("búsqueda automática", () => {
     expect(asked(u.mock.calls, "check")).toBe(2);
   });
 
-  it("si falló, reintenta antes de las 6 horas", async () => {
+  // La app instalada hizo unas 330 búsquedas en 4 minutos: macOS marca la ventana como tapada y
+  // vuelve a mostrarla varias veces por segundo, y cada vuelta buscaba si la anterior había fallado.
+  for (const [scenario, expected] of [
+    ["none", 1],
+    ["available", 1],
+    ["no_release", 1],
+    ["offline", 3], // al arrancar y los reintentos de 1 y 2 minutos
+  ] as const) {
+    it(`una ventana que se tapa y se destapa sin parar no dispara búsquedas (${scenario})`, async () => {
+      vi.useFakeTimers();
+      const u = await boot(scenario);
+      const stop = u.startUpdater();
+      for (let i = 0; i < 4 * MINUTE; i += 250) {
+        await vi.advanceTimersByTimeAsync(250);
+        flap();
+      }
+      expect(asked(u.mock.calls, "check")).toBe(expected);
+      stop();
+    });
+  }
+
+  it("sin red reintenta con esperas que se duplican, hasta una hora", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    const u = await boot("offline");
+    const minutes: number[] = [];
+    const check = u.mock.check.bind(u.mock);
+    u.mock.check = () => (minutes.push(Math.floor(Date.now() / MINUTE)), check());
+    const stop = u.startUpdater();
+    await vi.advanceTimersByTimeAsync(3 * HOUR + 4 * MINUTE);
+    const waits = minutes.slice(1).map((t, i) => t - minutes[i]);
+    expect(waits).toEqual([1, 2, 4, 8, 16, 32, 60, 60]);
+    expect(u.updates.error).toBeNull();
+    // Vuelve la red: se encuentra la versión y se espera otra vez 6 horas.
+    u.mock.scenario = "available";
+    await vi.advanceTimersByTimeAsync(HOUR);
+    expect(u.updates.available?.version).toBe("0.2.0");
+    const found = asked(u.mock.calls, "check");
+    await vi.advanceTimersByTimeAsync(5 * HOUR);
+    expect(asked(u.mock.calls, "check")).toBe(found);
+    // Si vuelve a fallar, empieza de nuevo por la espera corta.
+    u.mock.scenario = "offline";
+    await vi.advanceTimersByTimeAsync(HOUR + 2 * MINUTE);
+    expect(minutes[found + 1] - minutes[found]).toBe(1);
+    stop();
+  });
+
+  it("volver a mostrar la ventana no busca si la última búsqueda fue hace menos de una hora", async () => {
     vi.useFakeTimers();
     const u = await boot("offline");
     const stop = u.startUpdater();
-    await vi.advanceTimersByTimeAsync(31 * 60 * 1000);
-    expect(asked(u.mock.calls, "check")).toBeGreaterThanOrEqual(3);
+    await vi.advanceTimersByTimeAsync(1000);
+    // El reloj salta sin que corran los temporizadores: así se ve solo lo que dispara la ventana.
+    vi.setSystemTime(Date.now() + 30 * MINUTE);
+    flap();
+    expect(asked(u.mock.calls, "check")).toBe(1);
+    vi.setSystemTime(Date.now() + 31 * MINUTE);
+    flap();
+    expect(asked(u.mock.calls, "check")).toBe(2);
+    stop();
+  });
+
+  it("nunca hay dos búsquedas a la vez", async () => {
+    vi.useFakeTimers();
+    const u = await boot("none");
+    let finish = () => {};
+    const gate = new Promise<void>((r) => (finish = r));
+    const check = u.mock.check.bind(u.mock);
+    u.mock.check = () => check().then(async (found) => (await gate, found));
+    const stop = u.startUpdater();
+    await vi.advanceTimersByTimeAsync(8 * HOUR); // la primera sigue sin contestar
+    flap();
+    u.setAutoCheck(true);
+    await u.checkForUpdates(true);
+    expect(asked(u.mock.calls, "check")).toBe(1);
+    finish();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(u.updates.phase).toBe("idle");
+    stop();
+  });
+
+  it("volver a arrancar el updater no busca de nuevo", async () => {
+    vi.useFakeTimers();
+    const u = await boot("none");
+    u.startUpdater()();
+    await vi.advanceTimersByTimeAsync(1000);
+    const stop = u.startUpdater();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(asked(u.mock.calls, "check")).toBe(1);
     stop();
   });
 

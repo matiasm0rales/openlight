@@ -260,6 +260,29 @@ kbd {
 .btn.danger {
   --b-fg: var(--danger);
 }
+/* Secundaria con recuadro: acompaña a una primaria sin competir con ella. */
+.btn.secondary {
+  --b-bg: var(--surface);
+  box-shadow: inset 0 0 0 1.5px var(--line-strong);
+}
+.btn.secondary:hover {
+  background: var(--surface-3);
+  box-shadow: inset 0 0 0 1.5px var(--faint);
+}
+/* Elimina algo: color de error con recuadro; se llena al pasar por encima y en la confirmación. */
+.btn.destructive {
+  --b-bg: var(--danger-soft);
+  --b-fg: var(--danger);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--danger) 60%, transparent);
+}
+.btn.destructive:hover,
+.btn.destructive.solid {
+  background: var(--danger);
+  color: var(--surface);
+}
+.btn.destructive.solid:hover {
+  background: color-mix(in srgb, var(--danger) 85%, var(--text));
+}
 .btn.small {
   min-height: 36px;
   padding: 0.35em 1em;

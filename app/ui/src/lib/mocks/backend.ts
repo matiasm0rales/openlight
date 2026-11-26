@@ -151,6 +151,8 @@ class MockBackend {
   updater: MockUpdater;
   /** Entre `update_prepare` y `update_abort` el efecto no se puede arrancar (como en la app). */
   private updating = false;
+  /** La página pidió que cerrar la ventana no la destruya (`ui_hold`). */
+  held = false;
   private timers: ReturnType<typeof setInterval>[] = [];
   private videoT = 0;
   private sceneHue = 18;
@@ -377,7 +379,7 @@ class MockBackend {
     return "idle";
   }
 
-  private stopTimers(): void {
+  stopTimers(): void {
     this.timers.forEach(clearInterval);
     this.timers = [];
   }
@@ -749,6 +751,13 @@ class MockBackend {
     this.persist();
   }
 
+  /** Como el backend con una ventana nueva: el estado del efecto y de cada foco. */
+  private replay(): void {
+    if (this.session === "idle") return;
+    void emit(EVENT_SESSION_STATE, { state: this.session });
+    for (const d of this.inEffect()) this.emitHealth(d.id);
+  }
+
   async handle(cmd: string, a: Record<string, any>): Promise<unknown> {
     switch (cmd) {
       case "onboarding_state":
@@ -838,6 +847,13 @@ class MockBackend {
       case "update_abort":
         this.updater.calls.push("update_abort");
         this.updating = false;
+        return null;
+      case "ui_ready":
+        this.held = false;
+        this.replay();
+        return null;
+      case "ui_hold":
+        this.held = a.hold;
         return null;
       // Plugins de Tauri que usa la UI (no son parte de ipc.rs).
       case "plugin:app|version":

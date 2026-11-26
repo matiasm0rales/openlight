@@ -55,6 +55,9 @@ pub trait EventSink: Send + Sync {
     fn emit(&self, event: AppEvent);
 }
 
+/// Cuántos errores se guardan mientras no hay quien los muestre (lo mismo que apila la UI).
+pub const MAX_PENDING_ERRORS: usize = 20;
+
 /// La puerta hacia la UI. Con ninguna ventana a la vista, lo que solo sirve para dibujar (la
 /// salud de cada foco, el color en vivo y las estadísticas) no sale: cada evento le cuesta CPU y
 /// memoria a la ventana, la mire alguien o no. Todo lo demás (la sesión, los errores, la
@@ -62,6 +65,10 @@ pub trait EventSink: Send + Sync {
 ///
 /// Se guarda lo último de cada foco y, cuando una ventana vuelve a verse, se manda junto con el
 /// estado de la sesión, así la UI no queda vieja.
+///
+/// La ventana principal se destruye al cerrarla y la próxima arranca de cero: cuando su página
+/// avisa que ya escucha ([`UiGate::attach`]) se le manda todo eso otra vez, más los errores que
+/// salieron mientras no había nadie para mostrarlos.
 pub struct UiGate {
     sink: Arc<dyn EventSink>,
     ui: Mutex<Ui>,
@@ -69,6 +76,10 @@ pub struct UiGate {
 
 struct Ui {
     visible: bool,
+    /// Si la página de la ventana principal está escuchando.
+    attached: bool,
+    /// Errores que salieron sin nadie escuchando, en orden.
+    pending: Vec<UserFacingError>,
     session: Option<SessionStateEvent>,
     health: BTreeMap<DeviceId, DeviceHealthEvent>,
     live: BTreeMap<DeviceId, LiveColorEvent>,
@@ -81,6 +92,8 @@ impl UiGate {
             sink,
             ui: Mutex::new(Ui {
                 visible: true,
+                attached: false,
+                pending: Vec::new(),
                 session: None,
                 health: BTreeMap::new(),
                 live: BTreeMap::new(),
@@ -96,6 +109,30 @@ impl UiGate {
         }
         // Con el candado tomado: un evento nuevo no puede salir antes que esta foto y quedar
         // pisado por ella
+        self.snapshot(&ui);
+    }
+
+    /// La página de la ventana principal ya escucha los eventos: se le manda el estado completo y
+    /// los errores que no vio.
+    pub fn attach(&self) {
+        let mut ui = self.ui.lock().unwrap_or_else(PoisonError::into_inner);
+        ui.attached = true;
+        self.snapshot(&ui);
+        for error in std::mem::take(&mut ui.pending) {
+            self.sink.emit(AppEvent::ErrorRaised(error));
+        }
+    }
+
+    /// La ventana principal se destruyó: desde ahora los errores se guardan.
+    pub fn detach(&self) {
+        self.ui
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .attached = false;
+    }
+
+    /// La sesión y lo último de cada foco.
+    fn snapshot(&self, ui: &Ui) {
         if let Some(session) = &ui.session {
             self.sink.emit(AppEvent::SessionState(session.clone()));
         }
@@ -125,12 +162,32 @@ impl EventSink for UiGate {
                 true
             }
             AppEvent::PipelineStats(_) => true,
+            AppEvent::ErrorRaised(error) => {
+                if !ui.attached {
+                    keep(&mut ui.pending, error);
+                }
+                false
+            }
             // El resto, y lo que se agregue, pasa siempre
             _ => false,
         };
         if ui.visible || !drawing {
             self.sink.emit(event);
         }
+    }
+}
+
+/// Suma `error` a los pendientes, sin repetidos (como la pila de la UI) y sin pasar del tope.
+fn keep(pending: &mut Vec<UserFacingError>, error: &UserFacingError) {
+    if pending
+        .iter()
+        .any(|e| e.code == error.code && e.params == error.params)
+    {
+        return;
+    }
+    pending.push(error.clone());
+    if pending.len() > MAX_PENDING_ERRORS {
+        pending.remove(0);
     }
 }
 
@@ -331,6 +388,80 @@ mod tests {
         gate.set_visible(true);
         gate.set_visible(true);
         assert_eq!(sink.events().len(), 2);
+    }
+
+    fn error(code: ErrorCode) -> AppEvent {
+        AppEvent::ErrorRaised(UserFacingError::new(code))
+    }
+
+    #[test]
+    fn al_conectarse_la_ventana_recibe_el_estado_completo() {
+        let (sink, gate) = puerta();
+        // Sin ventana desde el principio, como cuando la app arranca sola
+        gate.set_visible(false);
+        gate.emit(sesion(SessionState::Active));
+        gate.emit(salud("a", DeviceSessionState::Active));
+        gate.emit(color("a", 0.9));
+        // La ventana se crea y se ve antes de que su página escuche: eso se pierde...
+        gate.set_visible(true);
+        let antes = sink.events().len();
+        // ... y cuando avisa que ya escucha, se manda otra vez
+        gate.attach();
+        assert_eq!(
+            sink.events()[antes..],
+            [
+                sesion(SessionState::Active),
+                salud("a", DeviceSessionState::Active),
+                color("a", 0.9),
+            ]
+        );
+    }
+
+    #[test]
+    fn los_errores_sin_ventana_se_guardan_y_salen_una_vez_al_conectarse() {
+        let (sink, gate) = puerta();
+        gate.emit(error(ErrorCode::NoZones));
+        gate.emit(error(ErrorCode::NoZones));
+        gate.emit(error(ErrorCode::Internal));
+        // Salen igual en el momento (la ventana de calibración puede estar escuchando)
+        assert_eq!(sink.events().len(), 3);
+        gate.attach();
+        assert_eq!(
+            sink.events()[3..],
+            [error(ErrorCode::NoZones), error(ErrorCode::Internal)]
+        );
+        // Ya entregados: la próxima ventana no los repite
+        gate.detach();
+        gate.attach();
+        assert_eq!(sink.events().len(), 5);
+    }
+
+    #[test]
+    fn con_la_ventana_escuchando_los_errores_no_se_guardan() {
+        let (sink, gate) = puerta();
+        gate.attach();
+        gate.emit(error(ErrorCode::NoZones));
+        gate.detach();
+        gate.attach();
+        assert_eq!(sink.events(), vec![error(ErrorCode::NoZones)]);
+    }
+
+    #[test]
+    fn solo_se_guardan_los_ultimos_errores() {
+        let (sink, gate) = puerta();
+        for n in 0..MAX_PENDING_ERRORS + 5 {
+            gate.emit(AppEvent::ErrorRaised(
+                UserFacingError::new(ErrorCode::Internal).with_param("cause", n.to_string()),
+            ));
+        }
+        let antes = sink.events().len();
+        gate.attach();
+        let guardados = &sink.events()[antes..];
+        assert_eq!(guardados.len(), MAX_PENDING_ERRORS);
+        assert!(matches!(
+            &guardados[0],
+            AppEvent::ErrorRaised(e) if e.params["cause"] == "5"
+        ));
     }
 
     #[test]

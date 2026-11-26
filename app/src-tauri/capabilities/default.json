@@ -56,6 +56,8 @@
     "allow-calibration-cancel",
     "allow-update-prepare",
     "allow-update-abort",
+    "allow-ui-ready",
+    "allow-ui-hold",
     "allow-import-legacy",
     "allow-diagnostics-log",
     "allow-diagnostics-export"

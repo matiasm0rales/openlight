@@ -14,7 +14,7 @@ import type {
 } from "./bindings";
 import { EVENT_COLOR_LIVE, EVENT_DEVICE_HEALTH, EVENT_EFFECT_DEVICES, EVENT_ERROR_RAISED, EVENT_PIPELINE_STATS, EVENT_SESSION_STATE } from "./bindings";
 import { attempt, commands, on, openExternal, toUserFacing } from "./ipc";
-import { go } from "./router.svelte";
+import { go, route } from "./router.svelte";
 import { pageHidden, whenVisible } from "./visibility";
 
 export interface RaisedError extends UserFacingError {
@@ -235,6 +235,13 @@ export async function init(): Promise<void> {
       app.stats = [...recentStats().slice(-59), sample];
     }),
   ]);
+  // La ventana principal se destruye al cerrarla, así que cada vez que se abre esta página arranca
+  // de cero: ya con los oyentes puestos, el backend le manda lo último de cada foco y los errores
+  // que salieron mientras no estaba. La de calibración no lo pide: se los llevaría ella.
+  if (route.name !== "calibrate") {
+    const ready = await attempt(() => commands.uiReady());
+    if (!ready.ok) raise(ready.error);
+  }
   const session = await attempt(() => commands.sessionState());
   if (session.ok) app.session = session.value;
   await Promise.all([refreshOnboarding(), refreshDevices(), refreshSettings()]);

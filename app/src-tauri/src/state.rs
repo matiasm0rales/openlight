@@ -7,7 +7,7 @@
 
 use std::collections::{HashMap, HashSet};
 use std::net::IpAddr;
-use std::sync::atomic::{AtomicBool, AtomicU8};
+use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 
@@ -198,6 +198,8 @@ pub struct Backend {
     pub(crate) shutdown_state: AtomicU8,
     /// Alguien pidió salir (ver `begin_shutdown`).
     pub(crate) quit_requested: AtomicBool,
+    /// La UI tiene algo a medias: cerrar la ventana principal la esconde en vez de destruirla.
+    keep_window: AtomicBool,
     pub(crate) cache: Mutex<Cache>,
     pub(crate) session: AsyncMutex<Option<ActiveSession>>,
     pub(crate) session_state: Mutex<SessionState>,
@@ -227,6 +229,7 @@ impl Backend {
             excluded: Mutex::new(HashSet::new()),
             shutdown_state: AtomicU8::new(0),
             quit_requested: AtomicBool::new(false),
+            keep_window: AtomicBool::new(false),
             cache: Mutex::default(),
             session: AsyncMutex::new(None),
             session_state: Mutex::new(SessionState::Idle),
@@ -258,6 +261,31 @@ impl Backend {
     /// Avisa si hay alguna ventana a la vista (ver [`UiGate`]). Sin avisos, se asume que sí.
     pub fn set_ui_visible(&self, visible: bool) {
         self.events.set_visible(visible);
+    }
+
+    /// La página de la ventana principal terminó de cargar y ya escucha: recibe el estado
+    /// completo y los errores que no vio. Es una página nueva, así que no tiene nada a medias.
+    pub fn ui_ready(&self) {
+        self.keep_window.store(false, Ordering::SeqCst);
+        self.events.attach();
+    }
+
+    /// La ventana principal se destruyó.
+    pub fn ui_closed(&self) {
+        self.keep_window.store(false, Ordering::SeqCst);
+        self.events.detach();
+    }
+
+    /// La UI tiene (o dejó de tener) algo a medias que se perdería al destruir la ventana, como
+    /// una actualización instalándose.
+    pub fn ui_hold(&self, hold: bool) {
+        self.keep_window.store(hold, Ordering::SeqCst);
+    }
+
+    /// Si cerrar la ventana principal la tiene que esconder en vez de destruir (ver
+    /// [`Backend::ui_hold`]).
+    pub fn keeps_window(&self) -> bool {
+        self.keep_window.load(Ordering::SeqCst)
     }
 
     /// Avisa un error que no vino de un comando (el usuario lo ve como aviso).

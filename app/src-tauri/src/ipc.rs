@@ -325,6 +325,26 @@ pub async fn update_abort(app: App<'_>) -> CmdResult<()> {
     Ok(())
 }
 
+// ---------- La ventana principal ----------
+
+/// La página de la ventana principal ya escucha los eventos: el backend le manda el estado
+/// completo y los errores que salieron mientras no estaba.
+#[tauri::command]
+#[specta::specta]
+pub async fn ui_ready(app: App<'_>) -> CmdResult<()> {
+    app.ui_ready();
+    Ok(())
+}
+
+/// Mientras `hold` sea `true`, cerrar la ventana principal la esconde en vez de destruirla,
+/// porque la página tiene algo a medias (una actualización instalándose).
+#[tauri::command]
+#[specta::specta]
+pub async fn ui_hold(app: App<'_>, hold: bool) -> CmdResult<()> {
+    app.ui_hold(hold);
+    Ok(())
+}
+
 // ---------- Importar y diagnóstico ----------
 
 /// Importa el setup del script Python desde una carpeta.
@@ -389,6 +409,8 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             calibration_cancel,
             update_prepare,
             update_abort,
+            ui_ready,
+            ui_hold,
             import_legacy,
             diagnostics_log,
             diagnostics_export,

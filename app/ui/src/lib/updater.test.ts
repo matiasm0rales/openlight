@@ -203,6 +203,35 @@ describe("actualizar y reiniciar", () => {
     expect(u.mock.restarted).toBe(true);
   });
 
+  it("mientras instala, cerrar la ventana no la destruye", async () => {
+    const u = await boot("hang");
+    await u.checkForUpdates();
+    expect(u.backend.held).toBe(false);
+    const done = u.installUpdate();
+    await vi.waitFor(() => expect(u.mock.calls).toContain("download"));
+    expect(u.backend.held).toBe(true);
+    u.mock.finishDownload();
+    await done;
+    expect(u.backend.held).toBe(true);
+  });
+
+  for (const scenario of ["offline_download", "install_fails"] as const) {
+    it(`si falla (${scenario}), la ventana vuelve a poder cerrarse del todo`, async () => {
+      const u = await boot(scenario);
+      await u.checkForUpdates();
+      await u.installUpdate();
+      expect(u.updates.error).not.toBeNull();
+      expect(u.backend.held).toBe(false);
+    });
+  }
+
+  it("instalada pero sin reiniciar, la ventana se conserva para poder reintentar", async () => {
+    const u = await boot("restart_fails");
+    await u.checkForUpdates();
+    await u.installUpdate();
+    expect(u.backend.held).toBe(true);
+  });
+
   it("«Más tarde» esconde el aviso de esa versión hasta que se vuelve a buscar a mano", async () => {
     const u = await boot("available");
     await u.checkForUpdates();

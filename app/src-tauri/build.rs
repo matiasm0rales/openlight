@@ -37,6 +37,8 @@ const COMMANDS: &[&str] = &[
     "calibration_cancel",
     "update_prepare",
     "update_abort",
+    "ui_ready",
+    "ui_hold",
     "import_legacy",
     "diagnostics_log",
     "diagnostics_export",

@@ -7,12 +7,12 @@
 //! # Solo Rust: CPU, asignaciones y eventos del pipeline por segundo
 //! cargo run --release -p openlight --example banco -- pipeline [--segundos 30] [--escena movil|fija]
 //!
-//! # Con Tauri y la UI de verdad en una ventana oculta: CPU y memoria del proceso y del WebContent
+//! # Con Tauri y la UI de verdad, sin ventana (como cuando la app arranca sola): CPU y memoria
 //! pnpm --filter openlight-ui build
 //! cargo run --release -p openlight --features tauri/custom-protocol --example banco -- ventana [--segundos 60]
 //!
-//! # Además, muestra la ventana (fuera de la pantalla y sin sacar el foco) y la cierra, para ver
-//! # que los eventos de dibujo vuelven y se cortan
+//! # Además, abre la ventana como desde el tray (aparece un momento y saca el foco) y la cierra:
+//! # que los eventos de dibujo vuelven y se cortan, y que la ventana nueva muestra todo
 //! ... banco ventana --segundos 10 --ciclo si
 //!
 //! # Con el Panel a la vista, o después de cerrar la ventana
@@ -635,9 +635,16 @@ fn de_dibujo(cuenta: &Cuenta) -> u64 {
     .sum()
 }
 
-/// Muestra la ventana y la cierra (lo que hace el usuario) y cuenta los eventos de dibujo en cada
-/// tramo. Cerrar pasa por `on_window_event`, como en la app.
-fn ciclo(window: &tauri::WebviewWindow, cuenta: &Cuenta) -> Value {
+/// Lo que muestra la página: para ver que se dibuja y que una ventana nueva recibe todo.
+const PAGINA: &str = "({ruta: location.hash, oculta: document.hidden, \
+    sesion: document.querySelector('.session .state')?.textContent, \
+    focos: [...document.querySelectorAll('.card.device .chip')].map(c => c.textContent), \
+    colores: [...document.querySelectorAll('.eclipse')].map(e => e.style.getPropertyValue('--core')), \
+    ancho: innerWidth, alto: innerHeight, escala: devicePixelRatio})";
+
+/// Cierra la ventana (si la hay), la abre como desde el tray y la vuelve a cerrar, y cuenta los
+/// eventos de dibujo en cada tramo. Cerrar pasa por `on_window_event`, como en la app.
+fn ciclo(app: &tauri::AppHandle, cuenta: &Cuenta) -> Value {
     use tauri::Manager;
     let esperar = |ms| std::thread::sleep(Duration::from_millis(ms));
     let tramo = || {
@@ -645,26 +652,27 @@ fn ciclo(window: &tauri::WebviewWindow, cuenta: &Cuenta) -> Value {
         esperar(2000);
         de_dibujo(cuenta) - antes
     };
-    let oculta = tramo();
-    window
-        .set_position(tauri::LogicalPosition::new(-30_000.0, -30_000.0))
-        .expect("mover la ventana");
-    window.show().expect("mostrar");
-    // En el hilo principal, como cuando se muestra desde el menú del tray: el estado completo sale
-    // desde ahí
-    let app = window.app_handle().clone();
-    window
-        .app_handle()
-        .run_on_main_thread(move || openlight_lib::windows::sync_visibility(&app, None))
-        .expect("hilo principal");
-    let visible = tramo();
-    window.close().expect("cerrar");
-    esperar(1000);
+    let ventana = || app.get_webview_window(openlight_lib::windows::MAIN);
+    let cerrar = || {
+        if let Some(window) = ventana() {
+            window.close().expect("cerrar");
+        }
+        esperar(1000);
+    };
+    cerrar();
+    let sin_ventana = tramo();
+    openlight_lib::windows::show_main(app);
+    esperar(3000);
+    let abierta = tramo();
+    let pagina = ventana().map(|w| evaluar(&w, PAGINA));
+    cerrar();
     let cerrada = tramo();
     json!({
-        "oculta_en_2s": oculta,
-        "visible_en_2s": visible,
+        "sin_ventana_en_2s": sin_ventana,
+        "abierta_en_2s": abierta,
+        "pagina": pagina,
         "cerrada_en_2s": cerrada,
+        "ventana_al_final": ventana().is_some(),
     })
 }
 
@@ -773,8 +781,8 @@ fn medir(
 /// Cómo está la ventana mientras se mide.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Estado {
-    /// Creada y escondida, como cuando la app arranca sola.
-    Oculta,
+    /// Como cuando la app arranca sola al iniciar sesión.
+    SinAbrir,
     /// Con el Panel a la vista.
     Visible,
     /// Se mostró y se cerró, como hace el usuario.
@@ -912,6 +920,7 @@ fn ventana(opciones: Opciones) {
     let mut context = openlight_lib::context();
     // Otro identificador: nada de lo que guarde la ventana se mezcla con la app instalada
     context.config_mut().identifier = "io.github.matiasm0rales.openlight.banco".into();
+    // Que la ventana nazca escondida y no saque el foco
     for config in &mut context.config_mut().app.windows {
         config.visible = false;
         config.focus = false;
@@ -935,40 +944,36 @@ fn ventana(opciones: Opciones) {
             });
             let backend = mundo.backend(cuenta.clone());
             app.manage(backend.clone());
-            // Igual que cuando la app arranca sola: la ventana queda escondida en el tray
-            openlight_lib::windows::hide_main(app.handle())?;
+            // Como cuando la app arranca sola: sin ventana, no hay a quién dibujarle
+            openlight_lib::windows::sync_visibility(app.handle(), None);
+            let window = match opciones.estado {
+                Estado::SinAbrir => None,
+                Estado::Visible | Estado::Cerrada => {
+                    let config = &app.config().app.windows[0];
+                    Some(tauri::WebviewWindowBuilder::from_config(app.handle(), config)?.build()?)
+                }
+            };
             let handle = app.handle().clone();
             std::thread::spawn(move || {
                 let esperar = |s| std::thread::sleep(Duration::from_secs(s));
                 // Que la UI cargue antes de arrancar la sesión
                 esperar(3);
                 tauri::async_runtime::block_on(backend.session_start()).expect("sesión");
-                let window = handle
-                    .get_webview_window(openlight_lib::windows::MAIN)
-                    .expect("ventana principal");
-                let web = pid_web(&window);
-                if opciones.estado != Estado::Oculta {
+                let web = window.as_ref().and_then(pid_web);
+                let mut pagina = None;
+                if let Some(window) = window {
                     mostrar(&window, opciones.entera);
-                }
-                if let Some(js) = &opciones.js {
-                    esperar(2);
-                    window.eval(js.as_str()).expect("evaluar --js");
-                }
-                let pagina = (opciones.estado == Estado::Visible).then(|| {
-                    esperar(1);
-                    evaluar(
-                        &window,
-                        "({ruta: location.hash, oculta: document.hidden, \
-                         tarjetas: document.querySelectorAll('.card.device').length, \
-                         estado: document.querySelector('.chip')?.textContent, \
-                         ancho: innerWidth, alto: innerHeight, escala: devicePixelRatio})",
-                    )
-                });
-                if opciones.estado == Estado::Cerrada {
+                    if let Some(js) = &opciones.js {
+                        esperar(2);
+                        window.eval(js.as_str()).expect("evaluar --js");
+                    }
                     esperar(3);
-                    window.close().expect("cerrar");
-                    // Lo que tarda WebKit en soltar el proceso de una ventana destruida
-                    esperar(10);
+                    pagina = Some(evaluar(&window, PAGINA));
+                    if opciones.estado == Estado::Cerrada {
+                        window.close().expect("cerrar");
+                        // Lo que tarda WebKit en soltar el proceso de una ventana destruida
+                        esperar(10);
+                    }
                 }
                 esperar(CALENTAMIENTO.as_secs());
 
@@ -979,7 +984,10 @@ fn ventana(opciones: Opciones) {
                 let mut pids = vec![("proceso".to_owned(), std::process::id())];
                 match web {
                     Some(pid) => pids.push(("webcontent".to_owned(), pid)),
-                    None => eprintln!("no se pudo saber el PID del WebContent"),
+                    None if opciones.estado != Estado::SinAbrir => {
+                        eprintln!("no se pudo saber el PID del WebContent");
+                    }
+                    None => {}
                 }
                 for (pid, tipo) in &nuevos {
                     if Some(*pid) != web {
@@ -1015,10 +1023,8 @@ fn ventana(opciones: Opciones) {
                         Some(_) => "oculta",
                     }),
                 );
-                if opciones.ciclo
-                    && let Some(window) = &window
-                {
-                    resultado.insert("ciclo".into(), ciclo(window, &cuenta));
+                if opciones.ciclo {
+                    resultado.insert("ciclo".into(), ciclo(&handle, &cuenta));
                 }
                 println!("{}", Value::Object(resultado));
                 tauri::async_runtime::block_on(backend.shutdown());
@@ -1034,15 +1040,7 @@ fn ventana(opciones: Opciones) {
         })
         .build(context)
         .expect("no arrancó Tauri")
-        .run(|_, event| {
-            // Cerrar la ventana no termina el banco (sin código: no lo pidió nadie)
-            if let tauri::RunEvent::ExitRequested {
-                code: None, api, ..
-            } = event
-            {
-                api.prevent_exit();
-            }
-        });
+        .run(|_, event| openlight_lib::windows::keep_running(&event));
 }
 
 fn main() {
@@ -1052,7 +1050,7 @@ fn main() {
         segundos: 30,
         escena: Escena::Movil,
         ciclo: false,
-        estado: Estado::Oculta,
+        estado: Estado::SinAbrir,
         entera: false,
         js: None,
         sin: Vec::new(),
@@ -1064,10 +1062,10 @@ fn main() {
             "--ciclo" => opciones.ciclo = valor == "si",
             "--estado" => {
                 opciones.estado = match valor.as_str() {
-                    "oculta" => Estado::Oculta,
+                    "sin-abrir" => Estado::SinAbrir,
                     "visible" => Estado::Visible,
                     "cerrada" => Estado::Cerrada,
-                    _ => panic!("--estado oculta|visible|cerrada"),
+                    _ => panic!("--estado sin-abrir|visible|cerrada"),
                 }
             }
             "--posicion" => opciones.entera = valor == "entera",
@@ -1100,7 +1098,7 @@ fn main() {
         "ventana" => ventana(opciones),
         _ => eprintln!(
             "uso: banco pipeline|ventana [--segundos N] [--escena movil|fija] [--ciclo si] \
-             [--estado oculta|visible|cerrada] [--posicion borde|entera] [--js archivo] \
+             [--estado sin-abrir|visible|cerrada] [--posicion borde|entera] [--js archivo] \
              [--sin color,salud,estadisticas]"
         ),
     }

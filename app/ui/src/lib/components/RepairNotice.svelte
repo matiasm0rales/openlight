@@ -1,6 +1,6 @@
 <script lang="ts">
   // Después de «Reparar permiso»: lo que falta lo hace la persona (activarlo y reabrir la app).
-  import { app, raise } from "../app.svelte";
+  import { dismissRepairNotice, raise } from "../app.svelte";
   import { attempt, commands } from "../ipc";
   import { t } from "../i18n/index.svelte";
   import Icon from "./Icon.svelte";
@@ -20,7 +20,7 @@
       <Icon name="sliders" size={16} />{t("fix.open_settings.screen_recording")}
     </button>
   </div>
-  <button type="button" class="close btn ghost small" aria-label={t("common.dismiss")} onclick={() => (app.screenRepaired = false)}>
+  <button type="button" class="close btn ghost small" aria-label={t("common.dismiss")} onclick={dismissRepairNotice}>
     <Icon name="close" size={16} />
   </button>
 </div>

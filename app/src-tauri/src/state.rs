@@ -200,6 +200,8 @@ pub struct Backend {
     pub(crate) quit_requested: AtomicBool,
     /// La UI tiene algo a medias: cerrar la ventana principal la esconde en vez de destruirla.
     keep_window: AtomicBool,
+    /// Se reparó el permiso de pantalla y falta reabrir la app (y que se descarte el aviso).
+    screen_repaired: AtomicBool,
     pub(crate) cache: Mutex<Cache>,
     pub(crate) session: AsyncMutex<Option<ActiveSession>>,
     pub(crate) session_state: Mutex<SessionState>,
@@ -230,6 +232,7 @@ impl Backend {
             shutdown_state: AtomicU8::new(0),
             quit_requested: AtomicBool::new(false),
             keep_window: AtomicBool::new(false),
+            screen_repaired: AtomicBool::new(false),
             cache: Mutex::default(),
             session: AsyncMutex::new(None),
             session_state: Mutex::new(SessionState::Idle),
@@ -265,9 +268,18 @@ impl Backend {
 
     /// La página de la ventana principal terminó de cargar y ya escucha: recibe el estado
     /// completo y los errores que no vio. Es una página nueva, así que no tiene nada a medias.
-    pub fn ui_ready(&self) {
+    /// Devuelve si tiene que mostrar el aviso de reabrir la app (ver
+    /// [`Backend::set_screen_repaired`]).
+    pub fn ui_ready(&self) -> bool {
         self.keep_window.store(false, Ordering::SeqCst);
         self.events.attach();
+        self.screen_repaired.load(Ordering::SeqCst)
+    }
+
+    /// Si hay que avisar que, tras reparar el permiso de pantalla, falta reabrir la app. Vive acá
+    /// para que el aviso no se pierda al cerrar la ventana; reabrir la app lo borra solo.
+    pub fn set_screen_repaired(&self, pending: bool) {
+        self.screen_repaired.store(pending, Ordering::SeqCst);
     }
 
     /// La ventana principal se destruyó.

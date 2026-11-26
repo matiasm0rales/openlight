@@ -19,9 +19,9 @@ async function open(hash: string) {
   await backend.start();
   // Sin los relojes del mock: lo único que puede llegar es lo que se pide
   backend.stopTimers();
-  const { app, init } = await import("./app.svelte");
+  const { app, init, repairScreenPermission } = await import("./app.svelte");
   await init();
-  return { backend, app };
+  return { backend, app, repair: repairScreenPermission };
 }
 
 describe("ventana nueva", () => {
@@ -29,6 +29,24 @@ describe("ventana nueva", () => {
     const { backend, app } = await open("");
     expect(app.session).toBe("active");
     expect(Object.keys(app.health).sort()).toEqual(backend.state.devices.map((d) => d.id).sort());
+  });
+
+  it("el aviso de reabrir la app sigue en la ventana nueva hasta que se lo descarta", async () => {
+    const first = await open("");
+    await first.repair();
+    /** La ventana se cierra y se abre otra: página nueva, el mismo backend. */
+    const reopen = async () => {
+      vi.resetModules();
+      const page = await import("./app.svelte");
+      await page.init();
+      return page;
+    };
+    let page = await reopen();
+    expect(page.app.screenRepaired).toBe(true);
+    await page.dismissRepairNotice();
+    expect(page.app.screenRepaired).toBe(false);
+    page = await reopen();
+    expect(page.app.screenRepaired).toBe(false);
   });
 
   it("la de calibración no se lleva lo que es de la principal", async () => {

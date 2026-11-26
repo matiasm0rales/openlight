@@ -440,3 +440,15 @@ async fn la_ventana_solo_se_retiene_mientras_la_pagina_lo_pide() {
     backend.ui_closed();
     assert!(!backend.keeps_window());
 }
+
+#[tokio::test]
+async fn el_aviso_de_reabrir_tras_reparar_el_permiso_sobrevive_a_la_ventana() {
+    let h = harness(Setup::default()).await;
+    let backend = &h.backend;
+    assert!(!backend.ui_ready());
+    backend.set_screen_repaired(true);
+    backend.ui_closed();
+    assert!(backend.ui_ready(), "la ventana nueva lo vuelve a mostrar");
+    backend.set_screen_repaired(false);
+    assert!(!backend.ui_ready(), "descartado no vuelve");
+}

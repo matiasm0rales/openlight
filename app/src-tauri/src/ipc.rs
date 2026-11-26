@@ -68,9 +68,19 @@ pub async fn open_system_settings(pane: SystemPane) -> CmdResult<()> {
 /// lo vuelve a pedir). La app lo ve recién cuando se la vuelve a abrir.
 #[tauri::command]
 #[specta::specta]
-pub async fn repair_screen_permission(handle: tauri::AppHandle) -> CmdResult<()> {
+pub async fn repair_screen_permission(app: App<'_>, handle: tauri::AppHandle) -> CmdResult<()> {
     let identifier = handle.config().identifier.clone();
-    crate::permissions::repair_screen_recording_blocking(identifier).await
+    crate::permissions::repair_screen_recording_blocking(identifier).await?;
+    app.set_screen_repaired(true);
+    Ok(())
+}
+
+/// Se descartó el aviso de reabrir la app que deja `repair_screen_permission`.
+#[tauri::command]
+#[specta::specta]
+pub async fn screen_repair_dismiss(app: App<'_>) -> CmdResult<()> {
+    app.set_screen_repaired(false);
+    Ok(())
 }
 
 // ---------- Nube y red local ----------
@@ -337,12 +347,12 @@ pub async fn update_abort(app: App<'_>) -> CmdResult<()> {
 // ---------- La ventana principal ----------
 
 /// La página de la ventana principal ya escucha los eventos: el backend le manda el estado
-/// completo y los errores que salieron mientras no estaba.
+/// completo y los errores que salieron mientras no estaba. `true` si además tiene que mostrar el
+/// aviso de reabrir la app (permiso de pantalla reparado).
 #[tauri::command]
 #[specta::specta]
-pub async fn ui_ready(app: App<'_>) -> CmdResult<()> {
-    app.ui_ready();
-    Ok(())
+pub async fn ui_ready(app: App<'_>) -> CmdResult<bool> {
+    Ok(app.ui_ready())
 }
 
 /// Mientras `hold` sea `true`, cerrar la ventana principal la esconde en vez de destruirla,
@@ -388,6 +398,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             check_permissions,
             open_system_settings,
             repair_screen_permission,
+            screen_repair_dismiss,
             cloud_validate,
             cloud_list_devices,
             discover_lan,

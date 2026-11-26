@@ -7,6 +7,7 @@ const COMMANDS: &[&str] = &[
     "check_permissions",
     "open_system_settings",
     "repair_screen_permission",
+    "screen_repair_dismiss",
     "cloud_validate",
     "cloud_list_devices",
     "discover_lan",

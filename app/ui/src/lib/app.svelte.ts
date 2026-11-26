@@ -144,6 +144,16 @@ export async function repairScreenPermission(): Promise<boolean> {
   return true;
 }
 
+/**
+ * Descarta el aviso de reabrir la app. Lo recuerda el backend, así que hay que avisarle: si no,
+ * la próxima ventana lo volvería a mostrar.
+ */
+export async function dismissRepairNotice(): Promise<void> {
+  app.screenRepaired = false;
+  const r = await attempt(() => commands.screenRepairDismiss());
+  if (!r.ok) raise(r.error);
+}
+
 export async function refreshDevices(): Promise<void> {
   const r = await attempt(() => commands.devicesList());
   if (r.ok) app.devices = r.value;
@@ -273,6 +283,7 @@ export async function init(): Promise<void> {
   if (route.name !== "calibrate") {
     const ready = await attempt(() => commands.uiReady());
     if (!ready.ok) raise(ready.error);
+    else if (ready.value) app.screenRepaired = true;
   }
   const session = await attempt(() => commands.sessionState());
   if (session.ok) app.session = session.value;

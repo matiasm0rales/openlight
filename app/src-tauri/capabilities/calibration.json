@@ -30,6 +30,7 @@
     "allow-renew-key",
     "allow-device-set-in-effect",
     "allow-open-system-settings",
-    "allow-repair-screen-permission"
+    "allow-repair-screen-permission",
+    "allow-screen-repair-dismiss"
   ]
 }

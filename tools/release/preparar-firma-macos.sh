@@ -71,10 +71,10 @@ if [ -n "${MACOS_CERTIFICATE:-}${MACOS_CERTIFICATE_PASSWORD:-}${MACOS_SIGNING_ID
   done < <(security list-keychains -d user | sed 's/^ *"//; s/"$//')
   security list-keychains -d user -s "$llavero" ${anteriores[@]+"${anteriores[@]}"}
 
-  if ! security find-identity -p codesigning "$llavero" |
-    grep -qF "\"$MACOS_SIGNING_IDENTITY\""; then
+  identidades=$(security find-identity -p codesigning "$llavero")
+  if ! grep -qF "\"$MACOS_SIGNING_IDENTITY\"" <<<"$identidades"; then
     echo "::error::El certificado no tiene la identidad «${MACOS_SIGNING_IDENTITY}» (MACOS_SIGNING_IDENTITY)."
-    security find-identity -p codesigning "$llavero"
+    echo "$identidades"
     exit 1
   fi
 

@@ -885,8 +885,8 @@ h2::after {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: var(--cta);
-  color: #fff;
+  background: var(--surface-3);
+  color: var(--text);
   font-weight: 750;
   font-size: 0.95rem;
 }

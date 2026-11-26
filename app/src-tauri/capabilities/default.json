@@ -60,6 +60,11 @@
     "allow-update-abort",
     "allow-ui-ready",
     "allow-ui-hold",
+    "allow-backup-export",
+    "allow-backup-inspect",
+    "allow-backup-import",
+    "allow-devices-without-key",
+    "allow-fetch-missing-keys",
     "allow-import-legacy",
     "allow-diagnostics-log",
     "allow-diagnostics-export"

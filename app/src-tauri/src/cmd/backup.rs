@@ -17,6 +17,19 @@ use crate::cmd::session::close_handle;
 use crate::errors::CmdResult;
 use crate::state::{ActiveSession, Backend, factory_profiles, resolved_capabilities};
 
+/// El nombre que se propone al guardar: `openlight-backup-2026-11-24.json`.
+pub(crate) fn file_name() -> String {
+    file_name_at(now_secs())
+}
+
+fn file_name_at(secs: u64) -> String {
+    let stamp = utc_stamp(secs);
+    let date = stamp
+        .split_once('T')
+        .map_or(stamp.as_str(), |(date, _)| date);
+    format!("openlight-backup-{date}.json")
+}
+
 impl Backend {
     /// El texto del respaldo. No toca el llavero: nada de lo que hay ahí va al archivo.
     pub fn backup_export(&self) -> CmdResult<String> {
@@ -179,5 +192,18 @@ impl Backend {
         self.config_changed();
         self.notify_changed();
         Ok(report)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn el_nombre_propuesto_lleva_la_fecha_y_es_json() {
+        assert_eq!(
+            file_name_at(1_795_545_005),
+            "openlight-backup-2026-11-24.json"
+        );
     }
 }

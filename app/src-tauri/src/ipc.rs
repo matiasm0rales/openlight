@@ -9,23 +9,27 @@
 //! `settings_get` y los de solo lectura devuelven datos por defecto para que la UI arranque.
 
 use openlight_types::ipc::{
-    CalibrationState, CloudCredentialsInput, CloudDeviceInfo, ConfiguredDevice, DeviceAddRequest,
-    DeviceHealthEvent, DiscoveredDevice, EffectDevicesEvent, ImportReport, LiveColorEvent, LogLine,
-    ManualSet, OnboardingState, OnboardingStep, PermissionStatus, PipelineStatsEvent, PreviewImage,
-    SessionStateEvent, SettingScope, SettingsSnapshot, TestPattern, events,
+    BackupSummary, CalibrationState, CloudCredentialsInput, CloudDeviceInfo, ConfiguredDevice,
+    DeviceAddRequest, DeviceHealthEvent, DiscoveredDevice, DuplicatePolicy, EffectDevicesEvent,
+    ImportReport, LiveColorEvent, LogLine, ManualSet, MissingKeysReport, OnboardingState,
+    OnboardingStep, PermissionStatus, PipelineStatsEvent, PreviewImage, SessionStateEvent,
+    SettingScope, SettingsSnapshot, TestPattern, events,
 };
 use openlight_types::{
     CloudAccount, DeviceId, DisplayId, DisplayInfo, ErrorCode, Profile, ProfileId, SessionState,
     SettingId, SettingValue, SystemPane, UserFacingError, Zone,
 };
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use tauri::State;
+use tauri_plugin_dialog::DialogExt;
 use tauri_specta::{Builder, collect_commands};
 
 use crate::state::Backend;
 
 pub use crate::errors::CmdResult;
+use crate::errors::internal;
 
 /// El estado de la app, tal como lo reciben los comandos.
 pub type App<'a> = State<'a, Arc<Backend>>;
@@ -364,6 +368,77 @@ pub async fn ui_hold(app: App<'_>, hold: bool) -> CmdResult<()> {
     Ok(())
 }
 
+// ---------- Respaldo ----------
+
+/// Exporta el respaldo (sin claves) al archivo que se elija en el diálogo del sistema. El
+/// diálogo se abre desde acá: la ventana nunca dice dónde escribir. Devuelve la ruta, o `None`
+/// si se canceló.
+#[tauri::command]
+#[specta::specta]
+pub async fn backup_export(
+    app: App<'_>,
+    window: tauri::WebviewWindow,
+) -> CmdResult<Option<String>> {
+    let Some(path) = choose_backup_path(&window).await? else {
+        return Ok(None);
+    };
+    app.backup_save(&path)?;
+    Ok(Some(path.to_string_lossy().into_owned()))
+}
+
+/// El diálogo "Guardar como" del sistema, pegado a la ventana.
+async fn choose_backup_path(window: &tauri::WebviewWindow) -> CmdResult<Option<PathBuf>> {
+    let (chosen, answer) = tokio::sync::oneshot::channel();
+    window
+        .dialog()
+        .file()
+        .set_parent(window)
+        .add_filter("JSON", &["json"])
+        .set_file_name(crate::cmd::backup::file_name())
+        .save_file(move |path| {
+            // Si nadie espera la respuesta, no hay nada que hacer con ella
+            let _ = chosen.send(path);
+        });
+    answer
+        .await
+        .ok()
+        .flatten()
+        .map(|path| path.into_path().map_err(|e| internal(e.to_string())))
+        .transpose()
+}
+
+/// Qué trae un respaldo (el texto del archivo) y qué focos ya están. No cambia nada.
+#[tauri::command]
+#[specta::specta]
+pub async fn backup_inspect(app: App<'_>, content: String) -> CmdResult<BackupSummary> {
+    app.backup_inspect(&content)
+}
+
+/// Importa un respaldo, salteando o pisando lo que ya está. Los focos nuevos quedan sin clave.
+#[tauri::command]
+#[specta::specta]
+pub async fn backup_import(
+    app: App<'_>,
+    content: String,
+    duplicates: DuplicatePolicy,
+) -> CmdResult<ImportReport> {
+    app.backup_import(&content, duplicates).await
+}
+
+/// Focos configurados que no tienen su clave en el llavero.
+#[tauri::command]
+#[specta::specta]
+pub async fn devices_without_key(app: App<'_>) -> CmdResult<Vec<DeviceId>> {
+    app.devices_without_key()
+}
+
+/// Baja de la nube las claves que faltan, con las credenciales guardadas.
+#[tauri::command]
+#[specta::specta]
+pub async fn fetch_missing_keys(app: App<'_>) -> CmdResult<MissingKeysReport> {
+    app.fetch_missing_keys().await
+}
+
 // ---------- Importar y diagnóstico ----------
 
 /// Importa el setup del script Python desde una carpeta.
@@ -432,6 +507,11 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             update_abort,
             ui_ready,
             ui_hold,
+            backup_export,
+            backup_inspect,
+            backup_import,
+            devices_without_key,
+            fetch_missing_keys,
             import_legacy,
             diagnostics_log,
             diagnostics_export,

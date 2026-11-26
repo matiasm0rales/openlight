@@ -189,6 +189,11 @@ fn plugin_commands() -> BTreeSet<String> {
     for used in MAIN_PLUGINS {
         assert!(commands.contains(*used), "{used} no existe: {commands:?}");
     }
+    // El diálogo de guardar se abre solo desde Rust: sus comandos tienen que estar en la lista
+    // para comprobar que ninguna ventana puede invocarlos
+    for rust_only in ["plugin:dialog|save", "plugin:dialog|open"] {
+        assert!(commands.contains(rust_only), "{rust_only}: {commands:?}");
+    }
     commands
 }
 

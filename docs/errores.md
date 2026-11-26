@@ -5,6 +5,7 @@ cambian entre versiones.
 
 - [Antes que nada](#antes-que-nada): los tres casos más comunes.
 - Sistema y pantalla: [`screen_permission_denied`](#screen_permission_denied) ·
+  [`screen_permission_stale`](#screen_permission_stale) ·
   [`local_network_denied`](#local_network_denied) · [`firewall_blocked`](#firewall_blocked) ·
   [`capture_unsupported`](#capture_unsupported) · [`no_display`](#no_display)
 - Focos: [`device_not_found`](#device_not_found) ·
@@ -75,9 +76,30 @@ usá la app, no la tecla.
 - **Por qué pasa:** en macOS no se concedió el permiso, o se concedió y no se reabrió la app. En
   Linux con Wayland, se canceló el diálogo para compartir pantalla.
 - **Arreglo:** en macOS, **Ajustes del Sistema → Privacidad y seguridad → Grabación de
-  pantalla**, activá OpenLight, salí y volvé a abrirla. Si ya figura activada pero sigue el error
-  (suele pasar después de actualizar una app sin firmar), quitala de la lista con **−** y agregala
-  de nuevo. En Wayland, volvé a arrancar el efecto y elegí el monitor en el diálogo.
+  pantalla**, activá OpenLight, salí y volvé a abrirla. Si ya figura activada pero sigue el error,
+  el permiso quedó atado a otra versión: tocá **Reparar permiso**
+  ([qué hace](#screen_permission_stale)). En Wayland, volvé a arrancar el efecto y elegí el monitor
+  en el diálogo.
+
+### screen_permission_stale
+
+**«El permiso de pantalla quedó atado a otra versión»** (macOS)
+
+- **Qué significa:** macOS dice que OpenLight tiene permiso de Grabación de pantalla, pero le niega
+  la captura.
+- **Por qué pasa:** el permiso se guarda atado a la firma de la app. Si una actualización (o una
+  compilación tuya) viene firmada distinto, la entrada vieja queda prendida y no sirve. Lo más
+  frecuente es que macOS lo informe como permiso faltante: ahí aparece
+  [`screen_permission_denied`](#screen_permission_denied), con el mismo botón.
+- **Arreglo:** tocá **Reparar permiso**, volvé a activar OpenLight en **Grabación de pantalla**,
+  salí de la app desde su ícono en la barra de menú (**Salir**) y volvé a abrirla. No pide
+  contraseña de administrador. A mano es lo mismo que esto, y volver a dar el permiso:
+
+  ```bash
+  tccutil reset ScreenCapture io.github.matiasm0rales.openlight
+  ```
+
+  Si el comando falla, quitá OpenLight de la lista con **−** y agregala de nuevo.
 
 ### local_network_denied
 

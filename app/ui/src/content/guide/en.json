@@ -74,6 +74,7 @@
       "intro": "OpenLight needs to see the screen and talk to the bulbs on your network. Nothing leaves your computer.",
       "steps": [
         "macOS: System Settings → Privacy & Security → Screen Recording → enable OpenLight. Then reopen the app: macOS requires it.",
+        "macOS: if Screen Recording shows as on but nothing works (common after an update), choose “Repair permission”, turn it on again and reopen the app.",
         "macOS: in the same section, “Local Network” → enable OpenLight.",
         "Windows: if the firewall prompt appears, allow “Private networks”.",
         "Linux (Wayland): when the desktop asks which screen to share, choose the monitor. OpenLight remembers the choice."

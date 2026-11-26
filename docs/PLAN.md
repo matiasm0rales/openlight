@@ -68,7 +68,7 @@ El resto del documento es el plan original. Esta sección dice en qué quedó ca
 | Q1 cortes de conexión | pendiente; el logger (#20) y `LinkHealth` (#13) ya dan los datos | medir motivo y frecuencia en el foco real y ajustar los valores por defecto |
 | Q2 UX, redacción, accesibilidad y capturas | pendiente (hubo mejoras en #16 y #22) | revisión completa y capturas reales del portal de Tuya |
 | Q3 documentación | hecha: README, [`guia.md`](guia.md), [`errores.md`](errores.md), [`protocolo.md`](protocolo.md), [`CONTRIBUTING.md`](../CONTRIBUTING.md) | sumar la URL de la web cuando exista |
-| Q4 seguridad | parcial: prueba de que logs y diagnóstico no llevan secretos (#20) | revisar capabilities de Tauri, CSP y el resto del punto |
+| Q4 seguridad | hecha: secretos, permisos por ventana, CSP, dependencias, updater y red ([`seguridad.md`](seguridad.md)) | los pendientes del informe; primero, la clave del updater |
 | Web en Vercel | en curso | — |
 | Updater automático | en curso; el plugin y el workflow ya están (#11) | interfaz de actualización, permiso `updater:default` y clave pública del updater |
 | Primera Release | pendiente | tag, borrador revisado y publicado |

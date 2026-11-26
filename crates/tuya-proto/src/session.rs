@@ -13,7 +13,9 @@ use crate::payload::{DevType, MessagePayload, PayloadRequest, generate_payload};
 /// Una conexión con un foco, como el estado que guarda `XenonDevice` (sin el socket).
 ///
 /// El `seqno` empieza en 1 y sube con cada [`ClientSession::encode`].
-#[derive(Debug, Clone)]
+///
+/// `Debug` no muestra las claves ni los nonces (con ellos y la local_key sale la de sesión).
+#[derive(Clone)]
 pub struct ClientSession {
     version: ProtocolVersion,
     real_key: Key,
@@ -22,6 +24,17 @@ pub struct ClientSession {
     dev_type: DevType,
     local_nonce: Option<[u8; 16]>,
     remote_nonce: Option<[u8; 16]>,
+}
+
+impl std::fmt::Debug for ClientSession {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ClientSession")
+            .field("version", &self.version)
+            .field("seqno", &self.seqno)
+            .field("dev_type", &self.dev_type)
+            .field("needs_negotiation", &self.needs_negotiation())
+            .finish_non_exhaustive()
+    }
 }
 
 impl ClientSession {
@@ -155,5 +168,34 @@ impl ClientSession {
     /// Ver [`decode_payload`].
     pub fn decode(&self, frame: &DecodedFrame) -> Result<Option<Value>> {
         decode_payload(self.version, &self.key, self.dev_type, &frame.payload)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn el_debug_no_muestra_ni_la_clave_local_ni_la_de_sesion_ni_los_nonces() {
+        let local_key: Key = *b"zLk!9fUgA2qW7xPm";
+        let local_nonce = *b"nonce-local-0001";
+        let remote_nonce = *b"nonce-remoto-001";
+        let mut session = ClientSession::new(ProtocolVersion::V35, local_key);
+        session.start_negotiation(local_nonce);
+        session.remote_nonce = Some(remote_nonce);
+        let session_key = session.finish_negotiation().unwrap();
+
+        for text in [format!("{session:?}"), format!("{session:#?}")] {
+            assert!(
+                text.contains("ClientSession") && text.contains("V35"),
+                "{text}"
+            );
+            let compact: String = text.split_whitespace().collect();
+            for secret in [local_key, session_key, local_nonce, remote_nonce] {
+                // Un `derive(Debug)` los escribiría como `[122,76,...]`
+                let bytes: String = format!("{secret:?}").split_whitespace().collect();
+                assert!(!compact.contains(bytes.trim_matches(['[', ']'])), "{text}");
+            }
+        }
     }
 }

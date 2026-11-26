@@ -187,7 +187,7 @@ fn is_log_file(path: &Path) -> bool {
     name.starts_with(FILE_PREFIX) && name.ends_with(FILE_SUFFIX)
 }
 
-/// Tapa los campos cuyo nombre es de un secreto (`local_key`, `access_secret`, `token`...).
+/// Tapa los campos cuyo nombre es de un secreto (`local_key`, `access_id`, `token`, `sign`...).
 pub(crate) fn redact(value: &mut Value) {
     match value {
         Value::Object(map) => {
@@ -205,8 +205,10 @@ pub(crate) fn redact(value: &mut Value) {
 }
 
 fn is_secret_name(name: &str) -> bool {
-    let n = name.to_ascii_lowercase();
+    let n = name.to_ascii_lowercase().replace(['_', '-'], "");
     n.ends_with("key")
+        // Enteros: como parte de otra palabra ("design") no son secretos
+        || ["accessid", "clientid", "sign", "signature"].contains(&n.as_str())
         || ["secret", "token", "password", "passwd"]
             .iter()
             .any(|word| n.contains(word))
@@ -276,17 +278,19 @@ mod tests {
     fn redact_tapa_los_campos_con_nombre_de_secreto_en_cualquier_nivel() {
         let mut v = json!({
             "devices": [{"id": "a", "local_key": "SECRETA", "mapping": {"dp": 20}}],
-            "cloud": {"access_secret": "S2", "access_id": "ok", "token": "T"},
-            "global": {"capture_fps": 20}
+            "cloud": {"access_secret": "S2", "access_id": "S3", "token": "T"},
+            "request": {"client_id": "S4", "clientId": "S5", "sign": "S6", "signature": "S7"},
+            "global": {"capture_fps": 20},
+            "design": "no es una firma"
         });
         redact(&mut v);
         let text = v.to_string();
-        for leaked in ["SECRETA", "S2", "\"T\""] {
+        for leaked in ["SECRETA", "S2", "S3", "\"T\"", "S4", "S5", "S6", "S7"] {
             assert!(!text.contains(leaked), "{leaked} quedó en {text}");
         }
         assert_eq!(v["devices"][0]["id"], "a");
         assert_eq!(v["global"]["capture_fps"], 20);
-        assert_eq!(v["cloud"]["access_id"], "ok");
+        assert_eq!(v["design"], "no es una firma");
     }
 
     #[test]

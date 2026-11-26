@@ -53,6 +53,7 @@ describe("i18n: cobertura de la UI", () => {
     "help.{}.title": ["tuya_account", "cloud_project", "data_center", "link_smart_life", "iot_core_trial", "device_troubleshooting", "permissions"],
     "region.{}": ["us", "us_east", "eu", "eu_west", "china", "india", "singapore"],
     "zones.preset.{}": ["full", "left", "right", "top", "bottom", "top_left", "top_right", "bottom_left", "bottom_right", "center", "custom"],
+    "zones.layout.{}": ["full", "sides", "stacked", "top_and_two", "columns", "corners"],
     "settings.level.{}": ["basic", "advanced", "expert"],
     "settings.scope_note.{}": ["global", "device", "profile"],
     "log_level.{}": ["error", "warn", "info", "debug"],

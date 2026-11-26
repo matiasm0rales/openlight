@@ -186,6 +186,20 @@ para moverlo, Mayús + flechas para el tamaño y Alt para pasos finos.
 Un foco nuevo arranca siguiendo todo el primer monitor externo (o el integrado, si no hay otro).
 Con dos focos, izquierda y derecha queda muy bien.
 
+Para repartir el monitor entre todos de una vez, usá **Distribución para todos los focos**. Solo
+aparecen las que sirven para la cantidad que tenés:
+
+| Focos | Distribuciones |
+| --- | --- |
+| 1 | Pantalla completa |
+| 2 | Izquierda y derecha · Arriba y abajo |
+| 3 | Una arriba y dos abajo · Tres columnas |
+| 4 | Cuatro esquinas |
+
+Los lugares se reparten en el orden de los focos en el Panel (los números de cada miniatura). Se
+cambia la zona de cada foco en el monitor elegido; las de otros monitores no se tocan. Después
+podés ajustar cualquiera a mano. Con cinco focos o más, las zonas se eligen una por una.
+
 ### 10. Calibrar (recomendado)
 
 Cada foco interpreta los colores a su manera. La calibración muestra un color a pantalla completa

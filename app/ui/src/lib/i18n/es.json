@@ -462,6 +462,16 @@
     "rect_label": "Zona de {name}",
     "rect_value": "desde {x}, {y}; tamaño {w} × {h}",
     "keys": "Arrastrá la zona o usá el teclado: flechas para moverla, Mayús + flechas para cambiar el tamaño, Alt para pasos finos.",
+    "layout_title": "Distribución para todos los focos",
+    "layout_order": "Los números siguen el orden del Panel: {list}.",
+    "layout": {
+      "full": "Pantalla completa",
+      "sides": "Izquierda y derecha",
+      "stacked": "Arriba y abajo",
+      "top_and_two": "Una arriba y dos abajo",
+      "columns": "Tres columnas",
+      "corners": "Cuatro esquinas"
+    },
     "presets_for": "Atajos de zona para {name}",
     "preset": {
       "full": "Toda",

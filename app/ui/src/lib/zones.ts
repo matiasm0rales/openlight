@@ -32,6 +32,49 @@ export function rectOf(z: Zone | undefined): Rect {
   return { x: r?.x ?? 0, y: r?.y ?? 0, w: r?.w ?? 1, h: r?.h ?? 1 };
 }
 
+// ---------- Distribuciones: el monitor repartido entre todos los focos ----------
+
+export type LayoutId = "full" | "sides" | "stacked" | "top_and_two" | "columns" | "corners";
+
+type Cell = { preset: ZonePreset; rect: Rect };
+const cell = (preset: Exclude<ZonePreset, "custom">): Cell => ({ preset, rect: PRESET_RECTS[preset] });
+const column = (x: number, w: number): Cell => ({ preset: "custom", rect: { x, y: 0, w, h: 1 } });
+
+/** Los lugares de cada distribución, en el orden en que se reparten: el del panel. */
+export const LAYOUTS: Record<LayoutId, Cell[]> = {
+  full: [cell("full")],
+  sides: [cell("left"), cell("right")],
+  stacked: [cell("top"), cell("bottom")],
+  top_and_two: [cell("top"), cell("bottom_left"), cell("bottom_right")],
+  // Tercios con los tres decimales de `constrain`: suman justo el ancho del monitor.
+  columns: [column(0, 0.333), column(0.333, 0.334), column(0.667, 0.333)],
+  corners: [cell("top_left"), cell("top_right"), cell("bottom_left"), cell("bottom_right")],
+};
+
+/** Las distribuciones que sirven para `count` focos. */
+export function layoutsFor(count: number): LayoutId[] {
+  return (Object.keys(LAYOUTS) as LayoutId[]).filter((id) => LAYOUTS[id].length === count);
+}
+
+/** La zona de cada foco en `display`, o nada si la distribución es para otra cantidad. */
+export function layoutZones(layout: LayoutId, deviceIds: string[], display: string): { device: string; zone: Zone }[] {
+  const cells = LAYOUTS[layout];
+  if (cells.length !== deviceIds.length) return [];
+  return deviceIds.map((device, i) => ({ device, zone: { display, preset: cells[i].preset, rect: { ...cells[i].rect } } }));
+}
+
+/** Si en `display` los focos, en este orden, ya están como en la distribución. */
+export function matchesLayout(layout: LayoutId, devices: { zones: Zone[] }[], display: string): boolean {
+  const cells = LAYOUTS[layout];
+  if (cells.length !== devices.length) return false;
+  return devices.every((d, i) => {
+    const here = d.zones.filter((z) => z.display === display);
+    if (here.length !== 1) return false;
+    const rect = rectOf(here[0]);
+    return (["x", "y", "w", "h"] as const).every((k) => Math.abs(rect[k] - cells[i].rect[k]) < 0.001);
+  });
+}
+
 const MIN = 0.1;
 
 /** Mueve o agranda un rectángulo sin salirse del monitor y sin achicarlo de más. */

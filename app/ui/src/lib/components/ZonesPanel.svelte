@@ -1,12 +1,13 @@
 <script lang="ts">
-  // Monitores con vista previa en vivo + la zona de cada foco (paso 9 y pantalla Dispositivos).
+  // Monitores con vista previa en vivo, una distribución para repartir el monitor entre todos los
+  // focos y la zona de cada uno (paso 9 y pantalla Dispositivos).
   import type { DisplayInfo, UserFacingError, Zone } from "../bindings";
   import { attempt, commands } from "../ipc";
   import { app } from "../app.svelte";
   import { screenCss } from "../format";
   import { everyWhileVisible } from "../visibility";
   import { t } from "../i18n/index.svelte";
-  import { rectOf } from "../zones";
+  import { LAYOUTS, layoutZones, layoutsFor, matchesLayout, rectOf, type LayoutId } from "../zones";
   import ErrorCard from "./ErrorCard.svelte";
   import Icon from "./Icon.svelte";
   import ZoneEditor from "./ZoneEditor.svelte";
@@ -96,6 +97,15 @@
       }, 200),
     );
   }
+
+  const layouts = $derived(layoutsFor(app.devices.length));
+  const inOrder = $derived(app.devices.map((d, i) => `${i + 1} ${d.name}`).join(", "));
+  // Reparte el monitor elegido entre todos los focos, en el orden del panel. Cada uno se guarda
+  // como cualquier cambio del editor y después se puede ajustar a mano.
+  function distribute(layout: LayoutId, on: string) {
+    for (const { device, zone } of layoutZones(layout, app.devices.map((d) => d.id), on)) change(device, zone);
+  }
+  const share = (n: number) => `${n * 100}%`;
 </script>
 
 {#if error}<ErrorCard {error} retry={() => { error = null; return loadDisplays(); }} />{/if}
@@ -113,6 +123,25 @@
       </label>
     {/each}
   </div>
+
+  {#if display && layouts.length}
+    <div class="layouts" role="group" aria-labelledby="layout-title" aria-describedby="layout-order">
+      <p id="layout-title" class="label">{t("zones.layout_title")}</p>
+      <div class="options">
+        {#each layouts as id (id)}
+          <button type="button" class="layout" aria-pressed={matchesLayout(id, app.devices, display.id)} onclick={() => distribute(id, display.id)}>
+            <span class="screen" aria-hidden="true">
+              {#each LAYOUTS[id] as { rect }, i (i)}
+                <span class="cell" style:left={share(rect.x)} style:top={share(rect.y)} style:width={share(rect.w)} style:height={share(rect.h)}><span>{i + 1}</span></span>
+              {/each}
+            </span>
+            {t(`zones.layout.${id}`)}
+          </button>
+        {/each}
+      </div>
+      <p id="layout-order" class="muted order">{t("zones.layout_order", { list: inOrder })}</p>
+    </div>
+  {/if}
 
   {#if display}
     <ZoneEditor {display} preview={previews[display.id] ?? null} {items} onchange={change} />
@@ -173,5 +202,61 @@
   }
   .small {
     font-size: 0.75rem;
+  }
+  .layouts {
+    display: grid;
+    gap: 0.6rem;
+  }
+  .label {
+    font-weight: 700;
+    font-size: 0.9rem;
+  }
+  .options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.7rem;
+  }
+  /* Un monitor en miniatura, numerado: se ve de antemano qué lugar le toca a cada foco. */
+  .layout {
+    display: grid;
+    gap: 0.45rem;
+    justify-items: center;
+    align-content: start;
+    width: 150px;
+    padding: 0.6rem 0.6rem 0.55rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--text);
+    font: 600 0.82rem/1.3 var(--font-body);
+    cursor: pointer;
+  }
+  .layout[aria-pressed="true"] {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  .screen {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+  }
+  .cell {
+    position: absolute;
+    padding: 1.5px;
+  }
+  .cell span {
+    display: grid;
+    place-items: center;
+    height: 100%;
+    border-radius: 5px;
+    background: var(--surface-3);
+    font: 500 0.8rem var(--font-mono);
+  }
+  .layout[aria-pressed="true"] .cell span {
+    background: var(--accent);
+    color: var(--accent-ink);
+  }
+  .order {
+    font-size: 0.82rem;
   }
 </style>

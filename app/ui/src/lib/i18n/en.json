@@ -462,6 +462,16 @@
     "rect_label": "{name}'s zone",
     "rect_value": "from {x}, {y}; size {w} × {h}",
     "keys": "Drag the zone or use the keyboard: arrows move it, Shift + arrows resize it, Alt for fine steps.",
+    "layout_title": "Layout for all bulbs",
+    "layout_order": "Numbers follow the Dashboard order: {list}.",
+    "layout": {
+      "full": "Full screen",
+      "sides": "Left and right",
+      "stacked": "Top and bottom",
+      "top_and_two": "One on top, two below",
+      "columns": "Three columns",
+      "corners": "Four corners"
+    },
     "presets_for": "Zone presets for {name}",
     "preset": {
       "full": "Whole",

@@ -2,8 +2,9 @@
 // y para Playwright. Responde los mismos comandos que `app/src-tauri/src/ipc.rs` y emite los mismos
 // eventos, con fallas realistas (914, región equivocada, Access Secret mal copiado...).
 //
-// Escenarios por URL: `?scenario=fresh` (asistente desde cero) o `?scenario=configured` (2 focos,
-// uno con la clave rechazada). `?fast=1` acorta las demoras (lo usan las pruebas).
+// Escenarios por URL: `?scenario=fresh` (asistente desde cero), `?scenario=configured` (2 focos,
+// uno con la clave rechazada) o `?scenario=four` (4 focos, para las distribuciones y el orden).
+// `?fast=1` acorta las demoras (lo usan las pruebas).
 //
 // Pistas para probar el paso 6 (credenciales):
 // - Access Secret de menos o más de 32 caracteres → firma inválida.
@@ -56,7 +57,7 @@ import { CATALOG, defaultSettings } from "./catalog";
 import { CLOUD_DEVICES, DISPLAYS, IDS, builtinProfiles, configuredFrom, seedLog, zone } from "./data";
 import { MOCK_VERSION, MockUpdater } from "./updater";
 
-export type Scenario = "fresh" | "configured";
+export type Scenario = "fresh" | "configured" | "four";
 
 interface MockState {
   onboarding: { step: OnboardingStep; completed: OnboardingStep[] };
@@ -109,6 +110,22 @@ function configuredState(): MockState {
   s.calibrations[living.id] = HUES.map((h) => ({ screen_hue_deg: h, tono_deg: h + (h >= 180 && h <= 270 ? -12 : 4), sat: h === 60 ? 1.2 : 1 }));
   return s;
 }
+
+/** Los dos de siempre y dos más: lo que hace falta para repartir las cuatro esquinas. */
+function fourState(): MockState {
+  const s = configuredState();
+  const more = [
+    { id: IDS.shelf, name: "Foco repisa", ip: "192.168.1.81" },
+    { id: IDS.ceiling, name: "Foco techo", ip: "192.168.1.82" },
+  ];
+  for (const { id, name, ip } of more) s.devices.push(configuredFrom({ ...CLOUD_DEVICES[0], id, name, lan: null }, ip));
+  s.keyRejected = [];
+  return s;
+}
+
+const SCENARIOS: Record<Scenario, () => MockState> = { fresh: freshState, configured: configuredState, four: fourState };
+
+export const isScenario = (name: string | null): name is Scenario => name !== null && Object.hasOwn(SCENARIOS, name);
 
 const ALL_STEPS: Record<string, OnboardingStep> = {
   welcome: "welcome",
@@ -171,7 +188,7 @@ class MockBackend {
     this.stopTimers();
     this.session = "idle";
     this.sims.clear();
-    this.state = scenario === "configured" ? configuredState() : freshState();
+    this.state = SCENARIOS[scenario]();
     this.persist();
     return this.state;
   }

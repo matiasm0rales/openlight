@@ -11,8 +11,8 @@ use std::time::Duration;
 
 use openlight_types::DisplayId;
 use tauri::{
-    AppHandle, LogicalPosition, Manager, Monitor, PhysicalPosition, PhysicalSize, Position,
-    Runtime, Size, WebviewUrl, WebviewWindow, WebviewWindowBuilder, Window, WindowEvent,
+    AppHandle, LogicalPosition, LogicalSize, Manager, Monitor, PhysicalPosition, PhysicalSize,
+    Position, Runtime, Size, WebviewUrl, WebviewWindow, WebviewWindowBuilder, Window, WindowEvent,
 };
 
 use crate::state::Backend;
@@ -126,18 +126,18 @@ impl Place {
                 ((p.x, p.y), (s.width, s.height))
             })
             .collect();
-        let placed = if self.maximized {
-            window.maximize()
-        } else if reachable(self.position, self.size, &areas) {
-            window
-                .set_position(physical_position(self.position, self.scale))
-                .and_then(|()| {
-                    window.set_size(Size::Physical(PhysicalSize::new(self.size.0, self.size.1)))
-                })
-        } else {
-            Ok(())
+        let place = || -> tauri::Result<()> {
+            if reachable(self.position, self.size, &areas) {
+                window.set_position(physical_position(self.position, self.scale))?;
+                window.set_size(physical_size(self.size, self.scale))?;
+            }
+            // Después de moverla, así se maximiza en el monitor donde estaba
+            if self.maximized {
+                window.maximize()?;
+            }
+            window.show()
         };
-        if let Err(error) = placed.and_then(|()| window.show()) {
+        if let Err(error) = place() {
             tracing::warn!(%error, "no se pudo volver a poner la ventana donde estaba");
         }
     }
@@ -259,6 +259,18 @@ pub fn sync_visibility<R: Runtime>(app: &AppHandle<R>, closing: Option<&str>) {
 /// asume que sí: es peor dejar la UI sin datos que mandarle de más.
 fn on_screen(visible: Option<bool>, minimized: Option<bool>) -> bool {
     visible.unwrap_or(true) && !minimized.unwrap_or(false)
+}
+
+/// Un tamaño en píxeles físicos, en la misma unidad que [`physical_position`].
+fn physical_size((width, height): (u32, u32), scale: f64) -> Size {
+    if cfg!(target_os = "macos") {
+        Size::Logical(LogicalSize::new(
+            f64::from(width) / scale,
+            f64::from(height) / scale,
+        ))
+    } else {
+        Size::Physical(PhysicalSize::new(width, height))
+    }
 }
 
 // ---------- Calibración a pantalla completa ----------

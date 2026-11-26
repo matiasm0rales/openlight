@@ -29,7 +29,7 @@
     },
     "brightness_max": {
       "title": "Maximum brightness",
-      "help": "Brightness cap when the screen is very bright."
+      "help": "Brightness cap when the screen is very bright. It doesn't turn the light off: use \"Remove from effect\" or \"Turn off\" for that."
     },
     "smoothing_ms": {
       "title": "Smoothing",
@@ -91,6 +91,8 @@
     "title": "Settings",
     "default_is": "Default: {value}",
     "inherited": "Inherited",
+    "shadowed_profile": "The \"{name}\" profile uses its own value while it's active.",
+    "shadowed_devices": "These have their own value: {names}.",
     "restore_named": "Restore {name}",
     "restore_all": "Restore all",
     "level_label": "Level of detail",
@@ -179,6 +181,14 @@
       "title": "Another app is using the light",
       "detail": "Close the Smart Life app on your phone: it sometimes holds the light's local connection."
     },
+    "device_in_effect": {
+      "title": "This light is following the screen",
+      "detail": "To control, calibrate or test it, remove it from the effect: the others keep going. You can add it back afterwards."
+    },
+    "device_in_use": {
+      "title": "OpenLight is already using this light",
+      "detail": "Wait for the calibration, test or manual control to finish and try again."
+    },
     "device_no_colour": {
       "title": "This device can't show colors",
       "detail": "It only has white light, so it can't follow the screen."
@@ -222,6 +232,10 @@
     "import_invalid": {
       "title": "Couldn't import that folder",
       "detail": "No valid devices.json was found."
+    },
+    "brightness_range": {
+      "title": "Maximum brightness can't be below the minimum",
+      "detail": "A minimum of {min}% and a maximum of {max}% leave no range. Raise the maximum or lower the minimum. To turn a light off use \"Remove from effect\" or \"Turn off\"."
     },
     "invalid_setting": {
       "title": "Invalid value",
@@ -318,6 +332,7 @@
       "screen_cast_portal": "Open portal permissions"
     },
     "renew_key": "Renew key",
+    "remove_from_effect": "Remove from effect",
     "retry": "Retry",
     "open_url": "Open {host}",
     "show_help": "Guide: {topic}",
@@ -621,6 +636,11 @@
     "brightness": "Brightness",
     "manual": "Manual control",
     "calibrate": "Calibrate",
+    "follows": "Follows the screen",
+    "out_of_effect": "Not in the effect",
+    "no_zone": "No area yet: choose what it follows in Devices.",
+    "white": "White",
+    "turn_off": "Turn off",
     "device_settings": "Bulb settings"
   },
   "devices": {
@@ -707,7 +727,10 @@
     "cool": "Cool",
     "scenes": "Scenes",
     "scenes_from_app": "This bulb has its own scenes. For now, choose them from the Smart Life app.",
-    "session_running": "The effect is running and will override what you choose here.",
+    "in_effect": "This light is following the screen. To control it by hand, remove it from the effect: the others keep going.",
+    "remove_from_effect": "Remove this light from the effect",
+    "out_of_effect": "This light is not in the effect: it stays as you leave it.",
+    "add_to_effect": "Add it back to the effect",
     "no_devices": "No bulbs to control yet."
   },
   "diagnostics": {

@@ -47,6 +47,21 @@ impl ColorPipeline {
         &self.zones
     }
 
+    /// Toma ajustes nuevos con el efecto andando. El color suavizado y el tono de cada zona se
+    /// conservan, así que no hay saltos.
+    pub fn set_settings(&mut self, settings: &Settings) {
+        self.params = ColorParams::from_settings(settings);
+        self.smoother.set_settings(settings);
+    }
+
+    /// Cambia las zonas que sigue. Si son las mismas no hace nada.
+    pub fn set_zones(&mut self, zones: Vec<Zone>) {
+        if zones != self.zones {
+            self.prev_hue = vec![None; zones.len()];
+            self.zones = zones;
+        }
+    }
+
     /// El último color suavizado.
     pub fn smoothed(&self) -> Option<Hsv> {
         self.smoother.color()

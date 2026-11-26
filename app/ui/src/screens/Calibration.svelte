@@ -165,7 +165,7 @@
       <p class="help">{t("calibration.help")}</p>
       <p class="keys"><kbd>←</kbd><kbd>→</kbd> {t("calibration.key_hue")} · <kbd>↑</kbd><kbd>↓</kbd> {t("calibration.key_sat")} · <kbd>Enter</kbd> {t("calibration.key_next")}</p>
 
-      {#if error}<ErrorCard {error} retry={start} />{/if}
+      {#if error}<ErrorCard {error} retry={start} onresolved={start} />{/if}
 
       {#if cal && point}
         <div class="slider">

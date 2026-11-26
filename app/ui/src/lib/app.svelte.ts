@@ -12,7 +12,7 @@ import type {
   SettingsSnapshot_Serialize as SettingsSnapshot,
   UserFacingError,
 } from "./bindings";
-import { EVENT_COLOR_LIVE, EVENT_DEVICE_HEALTH, EVENT_ERROR_RAISED, EVENT_PIPELINE_STATS, EVENT_SESSION_STATE } from "./bindings";
+import { EVENT_COLOR_LIVE, EVENT_DEVICE_HEALTH, EVENT_EFFECT_DEVICES, EVENT_ERROR_RAISED, EVENT_PIPELINE_STATS, EVENT_SESSION_STATE } from "./bindings";
 import { attempt, commands, on, openExternal, toUserFacing } from "./ipc";
 import { go } from "./router.svelte";
 
@@ -99,6 +99,12 @@ export async function runFix(action: FixAction, err: UserFacingError, retry?: ()
       }
       return false;
     }
+    case "remove_from_effect": {
+      const device = err.params.device;
+      if (!device || !(await setInEffect(device, false))) return false;
+      dismissCode("device_in_effect", device);
+      return true;
+    }
     case "open_url":
       openExternal(action.value);
       return false;
@@ -143,6 +149,23 @@ export async function activateProfile(id: string | null): Promise<void> {
   await refreshSettings();
 }
 
+/** "Sigue la pantalla": incluye el foco en el efecto o lo saca. `true` si quedó como se pidió. */
+export async function setInEffect(id: string, enabled: boolean): Promise<boolean> {
+  app.busy[`effect:${id}`] = true;
+  const r = await attempt(() => commands.deviceSetInEffect(id, enabled));
+  app.busy[`effect:${id}`] = false;
+  if (!r.ok) {
+    raise(r.error, () => setInEffect(id, enabled));
+    return false;
+  }
+  markInEffect((d) => (d.id === id ? enabled : d.in_effect));
+  return true;
+}
+
+function markInEffect(value: (d: ConfiguredDevice) => boolean): void {
+  for (const d of app.devices) d.in_effect = value(d);
+}
+
 export function deviceName(id: string): string {
   return app.devices.find((d) => d.id === id)?.name ?? id;
 }
@@ -163,6 +186,8 @@ export async function init(): Promise<void> {
       app.live[e.device] = e;
     }),
     on(EVENT_ERROR_RAISED, (e) => raise(e)),
+    // También cuando se cambia desde el tray.
+    on(EVENT_EFFECT_DEVICES, (e) => markInEffect((d) => !e.excluded.includes(d.id))),
     on(EVENT_PIPELINE_STATS, (e: PipelineStatsEvent) => {
       const sample: StatsSample = {
         at: Date.now(),

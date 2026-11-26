@@ -8,7 +8,7 @@
 //!
 //! | módulo | qué hace | en `ambilight.py` |
 //! |---|---|---|
-//! | [`spawn`] / [`DeviceHandle`] | lanza el actor y lo maneja (`start`, `activate`, `send_colour`, `return_to_original`, `restore`…); implementa [`openlight_types::LightDevice`] | `Foco` |
+//! | [`spawn`] / [`DeviceHandle`] | lanza el actor y lo maneja (`start`, `activate`, `send_colour`, `configure`, `return_to_original`, `restore`…); implementa [`openlight_types::LightDevice`] | `Foco` |
 //! | [`caps`] | `DpMapping` → `Capabilities`, con heurística por DPs (1–5 y 20–28) | `DP_*` fijos |
 //! | [`colour`] | `V2Hsv12`, `V1Hex14` y `control_data` | `valor_color` |
 //! | [`original`] | estado original y [`StateStore`] (lo que persiste `openlight-core`) | `elegir_original`, `leer_estado` |
@@ -72,7 +72,9 @@ pub mod locator;
 pub mod original;
 
 pub use caps::CapabilitiesExt;
-pub use config::{DeviceConfig, IpMode, Located, Locator, NoLocator, TCP_PORT, Timings};
+pub use config::{
+    DeviceConfig, IpMode, LinkSettings, Located, Locator, NoLocator, TCP_PORT, Timings,
+};
 pub use handle::{DeviceHandle, DeviceSnapshot, StartInfo, spawn};
 pub use locator::UdpLocator;
 pub use original::{MemoryStore, SavedState, StateStore, choose_original};

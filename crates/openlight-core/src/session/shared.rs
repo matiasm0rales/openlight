@@ -122,6 +122,29 @@ impl Shared {
         }
     }
 
+    /// Un foco dejó la sesión: deja de contar para el estado global. Si su tarea no llegó a
+    /// avisar que terminó, se avisa acá.
+    pub(crate) fn forget_device(&self, device: &DeviceId) {
+        let (last, session_change) = {
+            let mut inner = self.lock();
+            let last = inner.devices.remove(device);
+            let change = (!inner.fixed)
+                .then(|| aggregate(&inner.devices))
+                .filter(|state| std::mem::replace(&mut inner.session, *state) != *state);
+            (last, change)
+        };
+        if last.is_some_and(|state| state != DeviceSessionState::Idle) {
+            self.emit(SessionEvent::Device(DeviceHealthEvent {
+                device: device.clone(),
+                state: DeviceSessionState::Idle,
+                health: LinkHealth::default(),
+            }));
+        }
+        if let Some(state) = session_change {
+            self.emit(SessionEvent::State(SessionStateEvent { state }));
+        }
+    }
+
     fn lock(&self) -> std::sync::MutexGuard<'_, Inner> {
         self.inner
             .lock()

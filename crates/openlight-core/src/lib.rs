@@ -24,5 +24,7 @@ pub use import::import_legacy;
 pub use locks::{DeviceGuard, DeviceLocks, Holder};
 pub use pipeline::{ColorPipeline, Frames, Processed};
 pub use power::{NativePower, NoNativePower, PowerEvent, PowerEvents};
-pub use session::{CAPTURE_SIZE, DeviceSpec, Session, SessionEvent, SessionOptions, SourceFactory};
+pub use session::{
+    CAPTURE_SIZE, DeviceSpec, DeviceTuning, Session, SessionEvent, SessionOptions, SourceFactory,
+};
 pub use store::{Config, DeviceRecord, DeviceState, State, Store};

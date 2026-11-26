@@ -6,7 +6,7 @@
 //! (la sesión es quien la mueve con tiempo y focos reales).
 
 use color_engine::difference;
-use openlight_types::{Hsv, Settings};
+use openlight_types::{Hsv, Settings, Zone};
 
 use crate::pipeline::{ColorPipeline, Frames, Processed};
 
@@ -91,6 +91,8 @@ pub struct DeviceEngine {
     restored: bool,
     /// Si el sistema está suspendido: no se hace nada hasta [`DeviceEngine::resume`].
     suspended: bool,
+    /// Cambiaron los ajustes: el próximo envío sale aunque no llegue al umbral.
+    resend: bool,
 }
 
 impl DeviceEngine {
@@ -105,7 +107,22 @@ impl DeviceEngine {
             no_screen_since_s: None,
             restored: false,
             suspended: false,
+            resend: false,
         }
+    }
+
+    /// Ajustes nuevos con el efecto andando: valen desde el próximo paso. El color se vuelve a
+    /// mandar una vez (respetando el límite de envíos), así el foco muestra el cambio aunque sea
+    /// chico o haya cambiado el canal.
+    pub fn apply_settings(&mut self, settings: &Settings) {
+        self.timing = Timing::from_settings(settings);
+        self.pipeline.set_settings(settings);
+        self.resend = true;
+    }
+
+    /// Cambia las zonas que sigue el foco.
+    pub fn set_zones(&mut self, zones: Vec<Zone>) {
+        self.pipeline.set_zones(zones);
     }
 
     /// Tiempos del foco.
@@ -209,13 +226,15 @@ impl DeviceEngine {
         let due = self
             .last_send_s
             .is_none_or(|t| now_s - t >= self.timing.send_period_s);
-        let changed = self
-            .sent
-            .is_none_or(|sent| difference(color, sent) > self.timing.send_threshold);
+        let changed = self.resend
+            || self
+                .sent
+                .is_none_or(|sent| difference(color, sent) > self.timing.send_threshold);
         if link.connected && due && changed {
             step.actions.push(Action::Send(color));
             self.sent = Some(color);
             self.last_send_s = Some(now_s);
+            self.resend = false;
         }
         step
     }

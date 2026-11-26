@@ -29,7 +29,7 @@
     },
     "brightness_max": {
       "title": "Brillo máximo",
-      "help": "Tope de brillo del foco con la pantalla bien clara."
+      "help": "Tope de brillo del foco con la pantalla bien clara. No apaga el foco: para eso usá «Sacar del efecto» o «Apagar»."
     },
     "smoothing_ms": {
       "title": "Suavizado",
@@ -91,6 +91,8 @@
     "title": "Ajustes",
     "default_is": "Por defecto: {value}",
     "inherited": "Heredado",
+    "shadowed_profile": "El perfil «{name}» usa su propio valor mientras está activo.",
+    "shadowed_devices": "Tienen su propio valor: {names}.",
     "restore_named": "Restaurar {name}",
     "restore_all": "Restaurar todo",
     "level_label": "Nivel de detalle",
@@ -179,6 +181,14 @@
       "title": "Otra app está usando el foco",
       "detail": "Cerrá la app Smart Life en el celular: a veces ocupa la conexión local del foco."
     },
+    "device_in_effect": {
+      "title": "Este foco está siguiendo la pantalla",
+      "detail": "Para usarlo a mano, calibrarlo o probarlo, sacalo del efecto: los demás siguen. Después lo podés volver a incluir."
+    },
+    "device_in_use": {
+      "title": "OpenLight ya está usando este foco",
+      "detail": "Esperá a que termine la calibración, la prueba o el control manual y probá de nuevo."
+    },
     "device_no_colour": {
       "title": "Este dispositivo no muestra colores",
       "detail": "Solo tiene luz blanca, así que no puede seguir la pantalla."
@@ -222,6 +232,10 @@
     "import_invalid": {
       "title": "No pude importar esa carpeta",
       "detail": "No encontré un devices.json válido."
+    },
+    "brightness_range": {
+      "title": "El brillo máximo no puede ser menor que el mínimo",
+      "detail": "Con mínimo {min} % y máximo {max} % no queda rango. Subí el máximo o bajá el mínimo. Para apagar un foco usá «Sacar del efecto» o «Apagar»."
     },
     "invalid_setting": {
       "title": "Valor no válido",
@@ -318,6 +332,7 @@
       "screen_cast_portal": "Abrir permisos del portal"
     },
     "renew_key": "Renovar clave",
+    "remove_from_effect": "Sacar del efecto",
     "retry": "Reintentar",
     "open_url": "Abrir {host}",
     "show_help": "Ver guía: {topic}",
@@ -621,6 +636,11 @@
     "brightness": "Brillo",
     "manual": "Control manual",
     "calibrate": "Calibrar",
+    "follows": "Sigue la pantalla",
+    "out_of_effect": "Fuera del efecto",
+    "no_zone": "Sin zona: elegí qué sigue en Dispositivos.",
+    "white": "Blanco",
+    "turn_off": "Apagar",
     "device_settings": "Ajustes del foco"
   },
   "devices": {
@@ -707,7 +727,10 @@
     "cool": "Frío",
     "scenes": "Escenas",
     "scenes_from_app": "Este foco tiene escenas propias. Por ahora se eligen desde la app Smart Life.",
-    "session_running": "El efecto está andando y va a pisar lo que elijas acá.",
+    "in_effect": "Este foco está siguiendo la pantalla. Para controlarlo a mano, sacalo del efecto: los demás siguen.",
+    "remove_from_effect": "Sacar este foco del efecto",
+    "out_of_effect": "Este foco está fuera del efecto: queda como lo dejes.",
+    "add_to_effect": "Volver a incluirlo en el efecto",
     "no_devices": "Todavía no hay focos para controlar."
   },
   "diagnostics": {

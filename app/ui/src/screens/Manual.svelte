@@ -2,7 +2,7 @@
   import { untrack } from "svelte";
   // E. Control manual: color, blanco con temperatura, brillo y escenas del foco si las tiene.
   import type { ManualSet, UserFacingError } from "../lib/bindings";
-  import { app, toggleSession } from "../lib/app.svelte";
+  import { app, setInEffect } from "../lib/app.svelte";
   import { attempt, commands } from "../lib/ipc";
   import { go } from "../lib/router.svelte";
   import { t } from "../lib/i18n/index.svelte";
@@ -55,7 +55,21 @@
   const colour = () => send({ kind: "colour", value: { h, s, v } });
   const white = () => send({ kind: "white", value: { brightness: wb, temperature: 1 - warm } });
   const swatch = $derived(mode === "colour" ? hsvCss({ h, s, v }) : `color-mix(in srgb, #ffb46b ${Math.round(warm * 100)}%, #dfeaff)`);
-  const running = $derived(app.session === "active");
+  // Con el efecto andando, un foco que sigue la pantalla es del efecto: primero hay que sacarlo.
+  const following = $derived(Boolean(device && app.session !== "idle" && device.in_effect && device.zones.length));
+  const changing = $derived(Boolean(device && app.busy[`effect:${device.id}`]));
+
+  async function follow(enabled: boolean) {
+    if (!device) return;
+    error = null;
+    await setInEffect(device.id, enabled);
+  }
+
+  /** El aviso de la tarjeta de error ya sacó el foco: se manda lo que había quedado pendiente. */
+  function resolved() {
+    error = null;
+    if (last) void send(last);
+  }
 </script>
 
 <div class="page">
@@ -73,17 +87,27 @@
         <select id="manual-device" bind:value={selected}>{#each app.devices as d (d.id)}<option value={d.id}>{d.name}</option>{/each}</select>
       </div>
       <div class="power">
-        <Switch checked={power} label={t("manual.power")} onchange={(p) => { power = p; void send({ kind: "power", value: p }); }} />
+        <Switch checked={power} label={t("manual.power")} disabled={following || changing} onchange={(p) => { power = p; void send({ kind: "power", value: p }); }} />
         <span>{t("manual.power")}</span>
       </div>
     </div>
 
-    {#if running}
-      <div class="warn card"><Icon name="alert" size={18} /><p>{t("manual.session_running")}</p><button type="button" class="btn small" onclick={toggleSession}>{t("session.stop")}</button></div>
+    {#if following}
+      <div class="notice warn card" role="status">
+        <Icon name="alert" size={18} />
+        <p>{t("manual.in_effect")}</p>
+        <button type="button" class="btn small primary" disabled={changing} onclick={() => follow(false)}>{t("manual.remove_from_effect")}</button>
+      </div>
+    {:else if !device.in_effect}
+      <div class="notice card" role="status">
+        <Icon name="bulb" size={18} />
+        <p>{t("manual.out_of_effect")}</p>
+        <button type="button" class="btn small" disabled={changing} onclick={() => follow(true)}>{t("manual.add_to_effect")}</button>
+      </div>
     {/if}
-    {#if error}<ErrorCard {error} retry={() => last && send(last)} />{/if}
+    {#if error}<ErrorCard {error} retry={() => last && send(last)} onresolved={resolved} />{/if}
 
-    <div class="layout">
+    <fieldset class="layout" disabled={following || changing}>
       <div class="lamp" aria-hidden="true" style:--c={power ? swatch : "var(--surface-3)"} class:off={!power}><span></span></div>
 
       <div class="controls">
@@ -124,7 +148,7 @@
           </section>
         {/if}
       </div>
-    </div>
+    </fieldset>
   {/if}
 </div>
 
@@ -150,15 +174,20 @@
     align-items: center;
     font-weight: 700;
   }
-  .warn {
+  .notice {
     display: flex;
+    flex-wrap: wrap;
     gap: 0.7rem;
     align-items: center;
     padding: 0.7rem 1rem;
+    color: var(--muted);
+  }
+  .notice.warn {
     color: var(--warn);
   }
-  .warn p {
+  .notice p {
     flex: 1;
+    min-width: 16rem;
     color: var(--text);
   }
   .layout {
@@ -166,6 +195,14 @@
     grid-template-columns: 240px 1fr;
     gap: 2.4rem;
     align-items: start;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    transition: opacity var(--dur) var(--ease);
+  }
+  .layout:disabled {
+    opacity: 0.45;
   }
   .lamp {
     position: relative;

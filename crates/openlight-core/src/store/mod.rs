@@ -74,6 +74,8 @@ impl Config {
         if let Some(overrides) = device {
             settings = settings.with_overrides(overrides).map_err(invalid)?;
         }
+        // Cada capa puede ser válida y la combinación no: manda el máximo, que es el tope
+        settings.brightness_min = settings.brightness_min.min(settings.brightness_max);
         Ok(settings)
     }
 }
@@ -173,9 +175,13 @@ impl Store {
 
     /// Lee `config.json`; si no existe, la configuración por defecto.
     pub fn load_config(&self) -> Result<Config> {
-        let config: Config = self
+        let mut config: Config = self
             .read("config.json", CONFIG_VERSION, migrate_config)?
             .unwrap_or_default();
+        config.global.upgrade();
+        for profile in &mut config.profiles {
+            profile.values.upgrade();
+        }
         config
             .global
             .validate()
@@ -205,8 +211,9 @@ impl Store {
     pub fn load_devices(&self) -> Result<Vec<DeviceRecord>> {
         let file: Option<DevicesFile> =
             self.read("devices.json", DEVICES_VERSION, migrate_identity)?;
-        let devices = file.map(|f| f.devices).unwrap_or_default();
-        for device in &devices {
+        let mut devices = file.map(|f| f.devices).unwrap_or_default();
+        for device in &mut devices {
+            device.overrides.upgrade();
             device
                 .overrides
                 .validate()

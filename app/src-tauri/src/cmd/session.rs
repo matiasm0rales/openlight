@@ -6,14 +6,16 @@ use std::sync::atomic::Ordering;
 use std::time::Duration;
 
 use color_engine::Calibration;
-use openlight_core::{DeviceSpec, Session, SessionEvent, SessionOptions};
+use openlight_core::{Session, SessionEvent, SessionOptions};
 use openlight_types::{
     DeviceError, DeviceId, DeviceSessionState, ErrorCode, FixAction, HelpTopic, SessionState,
     UserFacingError,
 };
 use tokio::sync::broadcast::error::RecvError;
+use tokio::sync::oneshot;
+use tuya_device::DeviceHandle;
 
-use crate::bridge::driver::TuyaDriver;
+use crate::cmd::live::follow_changes;
 use crate::errors::{CmdResult, device_error};
 use crate::events::AppEvent;
 use crate::state::{ActiveSession, Backend};
@@ -56,31 +58,24 @@ impl Backend {
         if self.shutdown_state.load(Ordering::SeqCst) != 0 {
             return Ok(SessionState::Idle);
         }
+        // Antes de leer la configuración: un cambio hecho durante el arranque no se pierde
+        let changes = self.changes.subscribe();
+        let releases = self.locks.released();
         let config = self.config()?;
         let mut specs = Vec::new();
         let mut handles = Vec::new();
-        let wanted = self
-            .records()?
-            .into_iter()
-            .filter(|r| !r.zones.is_empty() && !self.is_excluded(&r.id));
-        for record in wanted {
-            let handle = match self.spawn_device(&record) {
-                Ok(handle) => handle,
-                Err(error) => {
-                    self.raise(error);
-                    continue;
+        let mut skipped = HashSet::new();
+        for record in self.effect_records()? {
+            match self.device_spec(&config, &record) {
+                Ok((spec, handle)) => {
+                    specs.push(spec);
+                    handles.push(handle);
                 }
-            };
-            // El control manual suelta el foco: la sesión lo toma entero
-            self.release_manual(&record.id);
-            specs.push(DeviceSpec {
-                id: record.id.clone(),
-                zones: record.zones.clone(),
-                settings: config.effective_settings(Some(&record.overrides))?,
-                calibration: self.load_calibration(&record.id),
-                driver: Box::new(TuyaDriver::new(handle.clone())),
-            });
-            handles.push(handle);
+                Err(error) => {
+                    skipped.insert(record.id);
+                    self.raise(error);
+                }
+            }
         }
         if specs.is_empty() {
             return Err(UserFacingError::new(ErrorCode::NoZones)
@@ -107,10 +102,14 @@ impl Backend {
             openlight_types::ipc::SessionStateEvent { state },
         ));
         let forwarder = tokio::spawn(forward_events(self.clone(), session.subscribe(), state));
+        let (alive, ended) = oneshot::channel();
+        tokio::spawn(follow_changes(self.clone(), changes, releases, ended));
         *slot = Some(ActiveSession {
             session,
             handles,
             forwarder,
+            skipped,
+            _alive: alive,
         });
         Ok(state)
     }
@@ -121,10 +120,18 @@ impl Backend {
         let Some(active) = slot.take() else {
             return Ok(SessionState::Idle);
         };
+        self.finish_session(active).await;
+        Ok(SessionState::Idle)
+    }
+
+    /// Termina una sesión ya sacada de su lugar. Quien llama mantiene tomado ese lugar, para
+    /// que no arranque otra mientras esta devuelve los focos.
+    pub(crate) async fn finish_session(&self, active: ActiveSession) {
         let ActiveSession {
             session,
             handles,
             forwarder,
+            ..
         } = active;
         session.stop().await;
 
@@ -132,19 +139,7 @@ impl Backend {
         // se olvida el original guardado (si falla, queda para devolverlo la próxima vez).
         let mut closing = tokio::task::JoinSet::new();
         for handle in handles {
-            let wait = self.options.restore_timeout;
-            closing.spawn(async move {
-                let id = handle.id().clone();
-                match tokio::time::timeout(wait, handle.restore()).await {
-                    Ok(Ok(())) => {}
-                    Ok(Err(error)) => {
-                        tracing::warn!(device = %id, %error, "el foco no volvió a su estado");
-                    }
-                    Err(_) => {
-                        tracing::warn!(device = %id, "el foco no volvió a su estado a tiempo")
-                    }
-                }
-            });
+            closing.spawn(close_handle(handle, self.options.restore_timeout));
         }
         while closing.join_next().await.is_some() {}
 
@@ -160,12 +155,6 @@ impl Backend {
                 },
             ));
         }
-        Ok(SessionState::Idle)
-    }
-
-    /// Si hay una sesión en marcha.
-    pub(crate) async fn session_running(&self) -> bool {
-        self.session.lock().await.is_some()
     }
 
     /// Si la sesión en marcha está usando ese foco.
@@ -249,6 +238,19 @@ impl Backend {
     /// ventana se muestra aunque la app se haya abierto sola al iniciar sesión.
     pub fn take_reopen_after_update(&self) -> bool {
         crate::updater::take_reopen(self.data_dir())
+    }
+}
+
+/// Cierra la conexión de un foco que salió de la sesión: vuelve a su estado y se olvida el
+/// original guardado (si falla, queda para devolverlo la próxima vez).
+pub(crate) async fn close_handle(handle: DeviceHandle, wait: Duration) {
+    let id = handle.id().clone();
+    match tokio::time::timeout(wait, handle.restore()).await {
+        Ok(Ok(())) => {}
+        Ok(Err(error)) => {
+            tracing::warn!(device = %id, %error, "el foco no volvió a su estado");
+        }
+        Err(_) => tracing::warn!(device = %id, "el foco no volvió a su estado a tiempo"),
     }
 }
 

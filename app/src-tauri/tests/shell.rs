@@ -11,6 +11,7 @@ use std::time::Duration;
 use common::{
     DISPLAY, FAKE_ACCESS_ID, FAKE_ACCESS_SECRET, Harness, Setup, eventually, harness, sim_id,
 };
+use openlight_lib::events::AppEvent;
 use openlight_lib::shell::Shell;
 use openlight_lib::tray::TrayBackend;
 use openlight_lib::tray_backend::AppTray;
@@ -146,7 +147,7 @@ async fn el_tray_ve_perfiles_focos_y_estado_y_se_entera_de_cada_cambio() {
 }
 
 #[tokio::test]
-async fn sacar_un_foco_del_efecto_lo_deja_fuera_y_reinicia_la_sesion() {
+async fn sacar_un_foco_del_efecto_lo_deja_fuera_y_volver_a_incluirlo_lo_suma() {
     let h = harness(Setup { sims: 2, lan: true }).await;
     ready(&h, 2).await;
     let tray = AppTray::new(h.backend.clone());
@@ -170,7 +171,7 @@ async fn sacar_un_foco_del_efecto_lo_deja_fuera_y_reinicia_la_sesion() {
     .await;
     assert_eq!(h.sims[1].active_connections(), 0, "el foco 2 no se tocó");
 
-    // Con la sesión en marcha, volver a prenderlo reinicia la sesión con los dos
+    // Con la sesión en marcha, volver a prenderlo lo suma sin reiniciar
     h.backend.toggle_device_in_effect(sim_id(2)).await.unwrap();
     eventually("foco 2 activo", Duration::from_secs(8), || {
         h.sims[1].dp("21") == Some(json!("colour"))
@@ -184,6 +185,55 @@ async fn sacar_un_foco_del_efecto_lo_deja_fuera_y_reinicia_la_sesion() {
         h.sims.iter().all(|s| s.active_connections() == 0)
     })
     .await;
+}
+
+#[tokio::test]
+async fn la_ventana_ve_el_mismo_estado_que_el_tray() {
+    let h = harness(Setup { sims: 2, lan: true }).await;
+    ready(&h, 2).await;
+    let tray = AppTray::new(h.backend.clone());
+    let in_effect = |n: usize| {
+        let devices = h.backend.devices_list().unwrap();
+        devices
+            .iter()
+            .find(|d| d.id == sim_id(n))
+            .unwrap()
+            .in_effect
+    };
+    let last_excluded = || {
+        h.events_where(|e| match e {
+            AppEvent::EffectDevices(e) => Some(e.excluded.clone()),
+            _ => None,
+        })
+        .pop()
+    };
+    assert!(in_effect(1) && in_effect(2));
+    assert_eq!(last_excluded(), None);
+
+    // Desde el tray: la ventana se entera por el evento y por la lista
+    tray.toggle_device(&sim_id(2));
+    eventually("el evento", Duration::from_secs(3), || {
+        last_excluded() == Some(vec![sim_id(2)])
+    })
+    .await;
+    assert!(in_effect(1) && !in_effect(2));
+
+    // Desde la ventana: el tray lo ve
+    h.backend
+        .set_device_in_effect(sim_id(2), true)
+        .await
+        .unwrap();
+    assert!(tray.snapshot().devices.iter().all(|d| d.enabled));
+    assert_eq!(last_excluded(), Some(Vec::new()));
+
+    // Quitar un foco olvida que estaba afuera: si se lo vuelve a agregar, participa
+    h.backend
+        .set_device_in_effect(sim_id(2), false)
+        .await
+        .unwrap();
+    h.backend.device_remove(sim_id(2)).await.unwrap();
+    assert!(!h.backend.is_excluded(&sim_id(2)));
+    assert_eq!(last_excluded(), Some(Vec::new()));
 }
 
 #[tokio::test]

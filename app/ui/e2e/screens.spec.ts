@@ -82,7 +82,8 @@ test("prueba A/B: lo que se prueba es temporal hasta que se elige", async ({ pag
   await expect.poll(modeOf).toBe("average");
   await page.getByRole("button", { name: "Volver a la calibración" }).click();
   await expect.poll(modeOf).toBe("average");
-  await page.getByRole("button", { name: "Guardar y salir" }).click();
+  // Con el efecto andando la calibración del foco no se abre: no hay nada que guardar.
+  await page.getByRole("button", { name: "Salir sin guardar" }).click();
   await expect(page).toHaveURL(/#\/dashboard/);
 });
 
@@ -173,4 +174,10 @@ test("tema oscuro, inglés y pantalla chica siguen siendo accesibles", async ({ 
   await page.setViewportSize({ width: 390, height: 800 });
   await page.getByRole("link", { name: "Settings" }).click();
   await expectAccessible(page, "ajustes en pantalla chica");
+});
+
+test("en el navegador el riel sí ofrece la maqueta del tray", async ({ page }) => {
+  await open(page, "configured", "dashboard");
+  await page.getByRole("link", { name: "Menú del tray" }).click();
+  await expect(page.getByRole("group", { name: "Menú de OpenLight" })).toBeVisible();
 });

@@ -8,6 +8,7 @@ pub mod diagnostics;
 pub mod displays;
 pub mod effect;
 pub mod legacy;
+pub(crate) mod live;
 pub mod onboarding;
 pub mod session;
 pub mod settings;

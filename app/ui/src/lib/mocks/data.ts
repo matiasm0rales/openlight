@@ -123,6 +123,7 @@ export function configuredFrom(cloud: CloudDeviceInfo_Serialize, ip: string | nu
     zones: [zone("full")],
     overrides: {},
     calibrated: false,
+    in_effect: true,
   };
 }
 

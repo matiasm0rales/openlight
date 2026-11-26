@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CATALOG, defaultSettings } from "./mocks/catalog";
-import { clampToDef, groupByLevel, isDefault, valueIn, visibleDefs } from "./settings";
+import { clampToDef, groupByLevel, isDefault, limitsFor, shadowedBy, valueIn, visibleDefs } from "./settings";
 import type { SettingsSnapshot } from "./bindings";
 
 const snapshot = (): SettingsSnapshot => ({
@@ -28,7 +28,19 @@ describe("ajustes generados desde el catálogo", () => {
     const s = snapshot();
     expect(valueIn(s, { kind: "device", id: "foco" }, "brightness_max", [])).toEqual({ value: 0.4, inherited: false });
     expect(valueIn(s, { kind: "device", id: "foco" }, "saturation", [])).toEqual({ value: 1.6, inherited: true });
-    expect(valueIn(s, { kind: "global" }, "saturation", [])).toEqual({ value: 1.6, inherited: false });
+    // Los globales se ven como están guardados, no con el perfil activo encima.
+    expect(valueIn(s, { kind: "global" }, "saturation", [])).toEqual({ value: 1.3, inherited: false });
+  });
+
+  it("dice quién tapa un valor: el perfil activo y los focos con valor propio", () => {
+    const s = { ...snapshot(), active_profile: "movies" };
+    const profiles = [{ id: "movies", values: { brightness_max: 0.8 } }];
+    expect(shadowedBy(s, { kind: "global" }, "brightness_max", profiles)).toEqual({ profile: "movies", devices: ["foco"] });
+    expect(shadowedBy(s, { kind: "global" }, "saturation", profiles)).toEqual({ profile: null, devices: [] });
+    expect(shadowedBy(s, { kind: "profile", id: "movies" }, "brightness_max", profiles)).toEqual({ profile: null, devices: ["foco"] });
+    // Un perfil que no está activo no tapa nada, y lo propio de un foco es lo que manda.
+    expect(shadowedBy(s, { kind: "profile", id: "otro" }, "brightness_max", profiles)).toEqual({ profile: null, devices: [] });
+    expect(shadowedBy(s, { kind: "device", id: "foco" }, "brightness_max", profiles)).toEqual({ profile: null, devices: [] });
   });
 
   it("un perfil hereda de los globales sin perfil", () => {
@@ -36,6 +48,14 @@ describe("ajustes generados desde el catálogo", () => {
     const profiles = [{ id: "movies", values: { smoothing_ms: 500 } }];
     expect(valueIn(s, { kind: "profile", id: "movies" }, "smoothing_ms", profiles).value).toBe(500);
     expect(valueIn(s, { kind: "profile", id: "movies" }, "saturation", profiles)).toEqual({ value: 1.3, inherited: true });
+  });
+
+  it("el brillo máximo no baja del mínimo del ámbito, ni el mínimo sube del máximo", () => {
+    const s = snapshot();
+    const scope = { kind: "device", id: "foco" } as const;
+    expect(limitsFor(s, scope, "brightness_max", [])).toEqual({ floor: 0.05 });
+    expect(limitsFor(s, scope, "brightness_min", [])).toEqual({ ceil: 0.4 });
+    expect(limitsFor(s, scope, "saturation", [])).toEqual({});
   });
 
   it("ajusta al rango y al paso del catálogo", () => {

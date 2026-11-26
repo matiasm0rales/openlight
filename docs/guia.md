@@ -210,11 +210,15 @@ y tocá **Arrancar**.
 - **Perfil** elige qué conjunto de ajustes usar.
 - Cada foco tiene su tarjeta: estado, color de la pantalla y color enviado, latencia, cortes en
   la última hora, motivo del último corte y un control de **brillo** (es el brillo máximo propio
-  de ese foco).
+  de ese foco; no baja de su brillo mínimo ni del 5 %).
+- **Sigue la pantalla** saca un foco del efecto o lo vuelve a incluir; los demás no se cortan.
+  Es lo mismo que tildarlo en el menú del tray, y OpenLight lo recuerda.
+- Con un foco fuera del efecto, la tarjeta tiene **Blanco** y **Apagar** para usarlo aparte.
 - Desde la tarjeta vas a **Control manual**, **Calibrar** y **Ajustes del foco**.
 
-> **Los cambios de ajustes, brillo, perfil y zonas valen la próxima vez que arranca el efecto.**
-> Si está andando, detenelo y volvé a arrancarlo.
+> Los cambios de ajustes, brillo, perfil y zonas **valen al instante**, también con el efecto
+> andando. Cambiar los cuadros por segundo o de monitor rearma la captura sin desconectar los
+> focos.
 
 Con el efecto andando:
 
@@ -233,7 +237,7 @@ sistema se va a dormir.
 | Estado | si el efecto está apagado, conectando, activo, en pausa o restaurando |
 | Arrancar / Detener | lo mismo que el interruptor del panel |
 | Perfil | elegir un perfil, o ninguno |
-| Focos | tildar o destildar cada foco del efecto (si está andando, se reinicia) |
+| Focos | tildar o destildar cada foco del efecto (vale al instante) |
 | Abrir OpenLight | trae la ventana |
 | Salir (restaura los focos) | devuelve los focos a su estado y cierra la app |
 
@@ -242,12 +246,16 @@ el derecho el menú.
 
 ### Control manual
 
-Encendido, color (con colores rápidos), blanco con temperatura y brillo. **Detené el efecto
-antes**: mientras anda, el foco es del efecto y la app responde
-[`device_busy`](errores.md#device_busy). El foco queda como lo dejaste. Las escenas propias del
-foco se eligen desde Smart Life.
+Encendido, color (con colores rápidos), blanco con temperatura y brillo. Si el foco está
+siguiendo la pantalla, primero tocá **Sacar este foco del efecto**: los demás siguen. El foco
+queda como lo dejaste y, cuando quieras, lo volvés a incluir. Las escenas propias del foco se
+eligen desde Smart Life.
 
-Lo mismo vale para **Calibrar** y para **Identificar**.
+Lo mismo vale para **Calibrar** y para **Identificar**: si el foco está en el efecto, el aviso
+[`device_in_effect`](errores.md#device_in_effect) ofrece sacarlo.
+
+Para apagar un foco usá **Apagar** (fuera del efecto): el brillo máximo en lo más bajo es un
+5 %, no lo apaga.
 
 ### Dispositivos
 
@@ -279,7 +287,11 @@ valor por defecto, y se aplica a uno de estos ámbitos:
 - **un foco**.
 
 Si el mismo ajuste está en varios, gana el más específico: foco, después perfil activo, después
-global y por último el valor por defecto.
+global y por último el valor por defecto. En **Todos los focos** se ve el valor global, con un
+aviso cuando el perfil activo o algún foco usan el suyo (ahí el cambio no se nota).
+
+El brillo máximo no puede quedar por debajo del brillo mínimo. Si al combinar un perfil y los
+valores de un foco el mínimo quedara arriba, manda el máximo.
 
 <!-- ajustes:inicio (generado con `python3 tools/gen_ajustes.py`; no editar a mano) -->
 
@@ -290,7 +302,7 @@ global y por último el valor por defecto.
 | **Modo de color** (`color_mode`) | Dominante: el color que más se ve en la zona. Promedio: la mezcla de toda la zona. | Dominante | Dominante, Promedio |
 | **Realce de colores** (`saturation`) | Multiplica la saturación. Más alto, colores más intensos. | ×1,30 | ×0,50 a ×2,50 |
 | **Brillo mínimo** (`brightness_min`) | Brillo del foco cuando la pantalla está oscura. | 5 % | 0 % a 100 % |
-| **Brillo máximo** (`brightness_max`) | Tope de brillo del foco con la pantalla bien clara. | 100 % | 0 % a 100 % |
+| **Brillo máximo** (`brightness_max`) | Tope de brillo del foco con la pantalla bien clara. No apaga el foco: para eso usá «Sacar del efecto» o «Apagar». | 100 % | 5 % a 100 % |
 | **Suavizado** (`smoothing_ms`) | Más alto, transiciones más lentas y sin parpadeo. Los cortes de escena siempre van más rápido. | 300 ms | 0 ms a 2000 ms |
 
 ### Nivel avanzado

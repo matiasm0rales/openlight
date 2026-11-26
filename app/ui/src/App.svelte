@@ -3,6 +3,7 @@
   import { app, init } from "./lib/app.svelte";
   import { startUpdater } from "./lib/updater.svelte";
   import { route } from "./lib/router.svelte";
+  import { runtime } from "./lib/mode";
   import { i18n, t } from "./lib/i18n/index.svelte";
   import { applyTheme, theme } from "./lib/theme.svelte";
   import { hsvCss } from "./lib/format";
@@ -18,13 +19,16 @@
   import Calibration from "./screens/Calibration.svelte";
   import TrayMock from "./screens/TrayMock.svelte";
 
+  // La maqueta del tray es parte del backend falso: en la app real el menú es el nativo.
+  const screen = $derived(route.name === "tray" && !runtime.mock ? "dashboard" : route.name);
+
   $effect(() => {
     applyTheme(theme.value);
     void init();
   });
   $effect(() => {
     document.documentElement.lang = i18n.locale;
-    document.title = route.name === "dashboard" ? "OpenLight" : `${t(`nav.${route.name}`)} · OpenLight`;
+    document.title = screen === "dashboard" ? "OpenLight" : `${t(`nav.${screen}`)} · OpenLight`;
   });
 
   // La ventana de calibración no tiene permiso para actualizar: solo busca la principal.
@@ -63,7 +67,7 @@
       <Manual deviceId={route.param} />
     {:else if route.name === "calibrate"}
       <Calibration deviceId={route.param} />
-    {:else if route.name === "tray"}
+    {:else if screen === "tray"}
       <TrayMock />
     {:else}
       <Dashboard />

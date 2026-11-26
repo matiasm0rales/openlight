@@ -13,7 +13,7 @@ export const CATALOG: SettingDef[] = [
   def("color_mode", choice("dominant", "average"), "dominant", "basic"),
   def("saturation", num(0.5, 2.5, 0.05, "factor"), 1.3, "basic"),
   def("brightness_min", num(0, 1, 0.01, "fraction"), 0.05, "basic"),
-  def("brightness_max", num(0, 1, 0.01, "fraction"), 1.0, "basic"),
+  def("brightness_max", num(0.05, 1, 0.01, "fraction"), 1.0, "basic"),
   def("smoothing_ms", num(0, 2000, 10, "milliseconds"), 300, "basic"),
   def("send_channel", choice("colour", "control_direct", "control_gradual"), "colour", "advanced"),
   def("capture_fps", num(5, 60, 1, "fps"), 20, "advanced"),

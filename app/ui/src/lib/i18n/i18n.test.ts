@@ -59,6 +59,10 @@ describe("i18n: cobertura de la UI", () => {
     "capability.{}": ["colour", "white", "temperature", "realtime", "scenes"],
     "hue.{}": ["red", "orange", "yellow", "lime", "green", "teal", "cyan", "sky", "blue", "violet", "magenta", "pink"],
     "profile.{}": ["movies", "games", "work"],
+    "update.phase.{}": ["downloading", "restoring", "installing", "restarting"],
+    "update.action.{}": ["retry", "web", "restart"],
+    "update.error.{}.title": ["network", "unavailable", "signature", "unsupported", "permission", "auth", "install", "restart"],
+    "update.error.{}.detail": ["network", "unavailable", "signature", "unsupported", "permission", "auth", "install", "restart"],
   };
   const dynamic = Object.entries(families).flatMap(([pattern, values]) => values.map((v) => pattern.replace("{}", v)));
 

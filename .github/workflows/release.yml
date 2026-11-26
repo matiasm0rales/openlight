@@ -2,7 +2,8 @@ name: Release
 
 # Arma los instaladores de los 3 SO.
 #  - Con un tag `v*` además crea (o completa) un *borrador* de Release con los instaladores:
-#    publicarlo es decisión de quien mantiene el repo.
+#    publicarlo es decisión de quien mantiene el repo. Con la clave del updater cargada el
+#    borrador lleva también los `.sig` y el `latest.json` (y se verifica que esté completo).
 #  - Con `workflow_dispatch` solo deja los instaladores como artifacts del run.
 #  - En los PR que tocan el empaquetado hace lo mismo (sin Release) para que un cambio en el
 #    bundle no rompa el release recién el día del tag.
@@ -13,6 +14,7 @@ on:
     paths:
       - ".github/workflows/release.yml"
       - "app/src-tauri/tauri.conf.json"
+      - "app/src-tauri/tauri.updater.conf.json"
       - "app/src-tauri/Info.plist"
       - "app/src-tauri/icons/**"
   workflow_dispatch:
@@ -25,10 +27,58 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  # El borrador se crea una sola vez, antes de la matriz: si cada job lo buscara por su cuenta,
+  # dos que terminan a la vez podrían crear dos. Sin tag no hace nada.
+  borrador:
+    name: Borrador de la Release
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    outputs:
+      id: ${{ steps.release.outputs.id }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: La versión de la app coincide con el tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          TAG: ${{ github.ref_name }}
+        # El updater compara con la versión de tauri.conf.json: si no se subió, nadie se entera de
+        # la versión nueva. Se corta acá, antes de compilar.
+        run: |
+          version=$(jq -r .version app/src-tauri/tauri.conf.json)
+          if [ "v$version" != "$TAG" ]; then
+            echo "::error::el tag es $TAG pero app/src-tauri/tauri.conf.json dice $version."
+            exit 1
+          fi
+
+      - name: Crear o reusar el borrador
+        id: release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          # Los borradores no se pueden pedir por tag: hay que buscarlos en la lista.
+          id=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases" --jq '.[] | "\(.id) \(.tag_name)"' \
+            | awk -v tag="$TAG" '$2 == tag && !visto { print $1; visto = 1 }')
+          if [ -z "$id" ]; then
+            prerelease=false
+            case "$TAG" in *-*) prerelease=true ;; esac
+            id=$(gh api "repos/$GITHUB_REPOSITORY/releases" -f tag_name="$TAG" -f name="OpenLight $TAG" \
+              -F draft=true -F prerelease="$prerelease" --jq .id)
+          fi
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+
   build:
     name: ${{ matrix.name }}
+    needs: borrador
     strategy:
       fail-fast: false
+      # Con tag, de a uno: cada job lee el latest.json del borrador, le suma sus plataformas y lo
+      # reemplaza; dos a la vez se pisarían. Sin tag no se sube nada y van los tres juntos.
+      max-parallel: ${{ startsWith(github.ref, 'refs/tags/v') && 1 || 3 }}
       matrix:
         include:
           - name: macOS universal (.dmg)
@@ -90,9 +140,11 @@ jobs:
       - name: Firma y notarización de macOS (opcional)
         if: runner.os == 'macOS'
         shell: bash
-        # Solo si están cargados los secrets. Sin ellos se arma el .dmg sin firmar y el job sigue.
+        # Solo si están cargados los secrets. Sin ellos la .app sale con firma ad-hoc
+        # (`signingIdentity: "-"` en tauri.conf.json), el .dmg sin firmar y el job sigue.
         # Firmar necesita certificado + contraseña + identidad; notarizar suma Apple ID,
-        # contraseña de aplicación y Team ID. Tauri se entera por las variables APPLE_*.
+        # contraseña de aplicación y Team ID. Tauri se entera por las variables APPLE_*, y
+        # APPLE_SIGNING_IDENTITY le gana a la del .json.
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -119,7 +171,7 @@ jobs:
               echo "::warning::Faltan APPLE_ID, APPLE_PASSWORD o APPLE_TEAM_ID: el .dmg se firma pero no se notariza."
             fi
           else
-            echo "::warning::Sin secrets de Apple: el .dmg queda sin firmar ni notarizar (ver docs/release.md)."
+            echo "::warning::Sin secrets de Apple: la .app sale con firma ad-hoc, sin notarizar (ver docs/release.md)."
           fi
 
       - name: Firma del updater (opcional)
@@ -131,7 +183,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
           if [ -z "$TAURI_SIGNING_PRIVATE_KEY" ]; then
-            echo "::warning::Sin TAURI_SIGNING_PRIVATE_KEY: no se generan los paquetes del updater (ver docs/release.md)."
+            echo "::warning::Sin TAURI_SIGNING_PRIVATE_KEY: se arman los instaladores sin actualizaciones automáticas, sin .sig ni latest.json (ver docs/release.md)."
             exit 0
           fi
           if grep -q "REEMPLAZAR_POR" app/src-tauri/tauri.conf.json; then
@@ -154,11 +206,13 @@ jobs:
         with:
           tauriScript: pnpm tauri
           args: ${{ matrix.args }} ${{ env.UPDATER_ARGS }}
-          # Solo con tag: sube los instaladores a un borrador de Release.
+          # Solo con tag: sube los instaladores al borrador de Release.
+          releaseId: ${{ needs.borrador.outputs.id }}
           tagName: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
-          releaseName: OpenLight ${{ github.ref_name }}
-          releaseDraft: true
-          prerelease: ${{ contains(github.ref_name, '-') }}
+          # Con paquetes firmados, arma y sube el latest.json (cada job suma sus plataformas).
+          includeUpdaterJson: true
+          # `windows-x86_64` apunta al instalador por usuario, que no pide administrador.
+          updaterJsonPreferNsis: true
 
       - name: Listar instaladores
         id: rutas
@@ -174,9 +228,90 @@ jobs:
           } >> "$GITHUB_OUTPUT"
           echo "$RUTAS_JSON" | jq -r '.[]'
 
+      - name: Verificar la firma del bundle (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          RUTAS_JSON: ${{ steps.tauri.outputs.artifactPaths }}
+        # Revisa la .app suelta y la que viaja dentro del .dmg, que es la que instala la gente.
+        # Con solo la firma del linker los recursos no quedan sellados.
+        run: |
+          set -euo pipefail
+          suelta=$(jq -r '.[] | select(endswith(".app"))' <<<"$RUTAS_JSON")
+          dmg=$(jq -r '.[] | select(endswith(".dmg"))' <<<"$RUTAS_JSON")
+          montaje=$(mktemp -d)
+          hdiutil attach "$dmg" -nobrowse -readonly -mountpoint "$montaje"
+          trap 'hdiutil detach "$montaje" -quiet || true' EXIT
+          for app in "$suelta" "$montaje/$(basename "$suelta")"; do
+            echo "== $app"
+            codesign --verify --deep --strict --verbose=2 "$app"
+            firma=$(codesign --display --verbose=4 "$app" 2>&1)
+            echo "$firma"
+            if ! grep -q '^Sealed Resources version=' <<<"$firma"; then
+              echo "::error::$app no tiene los recursos sellados."
+              exit 1
+            fi
+            # Si el `-` de tauri.conf.json le ganara a la identidad de los secrets, se vería acá.
+            if [ -n "${APPLE_SIGNING_IDENTITY:-}" ] && grep -q '^Signature=adhoc$' <<<"$firma"; then
+              echo "::error::hay identidad de Apple configurada pero $app salió con firma ad-hoc."
+              exit 1
+            fi
+          done
+
       - name: Subir instaladores como artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
           path: ${{ steps.rutas.outputs.lista }}
           if-no-files-found: error
+
+  # Antes de publicar se comprueba que en el latest.json no haya quedado ninguna plataforma
+  # afuera. Si falta alguna, "Re-run all jobs" lo rehace sobre el mismo borrador.
+  updater:
+    name: Verificar latest.json
+    needs: [borrador, build]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write # leer los archivos de un borrador lo exige
+    steps:
+      - name: Firmas de todas las plataformas
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_ID: ${{ needs.borrador.outputs.id }}
+          TAG: ${{ github.ref_name }}
+          HAY_CLAVE: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' }}
+        run: |
+          set -euo pipefail
+          if [ "$HAY_CLAVE" != "true" ]; then
+            echo "::warning::Release sin actualizaciones automáticas: falta TAURI_SIGNING_PRIVATE_KEY (ver docs/release.md)."
+            exit 0
+          fi
+          asset=$(gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets?per_page=100" \
+            --jq '.[] | select(.name == "latest.json") | .id')
+          if [ -z "$asset" ]; then
+            echo "::error::la Release no tiene latest.json."
+            exit 1
+          fi
+          gh api -H "Accept: application/octet-stream" "repos/$GITHUB_REPOSITORY/releases/assets/$asset" > latest.json
+          jq '{version, platforms: (.platforms | map_values(.url))}' latest.json
+          # `{os}-{arch}` es lo que pide cualquier instalación; las que terminan en el tipo de
+          # paquete hacen que un .deb, .rpm o MSI se actualice con un paquete del mismo tipo.
+          faltan=$(jq -r --arg ruta "/download/$TAG/" '
+            . as $l
+            | ["darwin-aarch64", "darwin-x86_64",
+               "windows-x86_64", "windows-x86_64-nsis", "windows-x86_64-msi",
+               "linux-x86_64", "linux-x86_64-appimage", "linux-x86_64-deb", "linux-x86_64-rpm"][]
+            | select(
+                (($l.platforms[.].signature // "") == "")
+                or (($l.platforms[.].url // "") | contains($ruta) | not))
+          ' latest.json)
+          if [ -n "$faltan" ]; then
+            echo "::error::latest.json sin firma o con URL equivocada para: $(echo $faltan)"
+            exit 1
+          fi
+          if [ "v$(jq -r .version latest.json)" != "$TAG" ]; then
+            echo "::error::latest.json anuncia otra versión que el tag $TAG."
+            exit 1
+          fi
+          echo "latest.json completo para $TAG."

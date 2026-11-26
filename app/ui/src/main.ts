@@ -11,6 +11,7 @@ async function boot() {
     const backend = installMocks({
       scenario: scenario === "fresh" || scenario === "configured" ? scenario : null,
       fast: params.has("fast"),
+      update: params.get("update"),
     });
     (window as unknown as { __openlightMock: unknown }).__openlightMock = backend;
   }

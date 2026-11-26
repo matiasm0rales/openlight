@@ -11,7 +11,8 @@ Cómo se arman y publican los instaladores. El workflow es
 | Windows | `.msi` (WiX) y `-setup.exe` (NSIS) |
 | Linux | `.AppImage`, `.deb` y `.rpm` |
 
-Con la clave del updater cargada, además salen los `.sig` y el `latest.json`.
+Con la clave del updater cargada, además salen los `.sig` y el `latest.json`. Sin ella salen
+los mismos instaladores, pero la app instalada **no puede actualizarse sola** (el workflow avisa).
 
 ## Cómo se dispara
 
@@ -19,19 +20,57 @@ Con la clave del updater cargada, además salen los `.sig` y el `latest.json`.
   `gh workflow run release.yml --ref <rama>`. Los instaladores quedan como *artifacts* del run
   (`instalador-macos`, `instalador-windows`, `instalador-linux`). No se crea ninguna Release.
   También corre solo en los PR que tocan el workflow, `tauri.conf.json`, `Info.plist` o los íconos.
-- **Publicar:** empujar un tag `v*` (por ejemplo `v0.1.0`). El workflow sube los instaladores a un
-  **borrador** de Release; revisalo y publicalo a mano. Los tags con guion (`v0.1.0-rc1`) salen
-  marcados como pre-release.
+- **Publicar:** empujar un tag `v*`. Ver [Publicar una versión](#publicar-una-versión).
 
-Antes de taguear, la versión de `app/src-tauri/tauri.conf.json` y la del workspace (`Cargo.toml`
-raíz) tienen que coincidir con el tag. El MSI de WiX no acepta pre-releases alfanuméricos
-(`0.1.0-rc1`) en el campo de versión, así que para un candidato conviene usar un número
-(`0.1.0-1`) o aceptar que el MSI no se genere en esa corrida.
+## Publicar una versión
+
+Antes de la primera, hacé una sola vez [la clave del updater](#la-clave-del-updater-una-sola-vez).
+
+1. Subí la versión en `app/src-tauri/tauri.conf.json` (`version`, es la que compara el updater) y
+   en el `Cargo.toml` raíz (`[workspace.package] version`). Corré `cargo test -p openlight` para que
+   se actualice `Cargo.lock`, commiteá y mergeá a `main`. La primera release (v0.1.0) ya tiene la
+   versión puesta.
+2. Con `main` actualizado, creá y empujá el tag:
+
+   ```bash
+   git tag v0.1.0
+   ```
+
+   ```bash
+   git push origin v0.1.0
+   ```
+
+   El workflow corta enseguida si el tag no coincide con la versión de `tauri.conf.json`.
+3. Esperá a que termine. Con un tag los tres sistemas se compilan uno después del otro, para que no
+   se pisen al escribir el `latest.json`, así que tarda más que una prueba sin publicar. Quedan los
+   instaladores en un **borrador** de Release, y el job
+   *Verificar latest.json* comprueba que estén las firmas de todas las plataformas. Si falla porque
+   falta alguna, corré *Re-run all jobs*: reusa el mismo borrador.
+4. En el borrador, escribí las novedades en la descripción: es lo que muestra la app en
+   **Novedades** antes de actualizar (se ve como texto simple; usá listas cortas).
+5. **Publicá** la Release. El workflow *Notas del updater* copia la descripción al `latest.json`
+   (también si la editás después). Desde ese momento la gente recibe la versión.
+
+Los tags con guion (`v0.2.0-1`) salen como pre-release y **no** llegan a nadie. El MSI de WiX no
+acepta pre-releases alfanuméricos (`0.2.0-rc1`) en el campo de versión: para un candidato usá un
+número.
 
 ## macOS: firma y notarización (opcional)
 
-El workflow firma y notariza **solo si existen los secrets**; si no, arma el `.dmg` sin firmar y
-avisa con un warning. Hace falta una cuenta de Apple Developer (USD 99 por año).
+El workflow firma con **Developer ID** y notariza **solo si existen los secrets**. Sin ellos avisa
+con un warning y la `.app` sale con **firma ad-hoc** (`bundle.macOS.signingIdentity: "-"` en
+`tauri.conf.json`); lo mismo pasa con `pnpm tauri build` en tu máquina. La variable
+`APPLE_SIGNING_IDENTITY`, cuando está definida, reemplaza a ese `-`.
+
+- La firma ad-hoc sella los recursos de la app. Sin ella queda solo la firma del linker,
+  `codesign --verify --deep --strict` falla y es probable que una descarga en Apple Silicon diga que
+  la app «está dañada». No identifica a nadie ni reemplaza a la notarización.
+- El `.dmg` queda **sin firmar a propósito**: Tauri no le pone firma ad-hoc porque un `.dmg`
+  autofirmado puede no abrirse ([tauri#12288](https://github.com/tauri-apps/tauri/issues/12288)).
+- El workflow verifica la `.app` suelta y la que va dentro del `.dmg`, y falla si los recursos no
+  quedaron sellados.
+
+Para firmar con Developer ID hace falta una cuenta de Apple Developer (USD 99 por año):
 
 1. Con tu cuenta, en <https://developer.apple.com/account/resources/certificates> creá un
    certificado **Developer ID Application** y descargalo, o exportalo desde *Acceso a Llaveros*
@@ -50,10 +89,19 @@ avisa con un warning. Hace falta una cuenta de Apple Developer (USD 99 por año)
 
 Con los tres primeros se firma; con los seis se firma y se notariza. Firmar siempre con la misma
 identidad es lo que hace que los permisos de Grabación de pantalla y Red local sobrevivan a las
-actualizaciones.
+actualizaciones. Con la firma ad-hoc cada build tiene una identidad distinta: después de actualizar,
+macOS puede volver a pedir esos permisos y la contraseña del llavero.
 
-Sin firma, macOS muestra "no se puede abrir porque no se puede verificar al desarrollador":
-se abre con clic derecho → *Abrir*, o `xattr -dr com.apple.quarantine /Applications/OpenLight.app`.
+### Abrir la app descargada sin Developer ID
+
+La primera vez, macOS avisa que no puede verificar la app y no la abre:
+
+- **macOS 15 o más nuevo:** intentá abrirla, cerrá el aviso (sin mandar la app a la papelera) y andá
+  a *Ajustes del Sistema → Privacidad y seguridad*. En la sección *Seguridad* tocá **Abrir
+  igualmente** y confirmá.
+- **macOS 14 o anterior:** clic derecho sobre OpenLight → *Abrir*.
+- Si en cambio dice que la app **«está dañada»**, no es lo esperado con la firma ad-hoc: reportalo.
+  Se destraba con `xattr -dr com.apple.quarantine /Applications/OpenLight.app`.
 
 `Info.plist` ya trae `NSLocalNetworkUsageDescription` y `NSScreenCaptureUsageDescription`
 (`app/src-tauri/Info.plist`, lo fusiona Tauri).
@@ -80,36 +128,122 @@ PipeWire). El AppImage necesita FUSE 2 en la máquina. Flatpak queda para más a
 
 ## Actualizaciones automáticas (updater)
 
-La app trae `tauri-plugin-updater` y consulta
-`https://github.com/matiasm0rales/openlight/releases/latest/download/latest.json`. Los paquetes
-se firman con una clave propia (distinta de la de Apple). **No generes ni commitees la clave en el
-repo.** Pasos, una sola vez:
+### Qué ve la gente
 
-1. Generá el par de claves en tu máquina:
+La app busca una versión nueva al abrirse y cada 6 horas (se apaga en *Ajustes → Actualizaciones →
+Buscar actualizaciones automáticamente*; ahí también está la versión actual y el botón para buscar a
+mano). Si hay una, el panel muestra la versión, las novedades y **Actualizar y reiniciar**. Nada se
+instala sin que se toque ese botón.
+
+Al tocarlo: descarga el paquete y verifica la firma, devuelve los focos a como estaban (el mismo
+camino que *Salir*), instala y vuelve a abrir la app. Si algo falla, sigue andando la versión de
+antes, el efecto se retoma si estaba prendido, y se sugiere qué hacer. En Windows hay un caso
+aparte: si el instalador no llega a abrirse (por ejemplo, lo frena el antivirus), la app ya se había
+quitado del tray, así que se reinicia sola para no quedar inalcanzable.
+
+| Sistema | Cómo se actualiza |
+|---|---|
+| macOS | reemplaza la app. Tiene que estar en *Aplicaciones* (desde el `.dmg` no se puede escribir) |
+| Windows | corre el instalador NSIS (o el MSI, según cómo se instaló) con una barra de progreso |
+| Linux AppImage | reemplaza el archivo `.AppImage` |
+| Linux `.deb` / `.rpm` | instala el paquete nuevo; el sistema pide la contraseña |
+
+Sin firma de Apple, cada versión tiene una firma de código distinta para macOS: después de
+actualizar puede volver a pedir el permiso de Grabación de pantalla (si queda activado pero no
+anda, quitá OpenLight de la lista y agregalo de nuevo).
+
+### La clave del updater (una sola vez)
+
+Los paquetes se firman con una clave propia, distinta de la de Apple. **No la generes dentro del
+repo ni la commitees.** Hacelo en tu máquina, desde la carpeta del repo:
+
+1. Generá el par de claves (poné una contraseña y guardala):
 
    ```bash
    pnpm tauri signer generate -w ~/.tauri/openlight.key
    ```
 
-   Te pide una contraseña (puede ser vacía, mejor que no). Crea `~/.tauri/openlight.key`
-   (privada) y `~/.tauri/openlight.key.pub` (pública). Guardá la privada en tu gestor de
-   contraseñas: si la perdés, las apps ya instaladas no pueden actualizarse.
-2. Cargá dos secrets en el repo (*Settings → Secrets and variables → Actions*):
-   - `TAURI_SIGNING_PRIVATE_KEY`: el **contenido** de `~/.tauri/openlight.key`.
-   - `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`: la contraseña (omitilo si la dejaste vacía).
-3. Pegá la clave **pública** (contenido de `openlight.key.pub`) en
-   `app/src-tauri/tauri.conf.json`, en `plugins.updater.pubkey`, reemplazando el placeholder
-   `REEMPLAZAR_POR_LA_CLAVE_PUBLICA_DEL_UPDATER...`, y commiteala. Es pública, no hay problema.
+   Crea `~/.tauri/openlight.key` (privada) y `~/.tauri/openlight.key.pub` (pública). Guardá la
+   privada y la contraseña en tu gestor de contraseñas: **si las perdés, las apps instaladas no se
+   pueden actualizar más** y hay que pedirle a la gente que reinstale a mano.
+2. Cargá la privada como secret del repo:
 
-Cómo se comporta el workflow:
+   ```bash
+   gh secret set TAURI_SIGNING_PRIVATE_KEY < ~/.tauri/openlight.key
+   ```
 
-- Sin `TAURI_SIGNING_PRIVATE_KEY`: el release sale igual, sin paquetes del updater (warning).
-- Con la clave pero con el placeholder todavía en `pubkey`: el workflow **falla a propósito**, para
-  no publicar una versión que no pueda actualizarse.
-- Con ambas: se agrega `app/src-tauri/tauri.updater.conf.json` (`createUpdaterArtifacts`) y
-  `tauri-action` sube los `.sig` y el `latest.json` al borrador.
+3. Cargá la contraseña (el comando la pide y no queda en el historial):
 
-El updater lee `releases/latest`, que ignora borradores y pre-releases: una versión recién
-llega a los usuarios cuando publicás la Release. La app todavía no muestra ninguna interfaz de
-actualización: eso se conecta en la tarea I1 (comando que llama a `check()` del plugin y permiso
-`updater:default` en `capabilities/`).
+   ```bash
+   gh secret set TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+   ```
+
+4. Copiá la clave **pública**:
+
+   ```bash
+   pbcopy < ~/.tauri/openlight.key.pub
+   ```
+
+   Pegala en `app/src-tauri/tauri.conf.json`, en `plugins.updater.pubkey`, reemplazando todo el
+   texto `REEMPLAZAR_POR_LA_CLAVE_PUBLICA_DEL_UPDATER (ver docs/release.md)`. Es una sola línea y es
+   pública: commiteala y mergeala **antes** de taguear.
+
+La clave pública queda grabada en cada app: una versión compilada sin ella no puede actualizarse,
+así que la v0.1.0 tiene que salir con los cuatro pasos hechos.
+
+### Cómo se comporta el workflow
+
+| Estado | Resultado |
+|---|---|
+| sin `TAURI_SIGNING_PRIVATE_KEY` | instaladores sin `.sig` ni `latest.json`, con un warning |
+| con la clave y el placeholder en `pubkey` | **falla a propósito**, para no publicar una versión que no pueda actualizarse |
+| con la clave y la pública | agrega `tauri.updater.conf.json` (`createUpdaterArtifacts`) y `tauri-action` sube los `.sig` y el `latest.json` |
+
+La app consulta
+`https://github.com/matiasm0rales/openlight/releases/latest/download/latest.json`. Ese enlace
+ignora borradores y pre-releases. El `latest.json` lleva `darwin-aarch64` y `darwin-x86_64` (los dos
+apuntan al paquete universal), `windows-x86_64` y `linux-x86_64`, más una entrada por tipo de
+paquete (`-nsis`, `-msi`, `-appimage`, `-deb`, `-rpm`). La firma incluye la versión
+(`requireSignedVersion`), así que no se puede hacer pasar un paquete viejo por uno nuevo.
+
+### Probar sin publicar una release
+
+**Solo la interfaz**, en el navegador y sin Tauri: `pnpm -C app/ui dev` y abrí
+<http://localhost:1420/?scenario=configured&update=available>. Otros escenarios: `hang` (descarga
+detenida al 40 %), `offline`, `offline_download`, `bad_signature`, `install_fails`,
+`restart_fails`.
+
+**Con la app de verdad:** en builds de desarrollo, `OPENLIGHT_UPDATER_ENDPOINT` cambia dónde se
+busca el `latest.json` (en los builds de release se ignora).
+
+1. En una carpeta cualquiera fuera del repo, creá un archivo `paquete` con cualquier contenido y
+   este `latest.json` (la clave de `platforms` es la de tu máquina, por ejemplo `darwin-aarch64`,
+   `darwin-x86_64`, `windows-x86_64` o `linux-x86_64`):
+
+   ```json
+   {
+     "version": "9.9.9",
+     "notes": "## Novedades\n\n- Versión de prueba.",
+     "platforms": {
+       "darwin-aarch64": { "signature": "firma-de-prueba", "url": "http://localhost:8123/paquete" }
+     }
+   }
+   ```
+
+2. Servila:
+
+   ```bash
+   python3 -m http.server 8123 --bind 127.0.0.1
+   ```
+
+3. En otra terminal, desde el repo:
+
+   ```bash
+   OPENLIGHT_UPDATER_ENDPOINT=http://localhost:8123/latest.json pnpm tauri dev
+   ```
+
+El panel muestra la versión 9.9.9. Con esa firma de prueba, **Actualizar y reiniciar** descarga y
+termina en el error de verificación de firma; apagando el servidor se ve el de falta de conexión.
+No uses un paquete firmado de verdad en `tauri dev`: al instalarlo reemplazaría la carpeta del
+binario de desarrollo. La actualización completa se prueba instalando una versión publicada y
+publicando la siguiente.

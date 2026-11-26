@@ -4,6 +4,7 @@
 
 mod common;
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -20,6 +21,8 @@ use serde_json::json;
 #[derive(Default)]
 struct FakeShell {
     log: Mutex<Vec<String>>,
+    /// Como en Windows cuando el instalador no llega a abrirse: sin tray ni ventana.
+    dismantled: AtomicBool,
 }
 
 impl FakeShell {
@@ -44,6 +47,14 @@ impl Shell for FakeShell {
 
     fn close_calibration(&self) {
         self.log.lock().unwrap().push("close".into());
+    }
+
+    fn is_dismantled(&self) -> bool {
+        self.dismantled.load(Ordering::SeqCst)
+    }
+
+    fn restart(&self) {
+        self.log.lock().unwrap().push("restart".into());
     }
 }
 
@@ -203,4 +214,161 @@ async fn salir_restaura_una_sola_vez_y_marca_el_cierre() {
     assert!(h.backend.is_shut_down());
     assert_eq!(h.sims[0].dp("21"), original.get("21").cloned());
     assert_eq!(h.backend.session_state(), SessionState::Idle);
+}
+
+#[tokio::test]
+async fn actualizar_restaura_los_focos_como_salir_y_no_deja_arrancar() {
+    let h = harness(Setup::default()).await;
+    ready(&h, 1).await;
+    h.screen.paint([0, 255, 0]);
+    let original = h.sims[0].dps();
+    h.backend.session_start().await.unwrap();
+    eventually("conectado", Duration::from_secs(8), || {
+        h.sims[0].dp("21") == Some(json!("colour"))
+    })
+    .await;
+
+    h.backend.update_prepare().await;
+
+    assert!(h.backend.is_shut_down());
+    assert_eq!(h.sims[0].dp("21"), original.get("21").cloned());
+    assert_eq!(h.backend.session_state(), SessionState::Idle);
+    // Mientras se instala, ni el panel ni el tray pueden volver a tomar los focos
+    assert_eq!(h.backend.session_start().await.unwrap(), SessionState::Idle);
+    assert_eq!(h.backend.session_state(), SessionState::Idle);
+}
+
+#[tokio::test]
+async fn si_la_actualizacion_falla_la_app_vuelve_a_andar_y_salir_restaura() {
+    let h = harness(Setup::default()).await;
+    ready(&h, 1).await;
+    h.screen.paint([0, 255, 0]);
+    let original = h.sims[0].dps();
+    h.backend.update_prepare().await;
+
+    h.backend.update_abort();
+
+    assert!(!h.backend.is_shut_down());
+    h.backend.session_start().await.unwrap();
+    eventually("conectado", Duration::from_secs(8), || {
+        h.sims[0].dp("21") == Some(json!("colour"))
+    })
+    .await;
+    assert!(h.backend.begin_shutdown(), "Salir vuelve a restaurar");
+    h.backend.shutdown().await;
+    assert_eq!(h.sims[0].dp("21"), original.get("21").cloned());
+}
+
+#[tokio::test]
+async fn abortar_sin_haber_preparado_no_interrumpe_un_cierre() {
+    let h = harness(Setup::default()).await;
+    assert!(h.backend.begin_shutdown());
+    h.backend.update_abort();
+    assert!(
+        !h.backend.begin_shutdown(),
+        "el cierre en curso sigue marcado"
+    );
+}
+
+#[tokio::test]
+async fn despues_de_actualizar_se_muestra_la_ventana_una_sola_vez() {
+    let h = harness(Setup::default()).await;
+    assert!(!h.backend.take_reopen_after_update());
+    h.backend.update_prepare().await;
+    let reopened = common::reopen(&h);
+    assert!(reopened.take_reopen_after_update());
+    assert!(!reopened.take_reopen_after_update());
+}
+
+#[tokio::test]
+async fn si_la_actualizacion_falla_no_queda_marcado_reabrir_la_ventana() {
+    let h = harness(Setup::default()).await;
+    h.backend.update_prepare().await;
+    h.backend.update_abort();
+    assert!(!h.backend.take_reopen_after_update());
+}
+
+#[tokio::test]
+async fn si_el_instalador_no_se_abrio_y_la_app_quedo_desarmada_se_reinicia() {
+    let h = harness(Setup::default()).await;
+    let shell = Arc::new(FakeShell::default());
+    shell.dismantled.store(true, Ordering::SeqCst);
+    h.backend.set_shell(shell.clone());
+    h.backend.update_prepare().await;
+
+    h.backend.update_abort();
+
+    assert_eq!(shell.count("restart"), 1);
+    // El reinicio tiene que mostrar la ventana, que es lo que la persona estaba mirando.
+    assert!(h.backend.take_reopen_after_update());
+}
+
+#[tokio::test]
+async fn si_la_app_sigue_entera_una_actualizacion_fallida_no_reinicia() {
+    let h = harness(Setup::default()).await;
+    let shell = Arc::new(FakeShell::default());
+    h.backend.set_shell(shell.clone());
+    h.backend.update_prepare().await;
+
+    h.backend.update_abort();
+
+    assert_eq!(shell.count("restart"), 0);
+    assert!(!h.backend.take_reopen_after_update());
+}
+
+#[tokio::test]
+async fn salir_mientras_se_prepara_una_actualizacion_no_se_pierde() {
+    let h = harness(Setup::default()).await;
+    ready(&h, 1).await;
+    h.screen.paint([0, 255, 0]);
+    let original = h.sims[0].dps();
+    h.backend.session_start().await.unwrap();
+    eventually("conectado", Duration::from_secs(8), || {
+        h.sims[0].dp("21") == Some(json!("colour"))
+    })
+    .await;
+    let backend = h.backend.clone();
+    let mut preparing = tokio::spawn(async move { backend.update_prepare().await });
+    tokio::task::yield_now().await;
+    assert!(
+        !h.backend.is_shut_down(),
+        "los focos todavía están volviendo"
+    );
+
+    // Cmd+Q: quien recibe la salida tiene que correr su cierre y cerrar la app
+    assert!(h.backend.begin_shutdown());
+    h.backend.shutdown().await;
+
+    assert!(h.backend.is_shut_down());
+    assert_eq!(h.sims[0].dp("21"), original.get("21").cloned());
+    // La actualización no le contesta a la UI: no se instala nada mientras la app se cierra
+    let answered = tokio::time::timeout(Duration::from_millis(300), &mut preparing).await;
+    assert!(answered.is_err());
+    h.backend.update_abort();
+    assert!(
+        h.backend.is_shut_down(),
+        "con la salida pedida no se vuelve atrás"
+    );
+    assert!(!h.backend.take_reopen_after_update(), "salió, no actualizó");
+}
+
+#[tokio::test]
+async fn salir_desde_el_tray_mientras_se_prepara_una_actualizacion_tampoco_se_pierde() {
+    let h = harness(Setup::default()).await;
+    ready(&h, 1).await;
+    h.screen.paint([0, 255, 0]);
+    h.backend.session_start().await.unwrap();
+    eventually("conectado", Duration::from_secs(8), || {
+        h.sims[0].dp("21") == Some(json!("colour"))
+    })
+    .await;
+    let backend = h.backend.clone();
+    let mut preparing = tokio::spawn(async move { backend.update_prepare().await });
+    tokio::task::yield_now().await;
+
+    AppTray::new(h.backend.clone()).restore_and_quit().await;
+
+    assert!(h.backend.is_shut_down());
+    let answered = tokio::time::timeout(Duration::from_millis(300), &mut preparing).await;
+    assert!(answered.is_err());
 }

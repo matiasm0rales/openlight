@@ -2,6 +2,7 @@
 
 use std::collections::HashSet;
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 use std::time::Duration;
 
 use color_engine::Calibration;
@@ -45,11 +46,15 @@ impl Backend {
     ///
     /// Un foco sin clave se saltea con un aviso (`error://raised`, con "renovar clave"); si no
     /// queda ninguno, es un error. Devuelve enseguida: conectar con los focos pasa después y se
-    /// ve en los eventos.
+    /// ve en los eventos. Con la app cerrándose (o instalando una actualización) no hace nada,
+    /// para no volver a tomar los focos que ya se devolvieron.
     pub async fn session_start(self: &Arc<Self>) -> CmdResult<SessionState> {
         let mut slot = self.session.lock().await;
         if let Some(active) = slot.as_ref() {
             return Ok(active.session.state());
+        }
+        if self.shutdown_state.load(Ordering::SeqCst) != 0 {
+            return Ok(SessionState::Idle);
         }
         let config = self.config()?;
         let mut specs = Vec::new();
@@ -175,7 +180,6 @@ impl Backend {
     /// Al cerrar la app: detiene la sesión y cancela la calibración, así los focos no quedan con
     /// el color del ambiente.
     pub async fn shutdown(&self) {
-        use std::sync::atomic::Ordering;
         self.shutdown_state.store(1, Ordering::SeqCst);
         if let Err(error) = self.calibration_cancel().await {
             tracing::warn!(%error, "no se pudo cancelar la calibración al salir");
@@ -188,18 +192,63 @@ impl Backend {
 
     /// Si ya se restauraron los focos al salir.
     pub fn is_shut_down(&self) -> bool {
-        self.shutdown_state
-            .load(std::sync::atomic::Ordering::SeqCst)
-            == 2
+        self.shutdown_state.load(Ordering::SeqCst) == 2
     }
 
-    /// Marca que alguien va a correr `shutdown`. `true` si lo marcó esta llamada (la que tiene
-    /// que correrlo); `false` si otra ya lo está haciendo o ya terminó.
+    /// Anota un pedido de salida. `true` la primera vez: quien llama tiene que correr
+    /// `shutdown` y cerrar la app, aunque ya haya otro cierre en marcha (el de una
+    /// actualización, que no cierra nada). `false` si la salida ya estaba pedida.
     pub fn begin_shutdown(&self) -> bool {
-        use std::sync::atomic::Ordering;
-        self.shutdown_state
-            .compare_exchange(0, 1, Ordering::SeqCst, Ordering::SeqCst)
-            .is_ok()
+        let first = !self.quit_requested.swap(true, Ordering::SeqCst);
+        // `Err` quiere decir que ya hay un cierre en marcha o terminado: se deja como está
+        let _ = self
+            .shutdown_state
+            .compare_exchange(0, 1, Ordering::SeqCst, Ordering::SeqCst);
+        first
+    }
+
+    /// Antes de instalar una actualización: el mismo cierre que "Salir" ([`Backend::shutdown`]).
+    /// Tiene que pasar antes de instalar porque en Windows el instalador cierra la app sin pasar
+    /// por el evento de salida.
+    ///
+    /// Si se pide salir, no vuelve nunca: salir manda sobre actualizar, y sin respuesta la UI no
+    /// llega a instalar mientras la app se cierra.
+    pub async fn update_prepare(&self) {
+        if !self.quit_requested.load(Ordering::SeqCst) {
+            self.shutdown().await;
+        }
+        if self.quit_requested.load(Ordering::SeqCst) {
+            std::future::pending::<()>().await;
+        }
+        crate::updater::mark_reopen(self.data_dir());
+    }
+
+    /// La actualización no se instaló y la app sigue abierta: se puede volver a arrancar el
+    /// efecto y el próximo "Salir" vuelve a restaurar los focos. Un cierre en curso o una salida
+    /// pedida no se tocan. Si el intento dejó la app sin tray ni ventana, se reinicia: no habría
+    /// cómo volver a ella.
+    pub fn update_abort(&self) {
+        self.take_reopen_after_update();
+        if self.quit_requested.load(Ordering::SeqCst) {
+            return;
+        }
+        // `Err` quiere decir que no había un cierre terminado: no hay nada que deshacer
+        let _ = self
+            .shutdown_state
+            .compare_exchange(2, 0, Ordering::SeqCst, Ordering::SeqCst);
+        if let Some(shell) = self.shell()
+            && shell.is_dismantled()
+        {
+            tracing::warn!("la actualización dejó la app sin tray ni ventana: se reinicia");
+            crate::updater::mark_reopen(self.data_dir());
+            shell.restart();
+        }
+    }
+
+    /// Si este arranque viene de una actualización (se contesta una sola vez): entonces la
+    /// ventana se muestra aunque la app se haya abierto sola al iniciar sesión.
+    pub fn take_reopen_after_update(&self) -> bool {
+        crate::updater::take_reopen(self.data_dir())
     }
 }
 

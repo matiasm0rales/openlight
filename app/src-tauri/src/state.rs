@@ -7,7 +7,7 @@
 
 use std::collections::{HashMap, HashSet};
 use std::net::IpAddr;
-use std::sync::atomic::AtomicU8;
+use std::sync::atomic::{AtomicBool, AtomicU8};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 
@@ -163,7 +163,7 @@ pub(crate) struct ManualSlot {
     pub link: AsyncMutex<Option<Capabilities>>,
     pub last_used: Mutex<tokio::time::Instant>,
     /// Si ya hay una tarea esperando para soltar la conexión.
-    pub reaper: std::sync::atomic::AtomicBool,
+    pub reaper: AtomicBool,
 }
 
 /// El estado compartido de la app.
@@ -190,6 +190,8 @@ pub struct Backend {
     pub(crate) excluded: Mutex<HashSet<DeviceId>>,
     /// 0 = en marcha, 1 = cerrando, 2 = ya cerró (`shutdown`).
     pub(crate) shutdown_state: AtomicU8,
+    /// Alguien pidió salir (ver `begin_shutdown`).
+    pub(crate) quit_requested: AtomicBool,
     pub(crate) cache: Mutex<Cache>,
     pub(crate) session: AsyncMutex<Option<ActiveSession>>,
     pub(crate) session_state: Mutex<SessionState>,
@@ -217,6 +219,7 @@ impl Backend {
             shell: Mutex::new(None),
             excluded: Mutex::new(HashSet::new()),
             shutdown_state: AtomicU8::new(0),
+            quit_requested: AtomicBool::new(false),
             cache: Mutex::default(),
             session: AsyncMutex::new(None),
             session_state: Mutex::new(SessionState::Idle),

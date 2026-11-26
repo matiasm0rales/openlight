@@ -7,6 +7,8 @@
   import DeviceCard from "../lib/components/DeviceCard.svelte";
   import Icon from "../lib/components/Icon.svelte";
   import Switch from "../lib/components/Switch.svelte";
+  import UpdateCard from "../lib/components/UpdateCard.svelte";
+  import { noticeVisible } from "../lib/updater.svelte";
 
   const running = $derived(app.session === "active" || app.session === "connecting" || app.session === "paused");
   const pending = $derived(app.onboarding && app.onboarding.step !== "done" ? ONBOARDING_STEPS.length - app.onboarding.completed.length : 0);
@@ -32,6 +34,8 @@
       </select>
     </div>
   </section>
+
+  {#if noticeVisible()}<UpdateCard />{/if}
 
   {#if pending > 0}
     <div class="resume card">

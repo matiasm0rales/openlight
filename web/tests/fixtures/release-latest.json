@@ -1,0 +1,70 @@
+{
+  "tag_name": "v0.1.0",
+  "name": "OpenLight v0.1.0",
+  "html_url": "https://github.com/matiasm0rales/openlight/releases/tag/v0.1.0",
+  "draft": false,
+  "prerelease": false,
+  "published_at": "2026-12-01T12:00:00Z",
+  "assets": [
+    {
+      "name": "latest.json",
+      "size": 3120,
+      "browser_download_url": "https://github.com/matiasm0rales/openlight/releases/download/v0.1.0/latest.json"
+    },
+    {
+      "name": "OpenLight-0.1.0-1.x86_64.rpm",
+      "size": 11534336,
+      "browser_download_url": "https://github.com/matiasm0rales/openlight/releases/download/v0.1.0/OpenLight-0.1.0-1.x86_64.rpm"
+    },
+    {
+      "name": "OpenLight-0.1.0-1.x86_64.rpm.sig",
+      "size": 420,
+      "browser_download_url": "https://github.com/matiasm0rales/openlight/releases/download/v0.1.0/OpenLight-0.1.0-1.x86_64.rpm.sig"
+    },
+    {
+      "name": "OpenLight_0.1.0_amd64.AppImage",
+      "size": 88080384,
+      "browser_download_url": "https://github.com/matiasm0rales/openlight/releases/download/v0.1.0/OpenLight_0.1.0_amd64.AppImage"
+    },
+    {
+      "name": "OpenLight_0.1.0_amd64.AppImage.sig",
+      "size": 420,
+      "browser_download_url": "https://github.com/matiasm0rales/openlight/releases/download/v0.1.0/OpenLight_0.1.0_amd64.AppImage.sig"
+    },
+    {
+      "name": "OpenLight_0.1.0_amd64.deb",
+      "size": 12582912,
+      "browser_download_url": "https://github.com/matiasm0rales/openlight/releases/download/v0.1.0/OpenLight_0.1.0_amd64.deb"
+    },
+    {
+      "name": "OpenLight_0.1.0_universal.dmg",
+      "size": 23068672,
+      "browser_download_url": "https://github.com/matiasm0rales/openlight/releases/download/v0.1.0/OpenLight_0.1.0_universal.dmg"
+    },
+    {
+      "name": "OpenLight_0.1.0_x64-setup.exe",
+      "size": 6291456,
+      "browser_download_url": "https://github.com/matiasm0rales/openlight/releases/download/v0.1.0/OpenLight_0.1.0_x64-setup.exe"
+    },
+    {
+      "name": "OpenLight_0.1.0_x64-setup.exe.sig",
+      "size": 420,
+      "browser_download_url": "https://github.com/matiasm0rales/openlight/releases/download/v0.1.0/OpenLight_0.1.0_x64-setup.exe.sig"
+    },
+    {
+      "name": "OpenLight_0.1.0_x64_en-US.msi",
+      "size": 8388608,
+      "browser_download_url": "https://github.com/matiasm0rales/openlight/releases/download/v0.1.0/OpenLight_0.1.0_x64_en-US.msi"
+    },
+    {
+      "name": "OpenLight_universal.app.tar.gz",
+      "size": 22020096,
+      "browser_download_url": "https://github.com/matiasm0rales/openlight/releases/download/v0.1.0/OpenLight_universal.app.tar.gz"
+    },
+    {
+      "name": "OpenLight_universal.app.tar.gz.sig",
+      "size": 420,
+      "browser_download_url": "https://github.com/matiasm0rales/openlight/releases/download/v0.1.0/OpenLight_universal.app.tar.gz.sig"
+    }
+  ]
+}

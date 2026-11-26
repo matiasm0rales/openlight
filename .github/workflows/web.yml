@@ -1,0 +1,38 @@
+name: Web
+
+# Pruebas de la web de descarga. Va aparte de ci.yml para correr solo cuando cambia `web/`: no usa
+# Rust ni compila la app.
+on:
+  push:
+    branches: [main]
+    paths: ["web/**", ".github/workflows/web.yml"]
+  pull_request:
+    paths: ["web/**", ".github/workflows/web.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: web-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: web de descarga
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - name: Selección de instaladores y traducciones
+        run: npm run test:unit
+      - name: Navegador para Playwright
+        run: npx playwright install --with-deps chromium
+      - name: Web y accesibilidad
+        run: npm run test:e2e

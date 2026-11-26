@@ -83,8 +83,8 @@
     if (was) finish();
   }
 
-  // Si la tarjeta desaparece a mitad de un arrastre no queda nada andando.
-  $effect(() => () => cancelAnimationFrame(frame));
+  // Si la tarjeta desaparece a mitad de un arrastre no queda nada andando ni marcado.
+  $effect(() => () => end(oncancel));
 
   function close() {
     open = false;

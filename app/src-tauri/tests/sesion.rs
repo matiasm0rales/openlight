@@ -223,3 +223,64 @@ async fn si_el_foco_corta_la_conexion_la_sesion_reconecta_y_sigue() {
     .await;
     h.backend.session_stop().await.unwrap();
 }
+
+#[tokio::test]
+async fn con_la_ventana_oculta_no_dibuja_pero_el_foco_sigue_y_al_volver_se_pone_al_dia() {
+    let h = harness(Setup::default()).await;
+    with_cloud(&h).await;
+    let id = add(&h, 1, Some(ZonePreset::Full)).await;
+    h.screen.paint([255, 0, 0]);
+    h.backend.session_start().await.unwrap();
+    eventually("rojo en el foco", Duration::from_secs(8), || {
+        colour_of(&h, 1).len() == 12 && hue_of(&colour_of(&h, 1)) < 10
+    })
+    .await;
+
+    h.backend.set_ui_visible(false);
+    // Lo que estaba en camino cuando se ocultó termina de salir
+    tokio::time::sleep(Duration::from_millis(200)).await;
+    let dibujo = |h: &Harness| {
+        h.events
+            .events()
+            .iter()
+            .filter(|e| {
+                matches!(
+                    e,
+                    AppEvent::ColorLive(_) | AppEvent::DeviceHealth(_) | AppEvent::PipelineStats(_)
+                )
+            })
+            .count()
+    };
+    let al_ocultar = dibujo(&h);
+    h.screen.paint([0, 255, 0]);
+    eventually("verde en el foco", Duration::from_secs(8), || {
+        (100..=140).contains(&hue_of(&colour_of(&h, 1)))
+    })
+    .await;
+    // Más de un latido de salud y de estadísticas
+    tokio::time::sleep(Duration::from_millis(1500)).await;
+    assert_eq!(
+        dibujo(&h),
+        al_ocultar,
+        "oculta no se manda nada para dibujar"
+    );
+
+    let antes = h.events.events().len();
+    h.backend.set_ui_visible(true);
+    let nuevos = h.events.events().split_off(antes);
+    assert!(
+        nuevos.contains(&AppEvent::SessionState(
+            openlight_types::ipc::SessionStateEvent {
+                state: SessionState::Active
+            }
+        )),
+        "{nuevos:?}"
+    );
+    assert!(nuevos.iter().any(|e| matches!(e,
+        AppEvent::DeviceHealth(d) if d.device == id && d.health.connected)));
+    // El color que manda es el de ahora (verde), no el último que se había visto
+    assert!(nuevos.iter().any(|e| matches!(e,
+        AppEvent::ColorLive(l) if l.device == id
+            && l.screen.h.is_some_and(|h| (0.27..0.40).contains(&h)))));
+    h.backend.session_stop().await.unwrap();
+}

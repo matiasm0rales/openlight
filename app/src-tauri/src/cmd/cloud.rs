@@ -12,7 +12,7 @@ use secrets::SecretKey;
 use tuya_device::CapabilitiesExt;
 
 use crate::errors::{CmdResult, invalid, no_credentials};
-use crate::events::AppEvent;
+use crate::events::{AppEvent, EventSink};
 use crate::state::{Backend, CloudEntry};
 
 /// Un error de la nube listo para la UI (con la región sugerida si la hay).

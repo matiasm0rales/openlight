@@ -10,6 +10,10 @@
 //! # Con Tauri y la UI de verdad en una ventana oculta: CPU y memoria del proceso y del WebContent
 //! pnpm --filter openlight-ui build
 //! cargo run --release -p openlight --features tauri/custom-protocol --example banco -- ventana [--segundos 60]
+//!
+//! # Además, muestra la ventana (fuera de la pantalla y sin sacar el foco) y la cierra, para ver
+//! # que los eventos de dibujo vuelven y se cortan
+//! ... banco ventana --segundos 10 --ciclo si
 //! ```
 //!
 //! La CPU está en % de un núcleo (como `top`) y la memoria es la columna `MEM` de `top`. Las
@@ -347,14 +351,13 @@ impl Cuenta {
     }
 }
 
+/// Bytes del payload de un evento de los que salen seguido (el resto casi no pesa).
 fn tamano(event: &AppEvent) -> usize {
     match event {
-        AppEvent::SessionState(p) => serde_json::to_string(p),
         AppEvent::DeviceHealth(p) => serde_json::to_string(p),
         AppEvent::ColorLive(p) => serde_json::to_string(p),
         AppEvent::PipelineStats(p) => serde_json::to_string(p),
-        AppEvent::ErrorRaised(p) => serde_json::to_string(p),
-        AppEvent::DiscoveryFound(p) => serde_json::to_string(p),
+        _ => return 0,
     }
     .map_or(0, |s| s.len())
 }
@@ -599,6 +602,48 @@ fn eventos_por_segundo(
     Value::Object(salida)
 }
 
+/// Cuántos eventos que solo sirven para dibujar llegaron al destino.
+fn de_dibujo(cuenta: &Cuenta) -> u64 {
+    use openlight_types::ipc::events as nombre;
+    let foto = cuenta.foto();
+    [
+        nombre::COLOR_LIVE,
+        nombre::DEVICE_HEALTH,
+        nombre::PIPELINE_STATS,
+    ]
+    .iter()
+    .filter_map(|n| foto.get(n))
+    .map(|(n, _)| n)
+    .sum()
+}
+
+/// Muestra la ventana y la cierra (lo que hace el usuario) y cuenta los eventos de dibujo en cada
+/// tramo. Cerrar pasa por `on_window_event`, como en la app.
+fn ciclo(window: &tauri::WebviewWindow, cuenta: &Cuenta) -> Value {
+    use tauri::Manager;
+    let esperar = |ms| std::thread::sleep(Duration::from_millis(ms));
+    let tramo = || {
+        let antes = de_dibujo(cuenta);
+        esperar(2000);
+        de_dibujo(cuenta) - antes
+    };
+    let oculta = tramo();
+    window
+        .set_position(tauri::LogicalPosition::new(-30_000.0, -30_000.0))
+        .expect("mover la ventana");
+    window.show().expect("mostrar");
+    openlight_lib::windows::sync_visibility(window.app_handle(), None);
+    let visible = tramo();
+    window.close().expect("cerrar");
+    esperar(1000);
+    let cerrada = tramo();
+    json!({
+        "oculta_en_2s": oculta,
+        "visible_en_2s": visible,
+        "cerrada_en_2s": cerrada,
+    })
+}
+
 /// Mide durante `segundos` los procesos `pids`, el asignador, los eventos y los envíos.
 fn medir(
     segundos: u64,
@@ -672,6 +717,7 @@ fn medir(
 struct Opciones {
     segundos: u64,
     escena: Escena,
+    ciclo: bool,
 }
 
 fn preparar(escena: Escena) -> (tempfile::TempDir, Mundo, Focos) {
@@ -750,7 +796,7 @@ fn ventana(opciones: Opciones) {
     }
 
     let specta = openlight_lib::ipc::specta_builder();
-    let segundos = opciones.segundos;
+    let (segundos, con_ciclo) = (opciones.segundos, opciones.ciclo);
     tauri::Builder::default()
         .on_window_event(openlight_lib::windows::on_window_event)
         .invoke_handler(specta.invoke_handler())
@@ -787,6 +833,9 @@ fn ventana(opciones: Opciones) {
                     "ventana_visible".into(),
                     json!(window.is_visible().unwrap_or_default()),
                 );
+                if con_ciclo {
+                    resultado.insert("ciclo".into(), ciclo(&window, &cuenta));
+                }
                 println!("{}", Value::Object(resultado));
                 tauri::async_runtime::block_on(backend.shutdown());
                 focos
@@ -809,11 +858,13 @@ fn main() {
     let mut opciones = Opciones {
         segundos: 30,
         escena: Escena::Movil,
+        ciclo: false,
     };
     while let Some(arg) = args.next() {
         let valor = args.next().unwrap_or_default();
         match arg.as_str() {
             "--segundos" => opciones.segundos = valor.parse().expect("--segundos"),
+            "--ciclo" => opciones.ciclo = valor == "si",
             "--escena" => {
                 opciones.escena = match valor.as_str() {
                     "movil" => Escena::Movil,
@@ -828,6 +879,8 @@ fn main() {
         "sim" => proceso_sim(),
         "pipeline" => pipeline(opciones),
         "ventana" => ventana(opciones),
-        _ => eprintln!("uso: banco pipeline|ventana [--segundos N] [--escena movil|fija]"),
+        _ => eprintln!(
+            "uso: banco pipeline|ventana [--segundos N] [--escena movil|fija] [--ciclo si]"
+        ),
     }
 }

@@ -2,7 +2,7 @@
 // Con la ventana en el tray, minimizada o tapada, los eventos en vivo no mueven el estado.
 import { emit } from "@tauri-apps/api/event";
 import { clearMocks } from "@tauri-apps/api/mocks";
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { app, init, MAX_ERRORS, raise } from "./app.svelte";
 import { EVENT_COLOR_LIVE, EVENT_DEVICE_HEALTH, EVENT_PIPELINE_STATS, EVENT_SESSION_STATE } from "./bindings";
 import { err, installMocks } from "./mocks/backend";
@@ -22,6 +22,7 @@ beforeAll(async () => {
 });
 afterAll(() => clearMocks());
 afterEach(() => {
+  vi.useRealTimers();
   setHidden(false);
   app.live = {};
   app.health = {};
@@ -61,6 +62,40 @@ describe("página oculta", () => {
     expect(app.stats).toEqual([]);
     await emit(EVENT_PIPELINE_STATS, stats);
     expect(app.stats).toHaveLength(1);
+  });
+
+  // El gráfico dibuja las muestras una al lado de la otra: las de antes del hueco parecerían de recién
+  const later = (ms: number) => vi.setSystemTime(Date.now() + ms);
+
+  it("al volver después de un rato no muestra estadísticas viejas", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    await emit(EVENT_PIPELINE_STATS, stats);
+    setHidden(true);
+    later(90_000);
+    setHidden(false);
+    expect(app.stats).toEqual([]);
+  });
+
+  it("tras un hueco sin muestras arranca el historial de nuevo", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    await emit(EVENT_PIPELINE_STATS, stats);
+    later(1000);
+    await emit(EVENT_PIPELINE_STATS, stats);
+    expect(app.stats).toHaveLength(2);
+    // Sin cambio de visibilidad: el backend dejó de mandarlas un rato
+    later(10_000);
+    await emit(EVENT_PIPELINE_STATS, stats);
+    expect(app.stats).toHaveLength(1);
+  });
+
+  it("una ocultada corta conserva el historial", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    await emit(EVENT_PIPELINE_STATS, stats);
+    setHidden(true);
+    later(1500);
+    setHidden(false);
+    await emit(EVENT_PIPELINE_STATS, stats);
+    expect(app.stats).toHaveLength(2);
   });
 
   it("el estado de la sesión se sigue igual", async () => {

@@ -196,11 +196,26 @@ function liveStore<T extends { device: string }>(target: () => Record<string, T>
   };
 }
 
+/** Las estadísticas llegan una vez por segundo: más que esto sin ninguna es un hueco. */
+const STATS_GAP_MS = 3000;
+
+/**
+ * El historial, si sigue al día. El gráfico dibuja las muestras una al lado de la otra: tras un
+ * hueco (ventana oculta, efecto detenido) las viejas parecerían de recién y se descartan.
+ */
+function recentStats(): StatsSample[] {
+  const last = app.stats.at(-1);
+  return last && Date.now() - last.at <= STATS_GAP_MS ? app.stats : [];
+}
+
 let started = false;
 
 export async function init(): Promise<void> {
   if (started) return;
   started = true;
+  whenVisible(() => {
+    app.stats = recentStats();
+  });
   await Promise.all([
     on(EVENT_SESSION_STATE, (e) => {
       app.session = e.state;
@@ -217,7 +232,7 @@ export async function init(): Promise<void> {
         capture_fps: e.capture_fps ?? 0,
         sends: Object.fromEntries(e.devices.map((d) => [d.device, d.sends_per_s ?? 0])),
       };
-      app.stats = [...app.stats.slice(-59), sample];
+      app.stats = [...recentStats().slice(-59), sample];
     }),
   ]);
   const session = await attempt(() => commands.sessionState());

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from "vitest";
-import { clearMocks } from "@tauri-apps/api/mocks";
+import { clearMocks, mockIPC } from "@tauri-apps/api/mocks";
 import { app, raise, runFix } from "./app.svelte";
 import { err } from "./mocks/backend";
 
@@ -28,6 +28,18 @@ describe("acciones de los errores", () => {
     raise(error, throwing);
     expect(await runFix({ kind: "retry" }, app.errors[0], throwing)).toBe(false);
     expect(app.errors.map((e) => e.code)).toEqual(["storage"]);
+  });
+
+  it("«Sacar del efecto» saca ese foco y descarta el aviso", async () => {
+    const calls: unknown[] = [];
+    mockIPC((cmd, args) => {
+      calls.push([cmd, args]);
+      return null;
+    });
+    raise(err("device_in_effect", [{ kind: "remove_from_effect" }], { device: "foco" }));
+    expect(await runFix({ kind: "remove_from_effect" }, app.errors[0])).toBe(true);
+    expect(calls).toEqual([["device_set_in_effect", { device: "foco", enabled: false }]]);
+    expect(app.errors).toEqual([]);
   });
 
   it("un reintento que anda saca el error", async () => {

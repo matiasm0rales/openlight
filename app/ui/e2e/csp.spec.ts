@@ -132,6 +132,8 @@ test("todas las pantallas andan sin que la política bloquee nada", async ({ pag
     await expectImages(page, screen);
   }
   await go(page, "calibrate");
+  // Con el efecto andando el foco está ocupado: la calibración ofrece sacarlo.
+  await page.getByRole("button", { name: "Sacar del efecto" }).click();
   await expect(page.getByRole("slider", { name: "Tono del foco" })).toBeVisible();
   await expect.poll(() => page.evaluate(() => document.querySelector<HTMLElement>(".calibration")!.style.getPropertyValue("--screen"))).not.toBe("");
   await page.getByRole("button", { name: "Prueba A/B" }).click();

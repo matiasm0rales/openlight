@@ -35,6 +35,10 @@ pub enum ErrorCode {
     DeviceTimeout,
     /// Otra app (Smart Life) ocupa la conexión local del foco.
     DeviceBusy,
+    /// El foco está siguiendo la pantalla: para usarlo aparte hay que sacarlo del efecto.
+    DeviceInEffect,
+    /// La propia app ya está usando el foco (calibración, prueba o control manual).
+    DeviceInUse,
     /// El foco no soporta color.
     DeviceNoColour,
     /// Firma inválida (Access Secret mal copiado).
@@ -69,7 +73,7 @@ pub enum ErrorCode {
 
 impl ErrorCode {
     /// Todos los códigos (para verificar que cada uno tenga sus textos).
-    pub const ALL: [Self; 26] = [
+    pub const ALL: [Self; 28] = [
         Self::ScreenPermissionDenied,
         Self::LocalNetworkDenied,
         Self::FirewallBlocked,
@@ -81,6 +85,8 @@ impl ErrorCode {
         Self::DeviceKeyRejected,
         Self::DeviceTimeout,
         Self::DeviceBusy,
+        Self::DeviceInEffect,
+        Self::DeviceInUse,
         Self::DeviceNoColour,
         Self::CloudInvalidSignature,
         Self::CloudInvalidToken,
@@ -161,6 +167,8 @@ pub enum FixAction {
     RenewKey,
     /// Reintentar.
     Retry,
+    /// Sacar del efecto el foco del error (`params.device`).
+    RemoveFromEffect,
     /// Abrir una URL externa.
     OpenUrl(String),
     /// Mostrar una sección de la ayuda.

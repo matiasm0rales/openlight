@@ -27,6 +27,9 @@ pub mod events {
     pub const DISCOVERY_FOUND: &str = "discovery://found";
     /// Payload [`super::PipelineStatsEvent`], una vez por segundo mientras hay sesión.
     pub const PIPELINE_STATS: &str = "stats://pipeline";
+    /// Payload [`super::EffectDevicesEvent`], cuando un foco sale del efecto o vuelve (desde la
+    /// ventana o desde el tray).
+    pub const EFFECT_DEVICES: &str = "effect://devices";
 }
 
 // ---------- Asistente ----------
@@ -101,7 +104,7 @@ pub struct PermissionStatus {
 
 // ---------- Nube y dispositivos ----------
 
-/// Credenciales tal como las escribe el usuario en el paso 6. `Debug` oculta el secreto.
+/// Credenciales tal como las escribe el usuario en el paso 6. `Debug` no muestra ninguna.
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 pub struct CloudCredentialsInput {
     /// Access ID.
@@ -115,10 +118,8 @@ pub struct CloudCredentialsInput {
 impl fmt::Debug for CloudCredentialsInput {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("CloudCredentialsInput")
-            .field("access_id", &self.access_id)
-            .field("access_secret", &"[REDACTED]")
             .field("region", &self.region)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
@@ -188,6 +189,8 @@ pub struct ConfiguredDevice {
     pub overrides: SettingsOverride,
     /// Si tiene calibración guardada.
     pub calibrated: bool,
+    /// Si participa del efecto: el usuario no lo sacó. Sin zonas tampoco sigue la pantalla.
+    pub in_effect: bool,
 }
 
 /// Patrón de prueba (paso 8).
@@ -327,6 +330,13 @@ pub struct LiveColorEvent {
     pub screen: ScreenColor,
     /// Último color enviado (después de calibración y suavizado).
     pub sent: Option<Hsv>,
+}
+
+/// Evento `effect://devices`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct EffectDevicesEvent {
+    /// Los focos que el usuario sacó del efecto.
+    pub excluded: Vec<DeviceId>,
 }
 
 /// Envíos por segundo de un foco (parte de [`PipelineStatsEvent`]).

@@ -34,6 +34,7 @@
     "allow-device-remove",
     "allow-device-test",
     "allow-device-manual",
+    "allow-device-set-in-effect",
     "allow-renew-key",
     "allow-displays-list",
     "allow-display-preview",

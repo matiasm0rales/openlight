@@ -19,7 +19,7 @@ use openlight_types::{
     UserFacingError,
 };
 use secrets::{SecretKey, SecretStore};
-use tokio::sync::Mutex as AsyncMutex;
+use tokio::sync::{Mutex as AsyncMutex, oneshot, watch};
 use tokio::task::JoinHandle;
 use tuya_device::{
     CapabilitiesExt, DeviceConfig, DeviceHandle, IpMode, Locator, StateStore, Timings, spawn,
@@ -154,6 +154,10 @@ pub(crate) struct ActiveSession {
     pub handles: Vec<DeviceHandle>,
     /// Reenvía los eventos de la sesión a la UI; devuelve el último estado que vio.
     pub forwarder: JoinHandle<SessionState>,
+    /// Focos que no pudieron entrar: no se reintentan hasta que se los vuelva a incluir.
+    pub skipped: HashSet<DeviceId>,
+    /// Se cierra con la sesión: ahí deja de seguir a la configuración.
+    pub _alive: oneshot::Sender<()>,
 }
 
 /// Conexión de control manual con un foco, que se suelta sola tras un rato sin usarla.
@@ -186,7 +190,9 @@ pub struct Backend {
     pub(crate) logs: Mutex<Option<crate::logging::LogHandle>>,
     /// Efectos sobre las ventanas y el tray (no hay nada en las pruebas).
     pub(crate) shell: Mutex<Option<Arc<dyn crate::shell::Shell>>>,
-    /// Focos que el usuario sacó del efecto desde el tray.
+    /// Cambia con cada cambio de configuración que una sesión en marcha tiene que tomar.
+    pub(crate) changes: watch::Sender<u64>,
+    /// Focos que el usuario sacó del efecto.
     pub(crate) excluded: Mutex<HashSet<DeviceId>>,
     /// 0 = en marcha, 1 = cerrando, 2 = ya cerró (`shutdown`).
     pub(crate) shutdown_state: AtomicU8,
@@ -217,6 +223,7 @@ impl Backend {
             edit: Mutex::new(()),
             logs: Mutex::new(None),
             shell: Mutex::new(None),
+            changes: watch::Sender::new(0),
             excluded: Mutex::new(HashSet::new()),
             shutdown_state: AtomicU8::new(0),
             quit_requested: AtomicBool::new(false),
@@ -366,6 +373,7 @@ impl Backend {
             zones: record.zones.clone(),
             overrides: record.overrides.clone(),
             calibrated: matches!(self.store.load_calibration(&record.id), Ok(Some(_))),
+            in_effect: !self.is_excluded(&record.id),
         }
     }
 

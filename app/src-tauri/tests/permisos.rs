@@ -5,9 +5,9 @@
 //! verdad: un pedido permitido llega a un manejador vacío (o a "no existe") y uno denegado vuelve
 //! con "not allowed". Nada toca el sistema.
 //!
-//! Se prueban **todos** los comandos de la app (los de `bindings.ts`) y todos los de cada plugin
-//! (los de los manifiestos que genera `tauri-build`), así un permiso de más o de menos hace
-//! fallar la prueba.
+//! Se prueban **todos** los comandos de la app (los que registra `ipc.rs`) y todos los de cada
+//! plugin (los de los manifiestos que genera `tauri-build`), así un permiso de más o de menos
+//! hace fallar la prueba.
 #![allow(missing_docs)]
 
 use std::collections::BTreeSet;
@@ -63,6 +63,8 @@ const CALIBRATION_COMMANDS: &[&str] = &[
     "calibration_cancel",
     "renew_key",
     "open_system_settings",
+    // El error de "el foco está siguiendo la pantalla" ofrece sacarlo del efecto
+    "device_set_in_effect",
 ];
 
 fn manifest_dir() -> PathBuf {
@@ -78,10 +80,16 @@ fn json(path: &str) -> Value {
     serde_json::from_str(&read(path)).unwrap_or_else(|e| panic!("{path}: {e}"))
 }
 
-/// Los comandos de la app, de los bindings que genera `ipc.rs`.
+/// Los comandos de la app. Salen del mismo registro que usa la app (`ipc::specta_builder`),
+/// exportado a una carpeta temporal: un `bindings.ts` desactualizado no esconde ninguno.
 fn app_commands() -> BTreeSet<String> {
-    let bindings = read("../ui/src/lib/bindings.ts");
-    let commands: BTreeSet<String> = bindings
+    let tmp = tempfile::tempdir().unwrap();
+    let path = tmp.path().join("bindings.ts");
+    openlight_lib::ipc::specta_builder()
+        .export(specta_typescript::Typescript::default(), &path)
+        .unwrap();
+    let commands: BTreeSet<String> = std::fs::read_to_string(path)
+        .unwrap()
         .lines()
         .filter(|line| line.contains("__TAURI_INVOKE<"))
         .filter_map(|line| line.split_once(">(\"")?.1.split_once('"'))
@@ -89,6 +97,76 @@ fn app_commands() -> BTreeSet<String> {
         .collect();
     assert!(commands.len() > 30, "{commands:?}");
     commands
+}
+
+/// Los que declara `build.rs` (los permisos propios que generó `tauri-build`).
+fn declared_in_build_rs() -> BTreeSet<String> {
+    json("gen/schemas/acl-manifests.json")["__app-acl__"]["permissions"]
+        .as_object()
+        .expect("build.rs no declara los comandos de la app")
+        .values()
+        .flat_map(|p| p["commands"]["allow"].as_array().unwrap().clone())
+        .map(|c| c.as_str().unwrap().to_owned())
+        .collect()
+}
+
+#[test]
+fn todo_comando_de_ipc_esta_registrado_y_declarado() {
+    // Cada `#[tauri::command]` de `ipc.rs`...
+    let source = read("src/ipc.rs");
+    let written: BTreeSet<String> = source
+        .split("\n#[tauri::command]")
+        .skip(1)
+        .filter_map(|after| after.split_once("fn ")?.1.split_once('('))
+        .map(|(name, _)| name.to_owned())
+        .collect();
+    let registered = app_commands();
+    assert_eq!(
+        written, registered,
+        "ipc.rs: los comandos escritos (izquierda) y los de `collect_commands!` (derecha)"
+    );
+    // ... y cada uno con su permiso
+    let declared = declared_in_build_rs();
+    let missing: Vec<_> = registered.difference(&declared).collect();
+    let extra: Vec<_> = declared.difference(&registered).collect();
+    assert!(
+        missing.is_empty() && extra.is_empty(),
+        "build.rs, `COMMANDS`\nfaltan: {missing:?}\nsobran: {extra:?}"
+    );
+}
+
+/// `calibrationSet` → `calibration_set`.
+fn snake_case(name: &str) -> String {
+    name.chars()
+        .flat_map(|c| {
+            let separator = c.is_ascii_uppercase().then_some('_');
+            separator.into_iter().chain([c.to_ascii_lowercase()])
+        })
+        .collect()
+}
+
+#[test]
+fn la_ventana_de_calibracion_tiene_todo_lo_que_sus_pantallas_llaman() {
+    for file in [
+        "../ui/src/screens/Calibration.svelte",
+        "../ui/src/lib/components/ABTest.svelte",
+    ] {
+        let source = read(file);
+        let called: Vec<String> = source
+            .split("commands.")
+            .skip(1)
+            .filter_map(|after| after.split_once('('))
+            .map(|(name, _)| snake_case(name))
+            .collect();
+        assert!(!called.is_empty(), "{file}");
+        for command in called {
+            assert!(
+                CALIBRATION_COMMANDS.contains(&command.as_str()),
+                "{file} llama a {command}: va en capabilities/calibration.json y en \
+                 CALIBRATION_COMMANDS"
+            );
+        }
+    }
 }
 
 /// Todos los comandos de todos los plugins que la app trae compilados.

@@ -77,13 +77,10 @@ El resto del documento es el plan original. Esta sección dice en qué quedó ca
 
 Salieron de leer el código para escribir la documentación; no tienen tarea asignada en el plan:
 
-- Los cambios de **ajustes, perfil activo y zonas** valen recién al detener y volver a arrancar el efecto, pero la pantalla de Ajustes dice que se ven en el foco mientras se mueve el control.
-- La **prueba A/B** de la calibración no puede comparar: pide el efecto andando, que no puede tomar el foco que se está calibrando, y las variantes no se aplican en caliente.
-- El **control manual** avisa que el efecto «va a pisar lo que elijas», pero con el efecto andando la app rechaza el comando con `device_busy`.
+- La **prueba A/B** de la calibración solo puede comparar si el efecto ya andaba antes de abrir la calibración: desde una calibración abierta no puede arrancarlo, porque el foco está tomado.
 - Los **atajos de los perfiles** se guardan y se muestran, pero no están conectados como atajos de teclado.
 - Falta la **integración con la suspensión del sistema** (`NativePower`): la sesión sabe restaurar antes de dormir, pero la app no le avisa.
 - El texto de `storage` habla de espacio en disco, y el mismo código sale cuando falla el llavero.
-- El texto de `device_busy` habla de Smart Life, y el mismo código sale cuando es la propia app la que está usando el foco (efecto, calibración o control manual).
 - Con un sistema en un idioma sin traducción, la interfaz sale en español y el menú del tray en inglés (#22).
 
 ## 0. Contexto
@@ -239,7 +236,7 @@ pub enum FixAction { OpenSettings(SystemPane), RenewKey, Retry, OpenUrl(String),
 | `color_mode` | dominante | dominante/promedio | básico | el color que más se ve, o la mezcla de toda la zona |
 | `saturation` | 1.3 | 0.5–2.5 | básico | realce de colores |
 | `brightness_min` | 0.05 | 0–1 | básico | brillo con pantalla oscura |
-| `brightness_max` | 1.0 | 0–1 | básico | tope de brillo |
+| `brightness_max` | 1.0 | 0.05–1 | básico | tope de brillo (no baja del mínimo) |
 | `smoothing_ms` | 300 | 0–2000 | básico | más alto = transiciones más lentas |
 | `send_channel` | Colour (24) | Colour/ControlDirect/ControlGradual | avanzado | canal del foco |
 | `capture_fps` | 20 | 5–60 | avanzado | capturas por segundo |

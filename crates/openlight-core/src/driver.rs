@@ -7,7 +7,7 @@
 //! es esa vista alta: así el core se prueba con focos falsos y no depende de `tuya-device`.
 
 use async_trait::async_trait;
-use openlight_types::{DeviceError, Hsv, LinkHealth};
+use openlight_types::{DeviceError, Hsv, LinkHealth, Settings};
 
 /// Un foco al que se le pueden mandar colores.
 #[async_trait]
@@ -25,4 +25,8 @@ pub trait LightDriver: Send {
     /// Salud del enlace: de ahí salen `connected` y `reconnects`, que el pipeline mira en
     /// cada paso (un foco desconectado no recibe envíos; tras reconectar se reenvía el color).
     fn health(&self) -> LinkHealth;
+
+    /// Ajustes del foco cambiados con la sesión andando: lo que depende de la conexión (canal
+    /// del color, tiempos). No espera ni bloquea. Por defecto no hay nada que hacer.
+    fn apply_settings(&mut self, _settings: &Settings) {}
 }

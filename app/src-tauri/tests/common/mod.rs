@@ -35,18 +35,29 @@ pub const FAKE_ACCESS_SECRET: &str = "fake-access-secret";
 /// El monitor falso.
 pub const DISPLAY: &str = "fake-display-1";
 
-/// Color del "video" sintético (BGRA, sin transparencia).
+/// Color del "video" sintético (BGRA, sin transparencia) y las capturas que se pidieron.
 #[derive(Clone, Default)]
-pub struct Screen(Arc<Mutex<[u8; 3]>>);
+pub struct Screen {
+    rgb: Arc<Mutex<[u8; 3]>>,
+    starts: Arc<Mutex<Vec<f32>>>,
+}
 
 impl Screen {
     /// Pone toda la pantalla de un color RGB.
     pub fn paint(&self, rgb: [u8; 3]) {
-        *self.0.lock().unwrap_or_else(PoisonError::into_inner) = rgb;
+        *self.rgb.lock().unwrap_or_else(PoisonError::into_inner) = rgb;
     }
 
     fn rgb(&self) -> [u8; 3] {
-        *self.0.lock().unwrap_or_else(PoisonError::into_inner)
+        *self.rgb.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    /// Los cuadros por segundo de cada captura que se arrancó, en orden.
+    pub fn capture_starts(&self) -> Vec<f32> {
+        self.starts
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .clone()
     }
 }
 
@@ -77,6 +88,11 @@ impl ScreenSource for FakeSource {
         if display.0 != DISPLAY {
             return Err(CaptureError::DisplayNotFound(display));
         }
+        self.screen
+            .starts
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .push(fps);
         let (tx, rx) = watch::channel(None);
         let screen = self.screen.clone();
         let period = Duration::from_secs_f32(1.0 / fps.max(1.0));
@@ -216,10 +232,15 @@ pub fn sim_id(n: usize) -> DeviceId {
 }
 
 pub async fn harness(setup: Setup) -> Harness {
-    harness_with(setup, Overrides::default()).await
+    build(setup, Overrides::default(), |_| {}).await
 }
 
-/// Lo que una prueba puede cambiar del arnés además de [`Setup`].
+/// Como [`harness`], retocando los tiempos del backend.
+pub async fn harness_with(setup: Setup, tune: impl FnOnce(&mut BackendOptions)) -> Harness {
+    build(setup, Overrides::default(), tune).await
+}
+
+/// Lo que una prueba puede cambiar del arnés además de [`Setup`] y los tiempos.
 #[derive(Default)]
 pub struct Overrides {
     /// Clave local de todos los focos simulados (si no, la de fábrica del simulador).
@@ -229,7 +250,15 @@ pub struct Overrides {
 }
 
 /// Como [`harness`], con los cambios de `overrides`.
-pub async fn harness_with(setup: Setup, overrides: Overrides) -> Harness {
+pub async fn harness_overriding(setup: Setup, overrides: Overrides) -> Harness {
+    build(setup, overrides, |_| {}).await
+}
+
+async fn build(
+    setup: Setup,
+    overrides: Overrides,
+    tune: impl FnOnce(&mut BackendOptions),
+) -> Harness {
     let dir = tempfile::tempdir().unwrap();
     let events = MemorySink::new();
     let secrets = Arc::new(MemoryStore::new());
@@ -272,7 +301,7 @@ pub async fn harness_with(setup: Setup, overrides: Overrides) -> Harness {
         .unwrap_or_default();
 
     let tweak_ports = ports;
-    let options = BackendOptions {
+    let mut options = BackendOptions {
         test_step: Duration::from_millis(80),
         manual_idle: Duration::from_millis(400),
         list_scan: Duration::from_millis(50),
@@ -283,6 +312,7 @@ pub async fn harness_with(setup: Setup, overrides: Overrides) -> Harness {
         })),
         ..BackendOptions::default()
     };
+    tune(&mut options);
     let scan = Scan(Arc::new(Mutex::new(if setup.lan {
         ScanMode::Found(lan.clone())
     } else {

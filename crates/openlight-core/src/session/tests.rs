@@ -10,13 +10,16 @@ use std::time::Duration;
 use async_trait::async_trait;
 use openlight_types::{
     CaptureError, DeviceError, DeviceId, DeviceSessionState, DisplayId, DisplayInfo, Frame, Hsv,
-    LinkHealth, PermissionState, ScreenSource, SessionState, Settings, Zone, ZonePreset,
+    LinkHealth, PermissionState, ScreenSource, SessionState, SettingApply, SettingId, SettingKind,
+    SettingValue, Settings, Zone, ZonePreset,
 };
 use tokio::sync::watch;
 use tokio::time::sleep;
 
 use super::*;
 use crate::pipeline::tests::{AZUL, ROJO, VERDE, display, halves, solid};
+
+mod catalogo;
 
 // ---------- Foco falso ----------
 
@@ -38,6 +41,10 @@ struct LightState {
     fail_restores: u32,
     /// `restore` no vuelve nunca.
     hang_restore: bool,
+    /// `prepare` no vuelve nunca (un foco que no aparece en la red).
+    hang_prepare: bool,
+    /// Los últimos ajustes que le llegaron en marcha.
+    applied: Option<Settings>,
 }
 
 /// Lo que ve la prueba de un foco falso; el mismo estado lo comparte el `LightDriver`.
@@ -87,9 +94,20 @@ struct FakeDriver(FakeLight);
 #[async_trait]
 impl LightDriver for FakeDriver {
     async fn prepare(&mut self) -> std::result::Result<(), DeviceError> {
-        let mut s = self.0.0.lock().unwrap();
-        s.log.push(Ev::Prepare);
+        let hang = {
+            let mut s = self.0.0.lock().unwrap();
+            s.log.push(Ev::Prepare);
+            s.hang_prepare
+        };
+        if hang {
+            std::future::pending::<()>().await;
+        }
+        let s = self.0.0.lock().unwrap();
         s.fail_prepare.clone().map_or(Ok(()), Err)
+    }
+
+    fn apply_settings(&mut self, settings: &Settings) {
+        self.0.0.lock().unwrap().applied = Some(settings.clone());
     }
 
     async fn send_hsv(&mut self, color: Hsv) -> std::result::Result<(), DeviceError> {
@@ -782,4 +800,284 @@ async fn detener_acota_toda_la_parada_con_un_solo_plazo() {
         took >= limit && took < limit + Duration::from_secs(1),
         "{took:?}"
     );
+}
+
+// ---------- Cambios con la sesión en marcha ----------
+
+const BLANCO: (u8, u8, u8) = (255, 255, 255);
+
+fn tuning(id: &str, display_id: &str, preset: ZonePreset, settings: Settings) -> DeviceTuning {
+    DeviceTuning {
+        id: dev(id),
+        zones: vec![Zone::from_preset(display(display_id), preset)],
+        settings,
+    }
+}
+
+fn last_v(light: &FakeLight) -> f32 {
+    light.sends().last().expect("no se mandó nada").v
+}
+
+#[tokio::test(start_paused = true)]
+async fn los_ajustes_nuevos_llegan_sin_soltar_el_foco() {
+    let screens = FakeScreens::default();
+    let light = FakeLight::new();
+    screens.publish("1", Some(solid(BLANCO)));
+    let mut session = start(vec![spec("a", ZonePreset::Full, &light)], &screens).await;
+    sleep(Duration::from_secs(1)).await;
+    assert!((last_v(&light) - 1.0).abs() < 1e-6);
+
+    let dimmed = Settings {
+        brightness_max: 0.3,
+        ..base_settings()
+    };
+    session
+        .update_settings(vec![tuning("a", "1", ZonePreset::Full, dimmed.clone())])
+        .unwrap();
+    sleep(Duration::from_secs(1)).await;
+
+    assert!((last_v(&light) - 0.3).abs() < 1e-6, "{:?}", light.sends());
+    assert_eq!(screens.created(), 1, "la captura no se rearmó");
+    assert_eq!(
+        light.count(Ev::Prepare),
+        1,
+        "el foco no se volvió a preparar"
+    );
+    assert_eq!(light.count(Ev::Restore), 0, "el foco no se restauró");
+    assert_eq!(light.0.lock().unwrap().applied, Some(dimmed));
+    session.stop().await;
+}
+
+/// Un valor válido distinto del actual.
+fn otro_valor(id: SettingId, settings: &Settings) -> SettingValue {
+    match &id.def().kind {
+        SettingKind::Choice { options } => SettingValue::Choice(
+            options
+                .iter()
+                .find(|o| SettingValue::Choice((*o).clone()) != settings.get(id))
+                .expect("hay otra opción")
+                .clone(),
+        ),
+        SettingKind::Number { min, max, .. } => {
+            let now = settings.get(id).as_number().unwrap();
+            let middle = (min + max) / 2.0;
+            SettingValue::Number(if (now - middle).abs() < 1e-6 {
+                *max
+            } else {
+                middle
+            })
+        }
+    }
+}
+
+#[tokio::test(start_paused = true)]
+async fn solo_los_ajustes_marcados_rearman_la_captura() {
+    for id in SettingId::ALL {
+        let screens = FakeScreens::default();
+        let light = FakeLight::new();
+        screens.publish("1", Some(solid(ROJO)));
+        let mut session = start(vec![spec("a", ZonePreset::Full, &light)], &screens).await;
+        sleep(Duration::from_millis(300)).await;
+        let mut changed = base_settings();
+        changed.set(id, otro_valor(id, &changed)).unwrap();
+        session
+            .update_settings(vec![tuning("a", "1", ZonePreset::Full, changed)])
+            .unwrap();
+        sleep(Duration::from_millis(300)).await;
+
+        let expected = match id.apply() {
+            SettingApply::Live => 1,
+            SettingApply::RestartCapture => 2,
+        };
+        assert_eq!(screens.created(), expected, "{id}");
+        assert_eq!(light.count(Ev::Prepare), 1, "{id}");
+        assert_eq!(light.count(Ev::Restore), 0, "{id}");
+        session.stop().await;
+    }
+}
+
+#[tokio::test(start_paused = true)]
+async fn cambiar_los_cuadros_por_segundo_rearma_la_captura_y_sigue_mandando() {
+    let screens = FakeScreens::default();
+    let light = FakeLight::new();
+    screens.publish("1", Some(solid(ROJO)));
+    let mut session = start(vec![spec("a", ZonePreset::Full, &light)], &screens).await;
+    sleep(Duration::from_secs(1)).await;
+
+    let faster = Settings {
+        capture_fps: 40.0,
+        ..base_settings()
+    };
+    session
+        .update_settings(vec![tuning("a", "1", ZonePreset::Full, faster)])
+        .unwrap();
+    assert_eq!(screens.stopped(), 1, "la captura vieja se detuvo");
+    assert_eq!(
+        screens.state.lock().unwrap().started.last().unwrap().2,
+        40.0
+    );
+
+    screens.publish("1", Some(solid(AZUL)));
+    sleep(Duration::from_secs(1)).await;
+    assert!(near_hue(light.sends().last().unwrap(), 224.0));
+    assert_eq!(light.count(Ev::Restore), 0);
+    session.stop().await;
+    assert_eq!(screens.stopped(), 2);
+}
+
+#[tokio::test(start_paused = true)]
+async fn cambiar_de_monitor_captura_el_nuevo_y_suelta_el_viejo() {
+    let screens = FakeScreens::default();
+    let light = FakeLight::new();
+    screens.publish("1", Some(solid(ROJO)));
+    screens.publish("2", Some(solid(VERDE)));
+    let mut session = start(vec![spec("a", ZonePreset::Full, &light)], &screens).await;
+    sleep(Duration::from_secs(1)).await;
+
+    session
+        .update_settings(vec![tuning("a", "2", ZonePreset::Full, base_settings())])
+        .unwrap();
+    sleep(Duration::from_secs(1)).await;
+    assert_eq!(screens.stopped(), 1);
+    let hue = hue_deg(light.sends().last().unwrap());
+    assert!((100.0..=150.0).contains(&hue), "verde: {hue}");
+    session.stop().await;
+}
+
+#[tokio::test(start_paused = true)]
+async fn si_la_captura_nueva_falla_la_sesion_sigue_como_estaba() {
+    let screens = FakeScreens::default();
+    let light = FakeLight::new();
+    screens.publish("1", Some(solid(ROJO)));
+    let mut session = start(vec![spec("a", ZonePreset::Full, &light)], &screens).await;
+    sleep(Duration::from_secs(1)).await;
+
+    screens.state.lock().unwrap().fail = Some(CaptureError::DisplayNotFound(display("2")));
+    let error = session
+        .update_settings(vec![tuning("a", "2", ZonePreset::Full, base_settings())])
+        .unwrap_err();
+    assert!(matches!(error, CoreError::Capture(_)), "{error:?}");
+    assert_eq!(screens.stopped(), 0);
+    screens.publish("1", Some(solid(AZUL)));
+    sleep(Duration::from_secs(1)).await;
+    assert!(near_hue(light.sends().last().unwrap(), 224.0));
+    session.stop().await;
+}
+
+#[tokio::test(start_paused = true)]
+async fn sacar_un_foco_lo_restaura_y_lo_libera_sin_tocar_a_los_demas() {
+    let screens = FakeScreens::default();
+    let (a, b) = (FakeLight::new(), FakeLight::new());
+    let locks = DeviceLocks::new();
+    screens.publish("1", Some(solid(ROJO)));
+    let mut session = Session::start(
+        vec![
+            spec("a", ZonePreset::Left, &a),
+            spec("b", ZonePreset::Right, &b),
+        ],
+        screens.factory(),
+        &locks,
+        SessionOptions::default(),
+    )
+    .await
+    .unwrap();
+    sleep(Duration::from_secs(1)).await;
+
+    assert!(session.remove_device(&dev("b")).await);
+    assert_eq!(b.log().last(), Some(&Ev::Restore));
+    assert_eq!(locks.holder(&dev("b")), None);
+    assert_eq!(locks.holder(&dev("a")), Some(Holder::Session));
+    assert_eq!(session.devices(), vec![dev("a")]);
+    assert_eq!(session.device_state(&dev("b")), None);
+    assert_eq!(session.state(), SessionState::Active);
+
+    let sent_to_b = b.sends().len();
+    screens.publish("1", Some(solid(AZUL)));
+    sleep(Duration::from_secs(1)).await;
+    assert_eq!(
+        b.sends().len(),
+        sent_to_b,
+        "el foco sacado no recibe colores"
+    );
+    assert!(near_hue(a.sends().last().unwrap(), 224.0));
+    assert_eq!(a.count(Ev::Restore), 0);
+
+    assert!(!session.remove_device(&dev("b")).await, "ya no estaba");
+    session.stop().await;
+    assert_eq!(b.count(Ev::Restore), 1);
+}
+
+#[tokio::test(start_paused = true)]
+async fn sacar_un_foco_que_no_responde_no_espera_todo_el_plazo() {
+    let screens = FakeScreens::default();
+    let (a, b) = (FakeLight::new(), FakeLight::new());
+    b.with(|s| s.hang_prepare = true);
+    let locks = DeviceLocks::new();
+    screens.publish("1", Some(solid(ROJO)));
+    let mut session = Session::start(
+        vec![
+            spec("a", ZonePreset::Left, &a),
+            spec("b", ZonePreset::Right, &b),
+        ],
+        screens.factory(),
+        &locks,
+        SessionOptions::default(),
+    )
+    .await
+    .unwrap();
+    sleep(Duration::from_secs(1)).await;
+
+    let before = tokio::time::Instant::now();
+    assert!(session.remove_device(&dev("b")).await);
+    assert!(before.elapsed() <= Duration::from_secs(3));
+    assert_eq!(locks.holder(&dev("b")), None);
+    assert_eq!(session.state(), SessionState::Active);
+    session.stop().await;
+}
+
+#[tokio::test(start_paused = true)]
+async fn sumar_un_foco_en_marcha_lo_toma_y_comparte_la_captura() {
+    let screens = FakeScreens::default();
+    let (a, b) = (FakeLight::new(), FakeLight::new());
+    let locks = DeviceLocks::new();
+    let power = PowerEvents::new();
+    screens.publish("1", Some(solid(ROJO)));
+    let mut session = Session::start(
+        vec![spec("a", ZonePreset::Left, &a)],
+        screens.factory(),
+        &locks,
+        SessionOptions {
+            power: Some(power.clone()),
+            ..SessionOptions::default()
+        },
+    )
+    .await
+    .unwrap();
+    sleep(Duration::from_secs(1)).await;
+
+    // Con el candado ocupado no entra, y nada cambia
+    let busy = locks.try_acquire(&dev("b"), Holder::Manual).unwrap();
+    let error = session
+        .add_device(spec("b", ZonePreset::Right, &b))
+        .unwrap_err();
+    assert!(matches!(error, CoreError::DeviceLocked { .. }));
+    assert_eq!(session.devices(), vec![dev("a")]);
+    drop(busy);
+
+    session
+        .add_device(spec("b", ZonePreset::Right, &b))
+        .unwrap();
+    sleep(Duration::from_secs(1)).await;
+    assert_eq!(locks.holder(&dev("b")), Some(Holder::Session));
+    assert_eq!(screens.created(), 1);
+    assert_eq!(b.count(Ev::Prepare), 1);
+    assert!(!b.sends().is_empty());
+    assert_eq!(a.count(Ev::Prepare), 1);
+
+    // El que entró después también se restaura al dormir
+    power.emit(PowerEvent::Suspend);
+    sleep(Duration::from_millis(200)).await;
+    assert_eq!(b.count(Ev::Restore), 1);
+    session.stop().await;
+    assert_eq!(locks.holder(&dev("b")), None);
 }

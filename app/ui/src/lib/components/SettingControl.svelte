@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from "svelte";
   // Un control generado desde un `SettingDef` del catálogo: número → slider, opción → botones.
   // No sabe nada de ajustes concretos: título, ayuda, rango, paso, unidad y default salen del catálogo.
   import type { SettingDef, SettingValue } from "../bindings";
@@ -12,6 +13,9 @@
     value,
     inherited = false,
     canReset,
+    floor,
+    ceil,
+    note,
     onchange,
     onreset,
   }: {
@@ -19,14 +23,26 @@
     value: SettingValue;
     inherited?: boolean;
     canReset?: boolean;
+    /** Topes más estrechos que el rango del catálogo (dependen de otro ajuste). */
+    floor?: number;
+    ceil?: number;
+    /** Aviso: dónde no se va a notar un cambio hecho acá. */
+    note?: string;
     onchange: (v: SettingValue) => void;
     onreset: () => void;
   } = $props();
 
   let local = $state<SettingValue>(null);
-  let dragging = $state(false);
+  let dragging = false;
+  // El envío que espera su turno (ver `push`).
+  let pending: ReturnType<typeof setTimeout> | null = null;
   $effect(() => {
-    if (!dragging) local = value;
+    const next = value;
+    // Solo manda lo que llega de afuera, y no mientras se arrastra o queda un cambio sin enviar:
+    // la respuesta a uno anterior haría volver atrás al control.
+    untrack(() => {
+      if (!dragging && pending === null) local = next;
+    });
   });
 
   const id = $derived(`setting-${def.id}`);
@@ -41,15 +57,16 @@
 
   // Vista previa en vivo: se manda mientras se arrastra, como mucho cada 120 ms.
   let last = 0;
-  let pending: ReturnType<typeof setTimeout> | null = null;
   function push(v: SettingValue) {
     const now = performance.now();
     if (pending) clearTimeout(pending);
+    pending = null;
     if (now - last > 120) {
       last = now;
       onchange(v);
     } else {
       pending = setTimeout(() => {
+        pending = null;
         last = performance.now();
         onchange(v);
       }, 120);
@@ -58,7 +75,10 @@
 
   function onInput(e: Event) {
     dragging = true;
-    const v = clampToDef(def, Number((e.currentTarget as HTMLInputElement).value));
+    const input = e.currentTarget as HTMLInputElement;
+    const v = Math.min(ceil ?? Infinity, Math.max(floor ?? -Infinity, clampToDef(def, Number(input.value))));
+    // La perilla se frena en el tope, aunque el recorrido siga.
+    input.value = String(v);
     local = v;
     push(v);
   }
@@ -78,6 +98,7 @@
     <output class="value tabular" for={id} aria-live="off">{def.kind.kind === "number" ? shown : optionLabel(String(local))}</output>
   </div>
   <p class="help" id="{id}-help">{t(def.help_key)}</p>
+  {#if note}<p class="note">{note}</p>{/if}
 
   {#if def.kind.kind === "number"}
     <input
@@ -150,6 +171,14 @@
     color: var(--muted);
     font-size: 0.9rem;
     max-width: 62ch;
+  }
+  .note {
+    justify-self: start;
+    padding: 0.35rem 0.6rem;
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+    color: var(--text);
+    font-size: 0.82rem;
   }
   .choices {
     display: flex;

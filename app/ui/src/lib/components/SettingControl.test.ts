@@ -22,6 +22,37 @@ describe("SettingControl: un control por cada ajuste del catálogo", () => {
     unmount();
   });
 
+  it("no baja del piso ni sube del tope que le pasan", async () => {
+    const def = CATALOG.find((d) => d.id === "brightness_max")!;
+    const onchange = vi.fn();
+    const { unmount } = render(SettingControl, { def, value: 0.8, floor: 0.4, ceil: 0.9, onchange, onreset: () => {} });
+    const slider = screen.getByRole("slider") as HTMLInputElement;
+    await fireEvent.input(slider, { target: { value: "0.1" } });
+    expect(slider.value).toBe("0.4");
+    expect(onchange).toHaveBeenLastCalledWith(0.4);
+    await fireEvent.input(slider, { target: { value: "1" } });
+    expect(slider.value).toBe("0.9");
+    unmount();
+  });
+
+  it("con un cambio todavía sin mandar, una respuesta vieja no lo hace volver atrás", async () => {
+    const def = CATALOG.find((d) => d.id === "brightness_min")!;
+    const onchange = vi.fn();
+    const view = render(SettingControl, { def, value: 0.05, onchange, onreset: () => {} });
+    const slider = view.container.querySelector("input")!;
+    // Dos teclas seguidas: la primera sale ya y la segunda espera su turno.
+    for (const value of ["0.06", "0.07"]) {
+      await fireEvent.input(slider, { target: { value } });
+      await fireEvent.change(slider);
+    }
+    expect(slider.value).toBe("0.07");
+    await view.rerender({ value: 0.06 });
+    expect(slider.value).toBe("0.07");
+    await vi.waitFor(() => expect(onchange).toHaveBeenLastCalledWith(0.07));
+    await view.rerender({ value: 0.07 });
+    expect(slider.value).toBe("0.07");
+  });
+
   it("cambia y restaura", async () => {
     const def = CATALOG.find((d) => d.id === "color_mode")!;
     const onchange = vi.fn();

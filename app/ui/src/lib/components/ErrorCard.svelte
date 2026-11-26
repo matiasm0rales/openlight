@@ -33,6 +33,8 @@
         return t("fix.renew_key");
       case "retry":
         return retryLabel ?? t("fix.retry");
+      case "remove_from_effect":
+        return t("fix.remove_from_effect");
       case "open_url":
         return t("fix.open_url", { host: safeHost(a.value) });
       case "show_help":
@@ -48,7 +50,7 @@
     }
   }
 
-  const icons = { open_settings: "sliders", renew_key: "key", retry: "refresh", open_url: "external", show_help: "help" } as const;
+  const icons = { open_settings: "sliders", renew_key: "key", retry: "refresh", open_url: "external", show_help: "help", remove_from_effect: "power" } as const;
 
   async function act(a: FixAction, i: number) {
     running = i;

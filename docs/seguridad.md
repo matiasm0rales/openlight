@@ -1,7 +1,7 @@
 # Seguridad
 
 Revisión de seguridad previa a la primera versión pública (tarea Q4 de [`PLAN.md`](PLAN.md)),
-hecha el 25 de noviembre de 2026 sobre `main` (hasta el PR #29).
+hecha el 25 de noviembre de 2026 sobre `main` (hasta el PR #31).
 
 ## Qué se protege y de quién
 
@@ -27,7 +27,7 @@ prueba que falla si vuelve.
 |---|---|---|---|
 | 1 | Si la nube de Tuya contestaba un error repitiendo lo que recibió, el token, la firma y el Access ID llegaban al log, al zip de diagnóstico y a la pantalla | media | arreglado |
 | 2 | Importar un `devices.json` o `config.json` mal formado podía mostrar una clave local en el mensaje de error | media | arreglado |
-| 3 | Las dos ventanas podían invocar los 37 comandos de la app; la principal tenía además menús, tray, imágenes y rutas, y podía abrir cualquier página web | media (defensa en profundidad) | arreglado |
+| 3 | Las dos ventanas podían invocar todos los comandos de la app; la principal tenía además menús, tray, imágenes y rutas, y podía abrir cualquier página web | media (defensa en profundidad) | arreglado |
 | 4 | La CSP permitía estilos inline y un protocolo sin uso, y no cerraba `object-src`, `base-uri` ni `form-action` | baja | arreglado |
 | 5 | El cliente de la nube seguía redirecciones (se habrían llevado la firma y el token) y no exigía HTTPS en el código | baja | arreglado |
 | 6 | El `Debug` de la sesión del protocolo y de la conexión imprimía la clave local y la de sesión (nadie lo escribía en el log) | baja | arreglado |
@@ -73,10 +73,13 @@ publicarlo, como ya pide [`CONTRIBUTING.md`](../CONTRIBUTING.md).
 | ventana | plugins | comandos de la app |
 |---|---|---|
 | principal | escuchar eventos, leer la versión, cerrar recursos, abrir `iot.tuya.com` y las releases del repo, inicio automático, updater, reiniciar | todos |
-| calibración | escuchar eventos y abrir `iot.tuya.com` | los 16 que usa esa pantalla; nada de nube, focos, diagnóstico, importación ni updater |
+| calibración | escuchar eventos y abrir `iot.tuya.com` | los 17 que usan esa pantalla y las acciones de sus errores (entre ellas, sacar un foco del efecto); no puede cargar credenciales, listar la nube, agregar o quitar focos, ver el diagnóstico, importar ni actualizar (renovar una clave sí consulta la nube) |
 
 [`tests/permisos.rs`](../app/src-tauri/tests/permisos.rs) prueba **todos** los comandos de la app y
 de los plugins contra las capabilities reales: un permiso de más o de menos hace fallar la prueba.
+También falla si un comando de `ipc.rs` no está registrado o no figura en `build.rs`, y si las
+pantallas de calibración llaman a uno que su ventana no puede. Lo que esa ventana usa a través de
+las acciones de un error se revisa a mano.
 
 Al agregar un comando hay que sumarlo en `build.rs` y en `capabilities/default.json` (y en
 `calibration.json` si lo usa la calibración). Al agregar en la guía un enlace a otro dominio hay

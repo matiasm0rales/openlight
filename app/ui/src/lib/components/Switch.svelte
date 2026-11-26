@@ -1,10 +1,10 @@
 <script lang="ts">
   import Icon from "./Icon.svelte";
 
-  let { checked, label, onchange, busy = false, big = false, id }: { checked: boolean; label: string; onchange: (v: boolean) => void; busy?: boolean; big?: boolean; id?: string } = $props();
+  let { checked, label, onchange, busy = false, big = false, disabled = false, id }: { checked: boolean; label: string; onchange: (v: boolean) => void; busy?: boolean; big?: boolean; disabled?: boolean; id?: string } = $props();
 </script>
 
-<button type="button" {id} role="switch" class="switch" class:big aria-checked={checked} aria-label={label} aria-busy={busy} disabled={busy} onclick={() => onchange(!checked)}>
+<button type="button" {id} role="switch" class="switch" class:big aria-checked={checked} aria-label={label} aria-busy={busy} disabled={busy || disabled} onclick={() => onchange(!checked)}>
   <span class="knob" aria-hidden="true"><Icon name="power" size={big ? 18 : 12} /></span>
 </button>
 
@@ -49,6 +49,10 @@
   .switch[aria-checked="true"] .knob {
     transform: translateX(calc(var(--w) - var(--h)));
     color: #16181d;
+  }
+  .switch:disabled:not([aria-busy="true"]) {
+    opacity: 0.45;
+    cursor: not-allowed;
   }
   .switch[aria-busy="true"] .knob {
     animation: pulse 900ms infinite;

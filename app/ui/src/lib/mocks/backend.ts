@@ -16,6 +16,7 @@ import {
   EVENT_COLOR_LIVE,
   EVENT_DEVICE_HEALTH,
   EVENT_DISCOVERY_FOUND,
+  EVENT_EFFECT_DEVICES,
   EVENT_ERROR_RAISED,
   EVENT_PIPELINE_STATS,
   EVENT_SESSION_STATE,
@@ -203,6 +204,12 @@ class MockBackend {
     return d;
   }
 
+  /** Como la app: mientras un foco sigue la pantalla, nadie más lo toma. */
+  private free(id: string): void {
+    const d = this.state.devices.find((x) => x.id === id);
+    if (this.session !== "idle" && d?.in_effect !== false) throw err("device_in_effect", [{ kind: "remove_from_effect" }], { device: id });
+  }
+
   private keyError(d: ConfiguredDevice_Serialize): UserFacingError {
     return err("device_key_rejected", [{ kind: "renew_key" }, { kind: "show_help", value: "device_troubleshooting" }], { device: d.id, name: d.name });
   }
@@ -288,6 +295,11 @@ class MockBackend {
     void emit(EVENT_SESSION_STATE, { state });
   }
 
+  /** Los focos que participan del efecto. */
+  private inEffect(): ConfiguredDevice_Serialize[] {
+    return this.state.devices.filter((d) => d.in_effect !== false);
+  }
+
   async start(): Promise<SessionState> {
     if (this.session === "active" || this.session === "connecting") return this.session;
     if (this.updating) return "idle";
@@ -297,32 +309,61 @@ class MockBackend {
     if (this.state.permissions.screen_recording !== "granted") {
       throw err("screen_permission_denied", [{ kind: "open_settings", value: "screen_recording" }, { kind: "show_help", value: "permissions" }]);
     }
+    if (this.inEffect().length === 0) {
+      throw err("no_zones", [{ kind: "show_help", value: "device_troubleshooting" }, { kind: "retry" }]);
+    }
     this.setSession("connecting");
-    for (const d of this.state.devices) {
+    for (const d of this.inEffect()) {
       this.simFor(d.id).state = { kind: "connecting" };
       this.emitHealth(d.id);
     }
     await this.wait(700);
     this.setSession("active");
-    this.addLog("info", "openlight_core", `Sesión activa con ${this.state.devices.length} focos`);
-    for (const d of this.state.devices) {
-      const sim = this.simFor(d.id);
-      if (this.state.keyRejected.includes(d.id)) {
-        sim.state = { kind: "error", code: "device_key_rejected" };
-        sim.health.connected = false;
-        sim.health.last_disconnect = { kind: "key_rejected" };
-        sim.health.last_disconnect_at_ms = Date.now();
-        this.addLog("error", "tuya_device", `${d.name}: la clave fue rechazada (914)`);
-        void emit(EVENT_ERROR_RAISED, this.keyError(d));
-      } else {
-        sim.state = { kind: "active" };
-        sim.health.connected = true;
-        sim.health.rtt_ms = 24;
-      }
-      this.emitHealth(d.id);
-    }
+    this.addLog("info", "openlight_core", `Sesión activa con ${this.inEffect().length} focos`);
+    for (const d of this.inEffect()) this.take(d);
     this.startTimers();
     return this.session;
+  }
+
+  /** La sesión toma un foco: conecta, o falla si su clave no sirve. */
+  private take(d: ConfiguredDevice_Serialize): void {
+    const sim = this.simFor(d.id);
+    if (this.state.keyRejected.includes(d.id)) {
+      sim.state = { kind: "error", code: "device_key_rejected" };
+      sim.health.connected = false;
+      sim.health.last_disconnect = { kind: "key_rejected" };
+      sim.health.last_disconnect_at_ms = Date.now();
+      this.addLog("error", "tuya_device", `${d.name}: la clave fue rechazada (914)`);
+      void emit(EVENT_ERROR_RAISED, this.keyError(d));
+    } else {
+      sim.state = { kind: "active" };
+      sim.health.connected = true;
+      sim.health.rtt_ms = 24;
+    }
+    this.emitHealth(d.id);
+  }
+
+  /** El foco sale del efecto: vuelve a su estado y se desconecta. */
+  private release(id: string): void {
+    const sim = this.simFor(id);
+    sim.state = { kind: "idle" };
+    sim.health.connected = false;
+    sim.sent = null;
+    this.emitHealth(id);
+  }
+
+  async setInEffect(id: string, enabled: boolean): Promise<null> {
+    const d = this.device(id);
+    await this.wait(200);
+    d.in_effect = enabled;
+    this.persist();
+    void emit(EVENT_EFFECT_DEVICES, { excluded: this.state.devices.filter((x) => x.in_effect === false).map((x) => x.id) });
+    if (this.session !== "idle") {
+      if (enabled) this.take(d);
+      else this.release(id);
+      if (this.inEffect().length === 0) await this.stop();
+    }
+    return null;
   }
 
   async stop(): Promise<SessionState> {
@@ -330,13 +371,7 @@ class MockBackend {
     this.stopTimers();
     this.setSession("restoring");
     await this.wait(500);
-    for (const d of this.state.devices) {
-      const sim = this.simFor(d.id);
-      sim.state = { kind: "idle" };
-      sim.health.connected = false;
-      sim.sent = null;
-      this.emitHealth(d.id);
-    }
+    for (const d of this.state.devices) this.release(d.id);
     this.addLog("info", "openlight_core", "Focos devueltos a su estado original");
     this.setSession("idle");
     return "idle";
@@ -372,7 +407,7 @@ class MockBackend {
       this.sceneHue = (this.sceneHue + 90 + Math.random() * 180) % 360;
       this.nextCut = this.videoT + 4 + Math.random() * 4;
     }
-    for (const d of this.state.devices) {
+    for (const d of this.inEffect()) {
       const sim = this.simFor(d.id);
       const screen = this.screenFor(d);
       if (sim.state.kind !== "active") {
@@ -401,7 +436,7 @@ class MockBackend {
   }
 
   private tickHealth(): void {
-    for (const d of this.state.devices) {
+    for (const d of this.inEffect()) {
       const sim = this.simFor(d.id);
       if (sim.state.kind === "active") {
         sim.health.rtt_ms = Math.round(18 + Math.random() * 28 + (d.version === "3.5" ? 6 : 0));
@@ -436,7 +471,7 @@ class MockBackend {
     const fps = Number(this.effective().capture_fps ?? 20);
     void emit(EVENT_PIPELINE_STATS, {
       capture_fps: Math.max(0, fps - Math.random() * 1.6),
-      devices: this.state.devices.map((d) => {
+      devices: this.inEffect().map((d) => {
         const active = this.simFor(d.id).state.kind === "active";
         const max = Number(this.settingFor(d.id, "max_sends_per_s"));
         return { device: d.id, sends_per_s: active ? Math.min(max, 3 + Math.random() * 4.5) : 0 };
@@ -521,6 +556,7 @@ class MockBackend {
 
   async deviceRemove(id: string) {
     await this.wait(200);
+    this.free(id);
     this.state.devices = this.state.devices.filter((d) => d.id !== id);
     delete this.state.deviceOverrides[id];
     this.persist();
@@ -529,6 +565,7 @@ class MockBackend {
 
   async deviceTest(id: string) {
     const d = this.device(id);
+    this.free(id);
     await this.wait(1200);
     if (this.state.keyRejected.includes(id)) throw this.keyError(d);
     return null;
@@ -537,6 +574,7 @@ class MockBackend {
   async deviceManual(id: string, set: ManualSet) {
     const d = this.device(id);
     await this.wait(80);
+    this.free(id);
     if (this.state.keyRejected.includes(id)) throw this.keyError(d);
     if (set.kind === "colour" && !d.capabilities.dp_colour) throw err("device_no_colour", [{ kind: "show_help", value: "device_troubleshooting" }], { name: d.name });
     this.simFor(id).manual = set;
@@ -625,6 +663,7 @@ class MockBackend {
 
   calibrationStart(device: string, display: string, quick: boolean): CalibrationState {
     this.device(device);
+    this.free(device);
     const saved = this.state.calibrations[device] ?? [];
     const hues = quick ? QUICK_HUES : HUES;
     this.calibration = {
@@ -740,6 +779,8 @@ class MockBackend {
         return this.deviceTest(a.device);
       case "device_manual":
         return this.deviceManual(a.device, a.set);
+      case "device_set_in_effect":
+        return this.setInEffect(a.device, a.enabled);
       case "renew_key":
         return this.renewKey(a.device);
       case "displays_list":

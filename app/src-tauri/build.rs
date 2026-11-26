@@ -15,6 +15,7 @@ const COMMANDS: &[&str] = &[
     "device_remove",
     "device_test",
     "device_manual",
+    "device_set_in_effect",
     "renew_key",
     "displays_list",
     "display_preview",

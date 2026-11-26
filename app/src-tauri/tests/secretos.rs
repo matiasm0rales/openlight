@@ -23,7 +23,7 @@ use std::time::Duration;
 
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
-use common::{Overrides, Setup, eventually, harness_with, sim_id};
+use common::{Overrides, Setup, eventually, harness_overriding, sim_id};
 use openlight_lib::events::AppEvent;
 use openlight_lib::logging::{LogHandle, LogRing, RING_CAPACITY, RingLayer};
 use openlight_lib::state::CloudFactory;
@@ -181,6 +181,7 @@ fn event_json(event: &AppEvent) -> String {
         AppEvent::PipelineStats(p) => serde_json::to_string(p),
         AppEvent::ErrorRaised(p) => serde_json::to_string(p),
         AppEvent::DiscoveryFound(p) => serde_json::to_string(p),
+        AppEvent::EffectDevices(p) => serde_json::to_string(p),
     }
     .unwrap()
 }
@@ -254,7 +255,7 @@ async fn ningun_secreto_sale_en_el_log_el_zip_los_datos_ni_el_ipc() {
         TuyaCloudClient::new(creds)
             .map(|c| Arc::new(c.with_endpoints(move |_| url.clone())) as Arc<dyn TuyaCloud>)
     });
-    let h = harness_with(
+    let h = harness_overriding(
         Setup::default(),
         Overrides {
             local_key: Some(*LOCAL_KEY),
@@ -347,6 +348,15 @@ async fn ningun_secreto_sale_en_el_log_el_zip_los_datos_ni_el_ipc() {
         sim.dp("21") == Some(json!("colour"))
     })
     .await;
+    // Con el efecto andando: el foco está ocupado, sale y vuelve a entrar
+    let busy = b.device_test(id.clone(), TestPattern::Blink).await;
+    assert!(busy.is_err(), "{busy:?}");
+    out.command("device_test (en el efecto)", &busy);
+    for in_effect in [false, true] {
+        let changed = b.set_device_in_effect(id.clone(), in_effect).await;
+        assert!(changed.is_ok(), "{changed:?}");
+        out.command("device_set_in_effect", &changed);
+    }
     out.command("session_stop", &b.session_stop().await);
     let calibrating = b
         .calibration_start(id.clone(), displays[0].id.clone(), true)

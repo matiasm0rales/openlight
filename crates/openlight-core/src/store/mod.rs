@@ -107,6 +107,19 @@ pub struct DeviceRecord {
     /// Ajustes propios del foco.
     #[serde(default)]
     pub overrides: SettingsOverride,
+    /// Lugar en la lista de focos (el menor va primero). Los archivos de antes no lo traen:
+    /// quedan en 0 y desempata el nombre.
+    #[serde(default)]
+    pub order: u32,
+}
+
+/// El `order` de un foco que se agrega a `devices`: va después de todos.
+pub fn next_order(devices: &[DeviceRecord]) -> u32 {
+    devices
+        .iter()
+        .map(|d| d.order)
+        .max()
+        .map_or(0, |last| last.saturating_add(1))
 }
 
 fn default_true() -> bool {
@@ -207,7 +220,7 @@ impl Store {
 
     // ---------- devices.json ----------
 
-    /// Lee los focos configurados.
+    /// Lee los focos configurados, en el orden en que se muestran.
     pub fn load_devices(&self) -> Result<Vec<DeviceRecord>> {
         let file: Option<DevicesFile> =
             self.read("devices.json", DEVICES_VERSION, migrate_identity)?;
@@ -219,11 +232,37 @@ impl Store {
                 .validate()
                 .map_err(|e| CoreError::Invalid(format!("devices.json: {e}")))?;
         }
+        devices.sort_by_cached_key(|d| (d.order, d.name.to_lowercase()));
         Ok(devices)
     }
 
     /// Guarda los focos configurados.
     pub fn save_devices(&self, devices: &[DeviceRecord]) -> Result<()> {
+        let _guard = self.guard();
+        self.write_devices(devices)
+    }
+
+    /// Deja los focos en el orden de `ids`, que tiene que nombrar a cada foco configurado
+    /// una sola vez; si no, no cambia nada.
+    pub fn reorder_devices(&self, ids: &[DeviceId]) -> Result<()> {
+        let _guard = self.guard();
+        let mut devices = self.load_devices()?;
+        let places: BTreeMap<&DeviceId, u32> = ids.iter().zip(0..).collect();
+        if places.len() != ids.len()
+            || ids.len() != devices.len()
+            || !devices.iter().all(|d| places.contains_key(&d.id))
+        {
+            return Err(CoreError::DeviceOrderMismatch);
+        }
+        for device in &mut devices {
+            device.order = places[&device.id];
+        }
+        devices.sort_by_key(|d| d.order);
+        self.write_devices(&devices)
+    }
+
+    /// Valida y escribe `devices.json`. Quien llama tiene tomado el candado de escritura.
+    fn write_devices(&self, devices: &[DeviceRecord]) -> Result<()> {
         for device in devices {
             check_device_id(&device.id)?;
             device
@@ -231,7 +270,6 @@ impl Store {
                 .validate()
                 .map_err(|e| CoreError::Invalid(e.to_string()))?;
         }
-        let _guard = self.guard();
         let file = json!({ "devices": devices });
         self.write_value("devices.json", DEVICES_VERSION, file)
     }

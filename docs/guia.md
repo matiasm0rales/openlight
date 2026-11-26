@@ -179,11 +179,26 @@ hacerlo parpadear o quitarlo.
 ### 9. Monitor y zonas
 
 Elegí el monitor y qué parte sigue cada foco: **Toda**, **Izquierda**, **Derecha**, **Arriba**,
-**Abajo**, **Centro**, o arrastrá el rectángulo. Con el teclado: flechas para moverlo,
-Mayús + flechas para el tamaño y Alt para pasos finos.
+**Abajo**, una de las cuatro esquinas (**Arriba izquierda**, **Arriba derecha**, **Abajo
+izquierda**, **Abajo derecha**), **Centro**, o arrastrá el rectángulo. Con el teclado: flechas
+para moverlo, Mayús + flechas para el tamaño y Alt para pasos finos.
 
 Un foco nuevo arranca siguiendo todo el primer monitor externo (o el integrado, si no hay otro).
 Con dos focos, izquierda y derecha queda muy bien.
+
+Para repartir el monitor entre todos de una vez, usá **Distribución para todos los focos**. Solo
+aparecen las que sirven para la cantidad que tenés:
+
+| Focos | Distribuciones |
+| --- | --- |
+| 1 | Pantalla completa |
+| 2 | Izquierda y derecha · Arriba y abajo |
+| 3 | Una arriba y dos abajo · Tres columnas |
+| 4 | Cuatro esquinas |
+
+Los lugares se reparten en el orden de los focos en el Panel (los números de cada miniatura). Se
+cambia la zona de cada foco en el monitor elegido; las de otros monitores no se tocan. Después
+podés ajustar cualquiera a mano. Con cinco focos o más, las zonas se eligen una por una.
 
 ### 10. Calibrar (recomendado)
 
@@ -220,6 +235,11 @@ y tocá **Arrancar**.
   Es lo mismo que tildarlo en el menú del tray, y OpenLight lo recuerda.
 - Con un foco fuera del efecto, la tarjeta tiene **Blanco** y **Apagar** para usarlo aparte.
 - Desde la tarjeta vas a **Control manual**, **Calibrar** y **Ajustes del foco**.
+- **El orden lo elegís vos** (con dos focos o más): arrastrá una tarjeta desde su asa (los seis
+  puntos) y soltala en el lugar que quieras; Esc cancela. Con el teclado, poné el foco en el asa
+  y usá las flechas. También podés tocar el asa y usar **Mover antes** o **Mover después**. El
+  mismo orden se ve en Dispositivos y en el tray, y es el que usan las distribuciones de zonas.
+  Un foco recién agregado aparece al final.
 
 > Los cambios de ajustes, brillo, perfil y zonas **valen al instante**, también con el efecto
 > andando. Cambiar los cuadros por segundo o de monitor rearma la captura sin desconectar los
@@ -242,7 +262,7 @@ sistema se va a dormir.
 | Estado | si el efecto está apagado, conectando, activo, en pausa o restaurando |
 | Arrancar / Detener | lo mismo que el interruptor del panel |
 | Perfil | elegir un perfil, o ninguno |
-| Focos | tildar o destildar cada foco del efecto (vale al instante) |
+| Focos | tildar o destildar cada foco del efecto (vale al instante), en el orden del Panel |
 | Abrir OpenLight | trae la ventana |
 | Salir (restaura los focos) | devuelve los focos a su estado y cierra la app |
 

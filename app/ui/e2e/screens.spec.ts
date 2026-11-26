@@ -186,7 +186,7 @@ test("permiso de pantalla: el error ofrece repararlo y después avisa que hay qu
 test("tema oscuro, inglés y pantalla chica siguen siendo accesibles", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "dark" });
   await open(page, "configured", "dashboard");
-  await page.getByRole("button", { name: "EN" }).click();
+  await page.getByRole("button", { name: "EN", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Everything paused");
   await expectAccessible(page, "panel oscuro en inglés");
   await page.getByRole("button", { name: "Light theme" }).click();

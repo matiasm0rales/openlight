@@ -77,7 +77,7 @@ test("asistente de punta a punta: de cero a los focos siguiendo la pantalla", as
   await expect(title).toHaveText("Monitor y zonas");
   const zone = page.getByRole("slider", { name: "Zona de Foco living" });
   await expect(zone).toBeVisible();
-  await page.getByRole("button", { name: "Arriba" }).click();
+  await page.getByRole("button", { name: "Arriba", exact: true }).click();
   await zone.focus();
   await page.keyboard.press("ArrowDown");
   await expect(zone).toHaveAttribute("aria-valuetext", /desde 0%, 5%/);

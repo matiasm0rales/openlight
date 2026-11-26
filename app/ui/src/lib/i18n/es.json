@@ -215,6 +215,10 @@
       "title": "Este dispositivo no muestra colores",
       "detail": "Solo tiene luz blanca, así que no puede seguir la pantalla."
     },
+    "device_order_mismatch": {
+      "title": "La lista de focos cambió",
+      "detail": "No guardé el orden porque la lista de focos cambió mientras lo acomodabas. Volvé a moverlo."
+    },
     "cloud_invalid_signature": {
       "title": "El Access Secret no coincide",
       "detail": "Seguramente quedó mal copiado. Copialo de nuevo desde iot.tuya.com."
@@ -466,6 +470,16 @@
     "rect_label": "Zona de {name}",
     "rect_value": "desde {x}, {y}; tamaño {w} × {h}",
     "keys": "Arrastrá la zona o usá el teclado: flechas para moverla, Mayús + flechas para cambiar el tamaño, Alt para pasos finos.",
+    "layout_title": "Distribución para todos los focos",
+    "layout_order": "Los números siguen el orden del Panel: {list}.",
+    "layout": {
+      "full": "Pantalla completa",
+      "sides": "Izquierda y derecha",
+      "stacked": "Arriba y abajo",
+      "top_and_two": "Una arriba y dos abajo",
+      "columns": "Tres columnas",
+      "corners": "Cuatro esquinas"
+    },
     "presets_for": "Atajos de zona para {name}",
     "preset": {
       "full": "Toda",
@@ -473,6 +487,10 @@
       "right": "Derecha",
       "top": "Arriba",
       "bottom": "Abajo",
+      "top_left": "Arriba izquierda",
+      "top_right": "Arriba derecha",
+      "bottom_left": "Abajo izquierda",
+      "bottom_right": "Abajo derecha",
       "center": "Centro",
       "custom": "A mano"
     }
@@ -669,7 +687,18 @@
     "no_zone": "Sin zona: elegí qué sigue en Dispositivos.",
     "white": "Blanco",
     "turn_off": "Apagar",
-    "device_settings": "Ajustes del foco"
+    "device_settings": "Ajustes del foco",
+    "bulbs": "Tus focos",
+    "reorder": "Reordenar {name}",
+    "reorder_help": "Usá las flechas para cambiarlo de lugar, arrastralo, o activá este botón para ver «Mover antes» y «Mover después».",
+    "reorder_tooltip": "Arrastrá para reordenar (o usá las flechas)",
+    "move_before": "Mover antes",
+    "move_after": "Mover después",
+    "moved": "{name} pasó al lugar {n} de {total}.",
+    "already_first": "{name} ya está primero.",
+    "already_last": "{name} ya está al final.",
+    "move_failed": "No se pudo guardar el orden. Volvió a como estaba.",
+    "drop_here": "{name} va acá"
   },
   "devices": {
     "title": "Tus focos",

@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Locator, type Page } from "@playwright/test";
 
-export async function open(page: Page, scenario: "fresh" | "configured", hash = "", query = "") {
+export async function open(page: Page, scenario: "fresh" | "configured" | "four", hash = "", query = "") {
   await page.goto(`/?scenario=${scenario}&fast=1${query ? `&${query}` : ""}${hash ? `#/${hash}` : ""}`);
   await expect(page.locator("main")).not.toContainText("Cargando…");
 }

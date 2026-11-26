@@ -15,6 +15,7 @@ responde los mismos comandos y emite los mismos eventos, con datos realistas: do
 conexión y `color://live` a 8 Hz por foco.
 
 - `?scenario=fresh`: el asistente desde cero. `?scenario=configured`: dos focos, uno con 914.
+  `?scenario=four`: cuatro focos sanos, para el orden y las distribuciones de zonas.
 - `?fast=1`: demoras cortas (lo usan las pruebas).
 - En **Menú del tray** hay un panel para forzar fallas (914, cortes, sin monitor).
 - El paso 6 tiene pistas en `src/lib/mocks/backend.ts` (secretos de largo equivocado, cuentas vencidas…).

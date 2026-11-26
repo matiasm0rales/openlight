@@ -61,6 +61,25 @@ describe("backend falso (mismo contrato que ipc.rs)", () => {
     await expect(commands.deviceTest(desk.id, "red_green_blue")).resolves.toBeNull();
   });
 
+  it("devices_reorder cambia el orden y lo recuerda", async () => {
+    installMocks({ scenario: "configured", fast: true });
+    const [living, desk] = await commands.devicesList();
+    await commands.devicesReorder([desk.id, living.id]);
+    expect((await commands.devicesList()).map((d) => d.id)).toEqual([desk.id, living.id]);
+    expect((await commands.onboardingState()).devices).toEqual([desk.id, living.id]);
+  });
+
+  it("devices_reorder exige nombrar a cada foco una sola vez, como la app", async () => {
+    installMocks({ scenario: "configured", fast: true });
+    const [living, desk] = await commands.devicesList();
+    for (const ids of [[desk.id], [desk.id, living.id, "otro"], [desk.id, desk.id], [desk.id, "otro"]]) {
+      const e = await commands.devicesReorder(ids).catch((x) => x);
+      expect(e.code, ids.join()).toBe("device_order_mismatch");
+      expect(e.actions).toEqual([{ kind: "retry" }]);
+    }
+    expect((await commands.devicesList()).map((d) => d.id)).toEqual([living.id, desk.id]);
+  });
+
   it("guarda el progreso del asistente", async () => {
     installMocks({ scenario: "fresh", fast: true });
     await commands.onboardingSave("credentials", ["welcome", "permissions"]);

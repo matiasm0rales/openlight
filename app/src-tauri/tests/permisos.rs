@@ -63,6 +63,7 @@ const CALIBRATION_COMMANDS: &[&str] = &[
     "calibration_cancel",
     "renew_key",
     "open_system_settings",
+    "repair_screen_permission",
     // El error de "el foco está siguiendo la pantalla" ofrece sacarlo del efecto
     "device_set_in_effect",
 ];

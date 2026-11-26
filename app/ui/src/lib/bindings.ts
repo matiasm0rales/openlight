@@ -15,6 +15,11 @@ export const commands = {
 	checkPermissions: (options?: InvokeOptions) => __TAURI_INVOKE<PermissionStatus_Serialize[]>("check_permissions", undefined, options),
 	/**  Abre el panel exacto de los ajustes del sistema. */
 	openSystemSettings: (pane: SystemPane, options?: InvokeOptions) => __TAURI_INVOKE<null>("open_system_settings", { pane }, options),
+	/**
+	 *  macOS: repara el permiso de Grabación de pantalla que quedó atado a otra versión (lo olvida y
+	 *  lo vuelve a pedir). La app lo ve recién cuando se la vuelve a abrir.
+	 */
+	repairScreenPermission: (options?: InvokeOptions) => __TAURI_INVOKE<null>("repair_screen_permission", undefined, options),
 	/**  Valida Access ID / Access Secret y guarda las credenciales en el llavero. */
 	cloudValidate: (credentials: CloudCredentialsInput, options?: InvokeOptions) => __TAURI_INVOKE<CloudAccount>("cloud_validate", { credentials }, options),
 	/**  Lista los dispositivos de la cuenta, cruzados con lo encontrado en la red local. */
@@ -476,6 +481,11 @@ export type EffectDevicesEvent = {
 export type ErrorCode = 
 /**  Falta el permiso de grabación de pantalla. */
 "screen_permission_denied" | 
+/**
+ *  macOS dice que hay permiso de grabación de pantalla, pero niega la captura: quedó atado a
+ *  otra versión de la app (permiso "fantasma").
+ */
+"screen_permission_stale" | 
 /**  macOS bloquea la red local. */
 "local_network_denied" | 
 /**  El firewall bloquea el discovery UDP. */
@@ -535,6 +545,8 @@ export type ErrorCode =
 export type FixAction = 
 /**  Abrir un panel de ajustes del sistema. */
 { kind: "open_settings"; value: SystemPane } | 
+/**  macOS: olvidar el permiso de Grabación de pantalla de la app y volver a pedirlo. */
+{ kind: "repair_screen_permission" } | 
 /**  Renovar la clave local con las credenciales guardadas. */
 { kind: "renew_key" } | 
 /**  Reintentar. */

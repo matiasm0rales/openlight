@@ -28,7 +28,7 @@ export const commands = {
 	cloudListDevices: (options?: InvokeOptions) => __TAURI_INVOKE<CloudDeviceInfo_Serialize[]>("cloud_list_devices", undefined, options),
 	/**  Busca focos en la red local durante `timeout_s` segundos (también emite `discovery://found`). */
 	discoverLan: (timeoutS: number | null, options?: InvokeOptions) => __TAURI_INVOKE<DiscoveredDevice_Serialize[]>("discover_lan", { timeoutS }, options),
-	/**  Focos configurados. */
+	/**  Focos configurados, en el orden en que se muestran. */
 	devicesList: (options?: InvokeOptions) => __TAURI_INVOKE<ConfiguredDevice_Serialize[]>("devices_list", undefined, options),
 	/**  Agrega un foco. */
 	deviceAdd: (request: DeviceAddRequest_Deserialize, options?: InvokeOptions) => __TAURI_INVOKE<ConfiguredDevice_Serialize>("device_add", { request }, options),
@@ -36,6 +36,8 @@ export const commands = {
 	deviceUpdate: (request: DeviceAddRequest_Deserialize, options?: InvokeOptions) => __TAURI_INVOKE<ConfiguredDevice_Serialize>("device_update", { request }, options),
 	/**  Quita un foco (y su clave del llavero). */
 	deviceRemove: (device: DeviceId, options?: InvokeOptions) => __TAURI_INVOKE<null>("device_remove", { device }, options),
+	/**  Cambia el orden de los focos. `ids` tiene que nombrar a cada foco configurado una sola vez. */
+	devicesReorder: (ids: DeviceId[], options?: InvokeOptions) => __TAURI_INVOKE<null>("devices_reorder", { ids }, options),
 	/**  Corre un patrón de prueba en un foco. */
 	deviceTest: (device: DeviceId, pattern: TestPattern, options?: InvokeOptions) => __TAURI_INVOKE<null>("device_test", { device, pattern }, options),
 	/**  Control manual de un foco. */
@@ -525,6 +527,8 @@ export type ErrorCode =
 "device_in_use" | 
 /**  El foco no soporta color. */
 "device_no_colour" | 
+/**  El orden nuevo no nombra a cada foco configurado: la lista cambió mientras se ordenaba. */
+"device_order_mismatch" | 
 /**  Firma inválida (Access Secret mal copiado). */
 "cloud_invalid_signature" | 
 /**  Token inválido. */

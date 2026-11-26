@@ -34,6 +34,7 @@
     "allow-device-add",
     "allow-device-update",
     "allow-device-remove",
+    "allow-devices-reorder",
     "allow-device-test",
     "allow-device-manual",
     "allow-device-set-in-effect",

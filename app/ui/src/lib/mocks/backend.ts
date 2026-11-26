@@ -571,6 +571,17 @@ class MockBackend {
     return null;
   }
 
+  async devicesReorder(ids: string[]) {
+    await this.wait(150);
+    const byId = new Map(this.state.devices.map((d) => [d.id, d]));
+    if (new Set(ids).size !== ids.length || ids.length !== byId.size || !ids.every((id) => byId.has(id))) {
+      throw err("device_order_mismatch", [{ kind: "retry" }]);
+    }
+    this.state.devices = ids.map((id) => byId.get(id)!);
+    this.persist();
+    return null;
+  }
+
   async deviceTest(id: string) {
     const d = this.device(id);
     this.free(id);
@@ -801,6 +812,8 @@ class MockBackend {
         return this.deviceUpdate(a.request);
       case "device_remove":
         return this.deviceRemove(a.device);
+      case "devices_reorder":
+        return this.devicesReorder(a.ids);
       case "device_test":
         return this.deviceTest(a.device);
       case "device_manual":

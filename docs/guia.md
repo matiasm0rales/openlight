@@ -339,15 +339,16 @@ disponible** y no hay versiones publicadas.
 Para actualizar a mano, salí de la app e instalá la versión nueva encima: la configuración, la
 calibración y las claves se conservan.
 
-En macOS, como la app no está firmada, después de actualizar el sistema puede volver a pedir el
-permiso de **Grabación de pantalla** (quitá OpenLight de la lista y agregalo de nuevo) y la
-contraseña del **llavero**, una vez por cada clave. Elegí **Permitir siempre**.
+En macOS, como la app no está firmada con un certificado de Apple, después de actualizar el sistema
+puede volver a pedir el permiso de **Grabación de pantalla** (quitá OpenLight de la lista y agregalo
+de nuevo) y la contraseña del **llavero**. Elegí **Permitir siempre**.
 
 ## Dónde se guardan las cosas
 
 Las **claves** (la de cada foco, el Access ID y el Access Secret) van al llavero del sistema,
 bajo el servicio `openlight`: Acceso a Llaveros en macOS, Administrador de credenciales en Windows
-y el llavero del escritorio en Linux. Nunca se escriben en un archivo.
+y el llavero del escritorio en Linux. En macOS van todas juntas en una sola entrada; en Windows y
+Linux, una por clave. Nunca se escriben en un archivo.
 
 El resto (focos, zonas, ajustes, perfiles y calibración) son archivos JSON:
 
@@ -372,7 +373,7 @@ Se guardan los registros de los últimos 7 días.
    - Windows: *Configuración → Aplicaciones → Aplicaciones instaladas → OpenLight → Desinstalar*;
    - Linux: `sudo apt remove` o `sudo dnf remove` del paquete, o borrá el `.AppImage`.
 5. Borrá las carpetas de [datos y registros](#dónde-se-guardan-las-cosas).
-6. En el llavero del sistema, borrá las entradas del servicio `openlight` que queden (el Access
-   ID y el Access Secret no se borran desde la app).
+6. En el llavero del sistema, borrá las entradas del servicio `openlight` que queden. El Access
+   ID y el Access Secret no se borran desde la app (en macOS están en la entrada única).
 7. Opcional: en iot.tuya.com podés desvincular la cuenta de Smart Life o borrar el proyecto
    Cloud, y en macOS quitar OpenLight de las listas de Privacidad y seguridad.

@@ -632,7 +632,13 @@ fn ciclo(window: &tauri::WebviewWindow, cuenta: &Cuenta) -> Value {
         .set_position(tauri::LogicalPosition::new(-30_000.0, -30_000.0))
         .expect("mover la ventana");
     window.show().expect("mostrar");
-    openlight_lib::windows::sync_visibility(window.app_handle(), None);
+    // En el hilo principal, como cuando se muestra desde el menú del tray: el estado completo sale
+    // desde ahí
+    let app = window.app_handle().clone();
+    window
+        .app_handle()
+        .run_on_main_thread(move || openlight_lib::windows::sync_visibility(&app, None))
+        .expect("hilo principal");
     let visible = tramo();
     window.close().expect("cerrar");
     esperar(1000);

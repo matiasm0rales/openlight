@@ -57,8 +57,8 @@ pub trait EventSink: Send + Sync {
 
 /// La puerta hacia la UI. Con ninguna ventana a la vista, lo que solo sirve para dibujar (la
 /// salud de cada foco, el color en vivo y las estadísticas) no sale: cada evento le cuesta CPU y
-/// memoria a la ventana, la mire alguien o no. El estado de la sesión, los errores y lo que
-/// encuentra la búsqueda pasan siempre.
+/// memoria a la ventana, la mire alguien o no. Todo lo demás (la sesión, los errores, la
+/// búsqueda, qué focos están en el efecto) pasa siempre.
 ///
 /// Se guarda lo último de cada foco y, cuando una ventana vuelve a verse, se manda junto con el
 /// estado de la sesión, así la UI no queda vieja.
@@ -125,7 +125,7 @@ impl EventSink for UiGate {
                 true
             }
             AppEvent::PipelineStats(_) => true,
-            // Errores, búsqueda y lo que se agregue: pasa siempre
+            // El resto, y lo que se agregue, pasa siempre
             _ => false,
         };
         if ui.visible || !drawing {

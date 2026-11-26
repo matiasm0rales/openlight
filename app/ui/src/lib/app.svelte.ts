@@ -15,6 +15,7 @@ import type {
 import { EVENT_COLOR_LIVE, EVENT_DEVICE_HEALTH, EVENT_ERROR_RAISED, EVENT_PIPELINE_STATS, EVENT_SESSION_STATE } from "./bindings";
 import { attempt, commands, on, openExternal, toUserFacing } from "./ipc";
 import { go } from "./router.svelte";
+import { pageHidden, whenVisible } from "./visibility";
 
 export interface RaisedError extends UserFacingError {
   uid: number;
@@ -44,12 +45,16 @@ export const app = $state({
 
 let uid = 0;
 
+/** Cuántos errores guarda la pila: pasado eso se descarta el más viejo. */
+export const MAX_ERRORS = 20;
+
 /** Muestra un error en la pila global (arriba a la derecha). Un error repetido no se apila. */
 export function raise(e: unknown, retry?: () => unknown): void {
   const err = toUserFacing(e);
   const same = app.errors.find((x) => x.code === err.code && JSON.stringify(x.params) === JSON.stringify(err.params));
   if (same) return;
   app.errors.push({ ...err, uid: ++uid, retry });
+  if (app.errors.length > MAX_ERRORS) app.errors.shift();
 }
 
 export function dismiss(errUid: number): void {
@@ -147,6 +152,27 @@ export function deviceName(id: string): string {
   return app.devices.find((d) => d.id === id)?.name ?? id;
 }
 
+/**
+ * El estado en vivo de cada foco. Con la página oculta solo se guarda lo último (sin tocar el
+ * estado, así no se redibuja a escondidas) y se aplica al volver a verla. El backend ya no manda
+ * estos eventos con las ventanas ocultas; esto cubre lo que él no detecta (una ventana tapada).
+ */
+function liveStore<T extends { device: string }>(target: () => Record<string, T>): (e: T) => void {
+  const later = new Map<string, T>();
+  whenVisible(() => {
+    for (const [device, e] of later) target()[device] = e;
+    later.clear();
+  });
+  return (e) => {
+    if (pageHidden()) {
+      later.set(e.device, e);
+      return;
+    }
+    later.delete(e.device);
+    target()[e.device] = e;
+  };
+}
+
 let started = false;
 
 export async function init(): Promise<void> {
@@ -156,14 +182,11 @@ export async function init(): Promise<void> {
     on(EVENT_SESSION_STATE, (e) => {
       app.session = e.state;
     }),
-    on(EVENT_DEVICE_HEALTH, (e) => {
-      app.health[e.device] = e;
-    }),
-    on(EVENT_COLOR_LIVE, (e) => {
-      app.live[e.device] = e;
-    }),
+    on(EVENT_DEVICE_HEALTH, liveStore(() => app.health)),
+    on(EVENT_COLOR_LIVE, liveStore(() => app.live)),
     on(EVENT_ERROR_RAISED, (e) => raise(e)),
     on(EVENT_PIPELINE_STATS, (e: PipelineStatsEvent) => {
+      if (pageHidden()) return;
       const sample: StatsSample = {
         at: Date.now(),
         capture_fps: e.capture_fps ?? 0,

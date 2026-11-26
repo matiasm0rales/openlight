@@ -247,6 +247,14 @@
       "title": "No pude importar esa carpeta",
       "detail": "No encontré un devices.json válido."
     },
+    "backup_invalid": {
+      "title": "No pude leer ese respaldo",
+      "detail": "El archivo no es un respaldo de OpenLight o está dañado. Elegí el .json que guardaste con «Exportar respaldo»."
+    },
+    "backup_unsupported_version": {
+      "title": "Ese respaldo es de otra versión",
+      "detail": "El archivo usa el formato {found} y esta versión de OpenLight lee el {supported}. Actualizá OpenLight y probá de nuevo."
+    },
     "brightness_range": {
       "title": "El brillo máximo no puede ser menor que el mínimo",
       "detail": "Con mínimo {min} % y máximo {max} % no queda rango. Subí el máximo o bajá el mínimo. Para apagar un foco usá «Sacar del efecto» o «Apagar»."

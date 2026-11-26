@@ -6,6 +6,7 @@ use std::sync::mpsc::{self, RecvTimeoutError};
 
 use openlight_types::Frame;
 use screencapturekit::cm::SCFrameStatus;
+use screencapturekit::error::{SCError, SCStreamErrorCode};
 use screencapturekit::prelude::*;
 use screencapturekit::stream::configuration::SCCaptureResolutionType;
 use tokio::sync::watch;
@@ -26,11 +27,15 @@ pub(crate) struct Params {
 /// Bucle del hilo de captura: mantiene un stream abierto mientras el monitor esté disponible y
 /// publica `None` mientras no lo esté. Termina al recibir algo por `stop` (o si se cierra el
 /// canal) o cuando ya nadie escucha el `watch`.
+///
+/// Por `primer_intento` avisa una sola vez, tras la primera vuelta, si el sistema negó el permiso.
 pub(crate) fn supervise(
     params: Params,
     tx: watch::Sender<Option<Frame>>,
     stop: mpsc::Receiver<()>,
+    primer_intento: mpsc::SyncSender<bool>,
 ) {
+    let mut primer_intento = Some(primer_intento);
     let tx: Salida = Arc::new(tx);
     let mut activo: Option<Activo> = None;
     loop {
@@ -44,10 +49,18 @@ pub(crate) fn supervise(
             }
             sin_pantalla(&tx);
         }
+        let mut sin_permiso = false;
         if disponible && activo.is_none() {
             // Si falla (permiso revocado, monitor que se fue justo ahora), se reintenta en la
             // próxima revisión.
-            activo = abrir(&params, &tx).ok();
+            match abrir(&params, &tx) {
+                Ok(a) => activo = Some(a),
+                Err(error) => sin_permiso = es_negativa_de_permiso(&error),
+            }
+        }
+        if let Some(aviso) = primer_intento.take() {
+            // Si quien arrancó la captura ya no espera, no importa.
+            let _ = aviso.send(sin_permiso);
         }
         if tx.is_closed() {
             break;
@@ -80,13 +93,28 @@ impl Activo {
     }
 }
 
-fn abrir(params: &Params, tx: &Salida) -> Result<Activo, String> {
-    let contenido = SCShareableContent::get().map_err(|e| e.to_string())?;
+/// Si ScreenCaptureKit negó la captura por falta de permiso.
+///
+/// El código `UserDeclined` solo llega por el delegado: al pedir el contenido o arrancar el stream
+/// el puente entrega nada más que el texto, en el idioma del sistema. Todas sus traducciones
+/// nombran «TCC» (el subsistema de permisos de macOS).
+fn es_negativa_de_permiso(error: &SCError) -> bool {
+    error.stream_error_code() == Some(SCStreamErrorCode::UserDeclined)
+        || error.to_string().contains("TCC")
+}
+
+fn abrir(params: &Params, tx: &Salida) -> Result<Activo, SCError> {
+    let contenido = SCShareableContent::get()?;
     let display = contenido
         .displays()
         .into_iter()
         .find(|d| d.display_id() == params.display)
-        .ok_or_else(|| format!("ScreenCaptureKit no ve el monitor {}", params.display))?;
+        .ok_or_else(|| {
+            SCError::DisplayNotFound(format!(
+                "ScreenCaptureKit no ve el monitor {}",
+                params.display
+            ))
+        })?;
 
     let apps = contenido.applications();
     let pid = std::process::id();
@@ -100,8 +128,7 @@ fn abrir(params: &Params, tx: &Salida) -> Result<Activo, String> {
     let filtro = SCContentFilter::create()
         .with_display(&display)
         .with_excluding_applications(&propias, &[])
-        .build()
-        .map_err(|e| e.to_string())?;
+        .build()?;
 
     let (ancho, alto) = params.target;
     // 1/fps como fracción: 1000 / (fps * 1000) s.
@@ -132,12 +159,9 @@ fn abrir(params: &Params, tx: &Salida) -> Result<Activo, String> {
         Delegado {
             fallo: Arc::clone(&fallo),
         },
-    )
-    .map_err(|e| e.to_string())?;
-    stream
-        .add_output_handler(Receptor { tx: Arc::clone(tx) }, SCStreamOutputType::Screen)
-        .map_err(|e| e.to_string())?;
-    stream.start_capture().map_err(|e| e.to_string())?;
+    )?;
+    stream.add_output_handler(Receptor { tx: Arc::clone(tx) }, SCStreamOutputType::Screen)?;
+    stream.start_capture()?;
     Ok(Activo { stream, fallo })
 }
 
@@ -198,4 +222,49 @@ fn leer_cuadro(sample: &CMSampleBuffer) -> Option<Frame> {
         compacto,
     )
     .ok()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Los textos con los que macOS niega la captura (`SCSTREAM_ERROR_USER_DECLINED` de ReplayKit)
+    // están traducidos al idioma del sistema; todos nombran «TCC».
+    #[test]
+    fn la_negativa_se_reconoce_en_cualquier_idioma() {
+        for texto in [
+            "The user declined TCCs for application, window, display capture",
+            "El usuario rechazó la configuración de TCC para la captura de pantallas, ventanas y aplicaciones",
+            "Benutzer:in hat TCCs für die Aufnahme durch Apps, Fenster, Displays abgelehnt",
+            "ユーザがアプリケーション、ウインドウ、ディスプレイ取り込みのTCCを拒否しました",
+        ] {
+            // Así llegan del puente en Swift: sin código, solo con el texto
+            for error in [
+                SCError::NoShareableContent(format!("Content unavailable: {texto}")),
+                SCError::CaptureStartFailed(format!("Stream error: {texto}")),
+            ] {
+                assert!(es_negativa_de_permiso(&error), "{error}");
+            }
+        }
+    }
+
+    #[test]
+    fn la_negativa_tambien_se_reconoce_por_su_codigo() {
+        assert!(es_negativa_de_permiso(&SCError::from_error_code(-3801)));
+    }
+
+    #[test]
+    fn otras_fallas_no_son_falta_de_permiso() {
+        for error in [
+            SCError::NoShareableContent(
+                "Content unavailable: The operation couldn’t be completed".into(),
+            ),
+            SCError::CaptureStartFailed("Stream error: Failed to start the stream".into()),
+            SCError::DisplayNotFound("ScreenCaptureKit no ve el monitor 1".into()),
+            // -3802: no se pudo arrancar
+            SCError::from_error_code(-3802),
+        ] {
+            assert!(!es_negativa_de_permiso(&error), "{error}");
+        }
+    }
 }

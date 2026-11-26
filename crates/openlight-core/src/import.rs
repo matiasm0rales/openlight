@@ -28,7 +28,7 @@ use serde::Deserialize;
 use serde_json::Value;
 
 use crate::error::{CoreError, Result};
-use crate::store::{DeviceRecord, Store};
+use crate::store::{DeviceRecord, Store, next_order};
 
 /// Faltaba la versión del protocolo y se asumió 3.3.
 pub const WARN_VERSION_ASSUMED: &str = "import.warning.version_assumed";
@@ -146,6 +146,7 @@ pub fn import_legacy(
             capabilities: None,
             zones: Vec::new(),
             overrides: SettingsOverride::default(),
+            order: 0,
         };
         let version_known = version_of(legacy.version.as_ref()).is_some();
         candidates.insert(
@@ -172,6 +173,7 @@ pub fn import_legacy(
                 capabilities: None,
                 zones: Vec::new(),
                 overrides: SettingsOverride::default(),
+                order: 0,
             },
             key: None,
             version_known: false,
@@ -240,6 +242,7 @@ pub fn import_legacy(
                 if let Some(display) = default_display {
                     record.zones = vec![Zone::from_preset(display.clone(), ZonePreset::Full)];
                 }
+                record.order = next_order(&existing);
                 existing.push(record);
             }
         }

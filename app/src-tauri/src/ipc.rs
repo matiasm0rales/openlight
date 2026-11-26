@@ -115,7 +115,7 @@ pub async fn discover_lan(app: App<'_>, timeout_s: f32) -> CmdResult<Vec<Discove
 
 // ---------- Dispositivos ----------
 
-/// Focos configurados.
+/// Focos configurados, en el orden en que se muestran.
 #[tauri::command]
 #[specta::specta]
 pub async fn devices_list(app: App<'_>) -> CmdResult<Vec<ConfiguredDevice>> {
@@ -141,6 +141,13 @@ pub async fn device_update(app: App<'_>, request: DeviceAddRequest) -> CmdResult
 #[specta::specta]
 pub async fn device_remove(app: App<'_>, device: DeviceId) -> CmdResult<()> {
     app.device_remove(device).await
+}
+
+/// Cambia el orden de los focos. `ids` tiene que nombrar a cada foco configurado una sola vez.
+#[tauri::command]
+#[specta::specta]
+pub async fn devices_reorder(app: App<'_>, ids: Vec<DeviceId>) -> CmdResult<()> {
+    app.devices_reorder(ids)
 }
 
 /// Corre un patrón de prueba en un foco.
@@ -481,6 +488,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             device_add,
             device_update,
             device_remove,
+            devices_reorder,
             device_test,
             device_manual,
             device_set_in_effect,

@@ -28,4 +28,4 @@ pub use power::{NativePower, NoNativePower, PowerEvent, PowerEvents};
 pub use session::{
     CAPTURE_SIZE, DeviceSpec, DeviceTuning, Session, SessionEvent, SessionOptions, SourceFactory,
 };
-pub use store::{Config, DeviceRecord, DeviceState, MAX_ZONES, State, Store};
+pub use store::{Config, DeviceRecord, DeviceState, MAX_ZONES, State, Store, next_order};

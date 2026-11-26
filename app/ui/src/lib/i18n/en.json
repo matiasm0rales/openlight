@@ -125,10 +125,18 @@
       "active": "Active",
       "activate": "Activate",
       "deactivate": "Deactivate",
-      "edit": "Edit values",
+      "edit": "Edit",
+      "edit_help": "Change this profile's values",
       "duplicate": "Duplicate",
       "rename": "Rename",
-      "delete_named": "Delete {name}",
+      "more": "More",
+      "more_named": "More actions for {name}",
+      "actions_of": "Actions for {name}",
+      "delete": "Delete",
+      "delete_named": "Delete the {name} profile",
+      "delete_title": "Delete the “{name}” profile?",
+      "delete_text": "Its values and shortcut are removed. This can't be undone.",
+      "delete_confirm": "Delete profile",
       "shortcut": "Shortcut",
       "press_keys": "Press the combination… (Esc cancels, Delete removes it)",
       "assign": "Assign",
@@ -206,6 +214,10 @@
     "device_no_colour": {
       "title": "This device can't show colors",
       "detail": "It only has white light, so it can't follow the screen."
+    },
+    "device_order_mismatch": {
+      "title": "The list of lights changed",
+      "detail": "The order wasn't saved because the list of lights changed while you were arranging it. Move it again."
     },
     "cloud_invalid_signature": {
       "title": "The Access Secret doesn't match",
@@ -466,6 +478,16 @@
     "rect_label": "{name}'s zone",
     "rect_value": "from {x}, {y}; size {w} × {h}",
     "keys": "Drag the zone or use the keyboard: arrows move it, Shift + arrows resize it, Alt for fine steps.",
+    "layout_title": "Layout for all bulbs",
+    "layout_order": "Numbers follow the Dashboard order: {list}.",
+    "layout": {
+      "full": "Full screen",
+      "sides": "Left and right",
+      "stacked": "Top and bottom",
+      "top_and_two": "One on top, two below",
+      "columns": "Three columns",
+      "corners": "Four corners"
+    },
     "presets_for": "Zone presets for {name}",
     "preset": {
       "full": "Whole",
@@ -473,6 +495,10 @@
       "right": "Right",
       "top": "Top",
       "bottom": "Bottom",
+      "top_left": "Top left",
+      "top_right": "Top right",
+      "bottom_left": "Bottom left",
+      "bottom_right": "Bottom right",
       "center": "Center",
       "custom": "Custom"
     }
@@ -669,7 +695,18 @@
     "no_zone": "No area yet: choose what it follows in Devices.",
     "white": "White",
     "turn_off": "Turn off",
-    "device_settings": "Bulb settings"
+    "device_settings": "Bulb settings",
+    "bulbs": "Your bulbs",
+    "reorder": "Reorder {name}",
+    "reorder_help": "Use the arrow keys to move it, drag it, or press this button to show “Move before” and “Move after”.",
+    "reorder_tooltip": "Drag to reorder (or use the arrow keys)",
+    "move_before": "Move before",
+    "move_after": "Move after",
+    "moved": "{name} moved to position {n} of {total}.",
+    "already_first": "{name} is already first.",
+    "already_last": "{name} is already last.",
+    "move_failed": "The order couldn't be saved. It's back to how it was.",
+    "drop_here": "{name} goes here"
   },
   "devices": {
     "title": "Your bulbs",
@@ -760,7 +797,9 @@
     "remove_from_effect": "Remove this light from the effect",
     "out_of_effect": "This light is not in the effect: it stays as you leave it.",
     "add_to_effect": "Add it back to the effect",
-    "no_devices": "No bulbs to control yet."
+    "no_devices": "No bulbs to control yet.",
+    "no_devices_help": "Add one in Devices and you can pick its color and brightness here.",
+    "go_devices": "Go to Devices"
   },
   "diagnostics": {
     "title": "Diagnostics",

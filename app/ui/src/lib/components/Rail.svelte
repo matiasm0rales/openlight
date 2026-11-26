@@ -10,6 +10,8 @@
 
   const items: { name: RouteName; icon: IconName }[] = [
     { name: "dashboard", icon: "home" },
+    // Mismo ícono que el botón «Control manual» de cada tarjeta del panel.
+    { name: "manual", icon: "bulb" },
     { name: "settings", icon: "sliders" },
     { name: "devices", icon: "devices" },
     { name: "diagnostics", icon: "pulse" },
@@ -193,6 +195,17 @@
   .seg button[aria-pressed="true"] {
     background: var(--accent);
     color: var(--accent-ink);
+  }
+  /* Ventana baja (la app admite 520 px de alto): se aprieta para que entren todas las secciones. */
+  @media (min-width: 821px) and (max-height: 620px) {
+    .rail {
+      gap: 0.9rem;
+      padding-block: 0.9rem;
+      overflow-y: auto;
+    }
+    a {
+      padding-block: 0.55rem;
+    }
   }
   @media (max-width: 820px) {
     .rail {

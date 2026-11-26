@@ -19,7 +19,7 @@ use serde_json::Value;
 
 use crate::error::{CoreError, Result};
 use crate::import::error_place;
-use crate::store::{Config, DeviceRecord, MAX_ZONES, Store, check_device_id};
+use crate::store::{Config, DeviceRecord, MAX_ZONES, Store, check_device_id, next_order};
 
 /// Identifica el archivo.
 pub const FORMAT: &str = "openlight-backup";
@@ -351,7 +351,10 @@ pub fn apply(
                 replaced.push(id.clone());
             }
             None => {
+                // Como cualquier foco que se agrega: al final de la lista
+                let order = next_order(&records);
                 records.push(DeviceRecord {
+                    order,
                     id: id.clone(),
                     name: device.name,
                     ip: None,

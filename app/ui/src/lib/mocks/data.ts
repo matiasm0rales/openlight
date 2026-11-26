@@ -18,6 +18,9 @@ export const IDS = {
   hall: "bf77d2e019c4a8b3f6e5a0",
   plug: "eb0d4c8a1f2e3b5a6c7d9e",
   strip: "bf5e6a7c8d9e0f1a2b3c4d",
+  // Solo en el escenario de cuatro focos (no están en la cuenta de la nube falsa).
+  shelf: "bf00fa15e00000000000e1",
+  ceiling: "bf00fa15e00000000000e2",
 } as const;
 
 const CAPS_W509: Capabilities_Serialize = {

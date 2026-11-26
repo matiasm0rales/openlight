@@ -125,10 +125,18 @@
       "active": "Activo",
       "activate": "Activar",
       "deactivate": "Desactivar",
-      "edit": "Editar valores",
+      "edit": "Editar",
+      "edit_help": "Cambiar los valores de este perfil",
       "duplicate": "Duplicar",
       "rename": "Renombrar",
-      "delete_named": "Borrar {name}",
+      "more": "Más",
+      "more_named": "Más acciones de {name}",
+      "actions_of": "Acciones de {name}",
+      "delete": "Eliminar",
+      "delete_named": "Eliminar el perfil {name}",
+      "delete_title": "¿Eliminar el perfil «{name}»?",
+      "delete_text": "Se borran sus valores y su atajo. Esto no se puede deshacer.",
+      "delete_confirm": "Eliminar perfil",
       "shortcut": "Atajo",
       "press_keys": "Apretá la combinación… (Esc cancela, Borrar lo quita)",
       "assign": "Asignar",
@@ -206,6 +214,10 @@
     "device_no_colour": {
       "title": "Este dispositivo no muestra colores",
       "detail": "Solo tiene luz blanca, así que no puede seguir la pantalla."
+    },
+    "device_order_mismatch": {
+      "title": "La lista de focos cambió",
+      "detail": "No guardé el orden porque la lista de focos cambió mientras lo acomodabas. Volvé a moverlo."
     },
     "cloud_invalid_signature": {
       "title": "El Access Secret no coincide",
@@ -466,6 +478,16 @@
     "rect_label": "Zona de {name}",
     "rect_value": "desde {x}, {y}; tamaño {w} × {h}",
     "keys": "Arrastrá la zona o usá el teclado: flechas para moverla, Mayús + flechas para cambiar el tamaño, Alt para pasos finos.",
+    "layout_title": "Distribución para todos los focos",
+    "layout_order": "Los números siguen el orden del Panel: {list}.",
+    "layout": {
+      "full": "Pantalla completa",
+      "sides": "Izquierda y derecha",
+      "stacked": "Arriba y abajo",
+      "top_and_two": "Una arriba y dos abajo",
+      "columns": "Tres columnas",
+      "corners": "Cuatro esquinas"
+    },
     "presets_for": "Atajos de zona para {name}",
     "preset": {
       "full": "Toda",
@@ -473,6 +495,10 @@
       "right": "Derecha",
       "top": "Arriba",
       "bottom": "Abajo",
+      "top_left": "Arriba izquierda",
+      "top_right": "Arriba derecha",
+      "bottom_left": "Abajo izquierda",
+      "bottom_right": "Abajo derecha",
       "center": "Centro",
       "custom": "A mano"
     }
@@ -669,7 +695,18 @@
     "no_zone": "Sin zona: elegí qué sigue en Dispositivos.",
     "white": "Blanco",
     "turn_off": "Apagar",
-    "device_settings": "Ajustes del foco"
+    "device_settings": "Ajustes del foco",
+    "bulbs": "Tus focos",
+    "reorder": "Reordenar {name}",
+    "reorder_help": "Usá las flechas para cambiarlo de lugar, arrastralo, o activá este botón para ver «Mover antes» y «Mover después».",
+    "reorder_tooltip": "Arrastrá para reordenar (o usá las flechas)",
+    "move_before": "Mover antes",
+    "move_after": "Mover después",
+    "moved": "{name} pasó al lugar {n} de {total}.",
+    "already_first": "{name} ya está primero.",
+    "already_last": "{name} ya está al final.",
+    "move_failed": "No se pudo guardar el orden. Volvió a como estaba.",
+    "drop_here": "{name} va acá"
   },
   "devices": {
     "title": "Tus focos",
@@ -760,7 +797,9 @@
     "remove_from_effect": "Sacar este foco del efecto",
     "out_of_effect": "Este foco está fuera del efecto: queda como lo dejes.",
     "add_to_effect": "Volver a incluirlo en el efecto",
-    "no_devices": "Todavía no hay focos para controlar."
+    "no_devices": "Todavía no hay focos para controlar.",
+    "no_devices_help": "Agregá uno desde Dispositivos y vas a poder elegir su color y su brillo acá.",
+    "go_devices": "Ir a Dispositivos"
   },
   "diagnostics": {
     "title": "Diagnóstico",

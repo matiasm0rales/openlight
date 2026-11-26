@@ -12,7 +12,7 @@ use color_engine::Calibration;
 use openlight_core::import::{
     WARN_CALIBRATION_UNASSIGNED, WARN_NO_KEY, WARN_SKIPPED_NON_LIGHT, WARN_VERSION_ASSUMED,
 };
-use openlight_core::{CoreError, Store, import_legacy};
+use openlight_core::{CoreError, DeviceRecord, Store, import_legacy};
 use openlight_types::{DeviceId, DisplayId, ProtocolVersion, ZonePreset};
 use secrets::{MemoryStore, SecretKey, SecretStore};
 
@@ -243,6 +243,33 @@ fn volver_a_importar_conserva_las_zonas_y_ajustes_del_usuario() {
         Some(KEY_A),
         "la clave se refresca"
     );
+}
+
+#[test]
+fn lo_importado_va_despues_de_los_focos_que_ya_estaban() {
+    let e = env();
+    let already = DeviceRecord {
+        id: dev("bf00000000000000zzzz09"),
+        name: "Zócalo".into(),
+        ip: None,
+        auto_ip: true,
+        version: ProtocolVersion::V35,
+        mapping: None,
+        capabilities: None,
+        zones: Vec::new(),
+        overrides: Default::default(),
+        order: 7,
+    };
+    e.store
+        .save_devices(std::slice::from_ref(&already))
+        .unwrap();
+
+    import_legacy(&e.legacy, &e.store, &e.secrets, None).unwrap();
+
+    let devices = e.store.load_devices().unwrap();
+    assert_eq!(devices[0], already, "el que estaba sigue primero e intacto");
+    let orders: Vec<u32> = devices.iter().map(|d| d.order).collect();
+    assert_eq!(orders, [7, 8, 9]);
 }
 
 #[test]

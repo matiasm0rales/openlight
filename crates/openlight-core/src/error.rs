@@ -44,6 +44,9 @@ pub enum CoreError {
     /// Un dato no pasa la validación (id de foco con caracteres raros, ajuste fuera de rango...).
     #[error("dato inválido: {0}")]
     Invalid(String),
+    /// La lista con el orden nuevo no es la de los focos configurados.
+    #[error("la lista a ordenar no nombra una sola vez a cada foco configurado")]
+    DeviceOrderMismatch,
     /// Otra tarea (la sesión o la calibración) tiene el foco.
     #[error("el foco {device} lo está usando «{holder}»")]
     DeviceLocked {
@@ -106,6 +109,7 @@ impl From<CoreError> for UserFacingError {
             | CoreError::UnsupportedVersion { .. }
             | CoreError::Secret(_) => ErrorCode::Storage,
             CoreError::Invalid(_) => ErrorCode::InvalidSetting,
+            CoreError::DeviceOrderMismatch => ErrorCode::DeviceOrderMismatch,
             // El candado es de esta app: nunca es culpa de otra
             CoreError::DeviceLocked { holder, .. } if holder == Holder::Session.as_str() => {
                 ErrorCode::DeviceInEffect

@@ -44,6 +44,8 @@ pub enum ErrorCode {
     DeviceInUse,
     /// El foco no soporta color.
     DeviceNoColour,
+    /// El orden nuevo no nombra a cada foco configurado: la lista cambió mientras se ordenaba.
+    DeviceOrderMismatch,
     /// Firma inválida (Access Secret mal copiado).
     CloudInvalidSignature,
     /// Token inválido.
@@ -80,7 +82,7 @@ pub enum ErrorCode {
 
 impl ErrorCode {
     /// Todos los códigos (para verificar que cada uno tenga sus textos).
-    pub const ALL: [Self; 31] = [
+    pub const ALL: [Self; 32] = [
         Self::ScreenPermissionDenied,
         Self::ScreenPermissionStale,
         Self::LocalNetworkDenied,
@@ -96,6 +98,7 @@ impl ErrorCode {
         Self::DeviceInEffect,
         Self::DeviceInUse,
         Self::DeviceNoColour,
+        Self::DeviceOrderMismatch,
         Self::CloudInvalidSignature,
         Self::CloudInvalidToken,
         Self::CloudPermissionDenied,

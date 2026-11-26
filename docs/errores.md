@@ -12,7 +12,8 @@ cambian entre versiones.
   [`device_not_found_on_lan`](#device_not_found_on_lan) · [`lan_scan_failed`](#lan_scan_failed) ·
   [`device_key_rejected`](#device_key_rejected) · [`device_timeout`](#device_timeout) ·
   [`device_busy`](#device_busy) · [`device_in_effect`](#device_in_effect) ·
-  [`device_in_use`](#device_in_use) · [`device_no_colour`](#device_no_colour)
+  [`device_in_use`](#device_in_use) · [`device_no_colour`](#device_no_colour) ·
+  [`device_order_mismatch`](#device_order_mismatch)
 - Nube de Tuya: [`cloud_invalid_signature`](#cloud_invalid_signature) ·
   [`cloud_invalid_token`](#cloud_invalid_token) ·
   [`cloud_permission_denied`](#cloud_permission_denied) ·
@@ -248,6 +249,15 @@ Si el foco ya estaba agregado, un error de búsqueda no le borra nada: conserva 
 - **Por qué pasa:** es una luz solo blanca, no es una luz, o se pidió una escena que el foco no
   tiene.
 - **Arreglo:** no se puede usar para seguir la pantalla. Quitalo y elegí un foco con color.
+
+### device_order_mismatch
+
+**«La lista de focos cambió»**
+
+- **Qué significa:** el orden nuevo no se guardó.
+- **Por qué pasa:** mientras acomodabas los focos se agregó o se quitó uno (por ejemplo, desde el
+  asistente).
+- **Arreglo:** la lista se vuelve a cargar sola; mové el foco otra vez.
 
 ## Nube de Tuya
 

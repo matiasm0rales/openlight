@@ -5,7 +5,7 @@ use std::sync::Arc;
 use std::sync::atomic::Ordering;
 use std::time::Duration;
 
-use openlight_core::{DeviceGuard, DeviceRecord, Holder};
+use openlight_core::{DeviceGuard, DeviceRecord, Holder, next_order};
 use openlight_types::ipc::{ConfiguredDevice, DeviceAddRequest, ManualSet, TestPattern};
 use openlight_types::{
     Capabilities, DeviceError, DeviceId, DpMapping, Dps, ErrorCode, FixAction, HelpTopic, Hsv,
@@ -31,7 +31,7 @@ pub(crate) struct ManualConn {
 }
 
 impl Backend {
-    /// Focos configurados.
+    /// Focos configurados, en el orden en que se muestran.
     pub fn devices_list(&self) -> CmdResult<Vec<ConfiguredDevice>> {
         Ok(self.records()?.iter().map(|r| self.configured(r)).collect())
     }
@@ -80,6 +80,8 @@ impl Backend {
             // conserva lo que tenía.
             zones: previous.map_or_else(|| self.default_zones(), |i| records[i].zones.clone()),
             overrides: previous.map_or_else(Default::default, |i| records[i].overrides.clone()),
+            // Un foco nuevo va al final de la lista; el que se vuelve a agregar no se mueve
+            order: previous.map_or_else(|| next_order(&records), |i| records[i].order),
         };
         self.secrets.set(
             &SecretKey::DeviceLocalKey(id.clone()),
@@ -191,6 +193,15 @@ impl Backend {
         if self.save_excluded(&device, false)? {
             self.effect_changed();
         }
+        self.notify_changed();
+        Ok(())
+    }
+
+    /// Cambia el orden de la lista de focos (Panel, Dispositivos y tray). `ids` tiene que
+    /// nombrar a cada foco configurado una sola vez.
+    pub fn devices_reorder(&self, ids: Vec<DeviceId>) -> CmdResult<()> {
+        let _edit = self.edit_lock();
+        self.store.reorder_devices(&ids)?;
         self.notify_changed();
         Ok(())
     }

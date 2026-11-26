@@ -14,6 +14,7 @@ import type {
 } from "./bindings";
 import { EVENT_COLOR_LIVE, EVENT_DEVICE_HEALTH, EVENT_EFFECT_DEVICES, EVENT_ERROR_RAISED, EVENT_PIPELINE_STATS, EVENT_SESSION_STATE } from "./bindings";
 import { attempt, commands, on, openExternal, toUserFacing } from "./ipc";
+import { sortByIds } from "./order";
 import { frameMs, pacedByDevice } from "./pace";
 import { go, route } from "./router.svelte";
 import { pageHidden, whenVisible } from "./visibility";
@@ -159,7 +160,8 @@ export async function dismissRepairNotice(): Promise<void> {
 
 export async function refreshDevices(): Promise<void> {
   const r = await attempt(() => commands.devicesList());
-  if (r.ok) app.devices = r.value;
+  // Con un orden guardándose, la lista que llega puede ser la de antes: se mantiene lo que se ve.
+  if (r.ok) app.devices = reordering ? sortByIds(r.value, reordering.wanted) : r.value;
   else raise(r.error, refreshDevices);
 }
 
@@ -172,6 +174,54 @@ export async function refreshKeys(): Promise<void> {
 /** Llegó la clave de un foco: deja de figurar como pendiente. */
 export function keyArrived(device: string): void {
   app.withoutKey = app.withoutKey.filter((id) => id !== device);
+}
+
+/** El guardado de un orden en curso: lo que se quiere y lo último que confirmó el backend. */
+interface Reorder {
+  wanted: string[];
+  saved: string[];
+  done: Promise<boolean>;
+}
+let reordering: Reorder | null = null;
+
+/**
+ * Cambia el orden de los focos: la lista se ve así al instante y se guarda en segundo plano. De
+ * a un guardado por vez; si mientras tanto se pide otro orden, solo sale el último. Si falla,
+ * vuelve al último orden guardado. Devuelve `true` si quedó guardado.
+ */
+export function reorderDevices(ids: string[]): Promise<boolean> {
+  const before = app.devices.map((d) => d.id);
+  app.devices = sortByIds(app.devices, ids);
+  if (reordering) {
+    reordering.wanted = ids;
+    return reordering.done;
+  }
+  const job: Reorder = { wanted: ids, saved: before, done: Promise.resolve(true) };
+  reordering = job;
+  job.done = saveOrder(job);
+  return job.done;
+}
+
+async function saveOrder(job: Reorder): Promise<boolean> {
+  for (;;) {
+    const ids = job.wanted;
+    const r = await attempt(() => commands.devicesReorder(ids));
+    if (!r.ok) {
+      const wanted = job.wanted;
+      reordering = null;
+      app.devices = sortByIds(app.devices, job.saved);
+      // Si cambió la lista de focos, repetir lo mismo volvería a fallar: alcanza con releerla.
+      raise(r.error, r.error.code === "device_order_mismatch" ? undefined : () => reorderDevices(wanted));
+      void refreshDevices();
+      return false;
+    }
+    job.saved = ids;
+    if (job.wanted === ids) {
+      reordering = null;
+      app.devices = sortByIds(app.devices, ids);
+      return true;
+    }
+  }
 }
 
 export async function refreshSettings(): Promise<void> {

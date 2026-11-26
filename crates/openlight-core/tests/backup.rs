@@ -91,6 +91,7 @@ fn record(id: &str) -> DeviceRecord {
         capabilities: Some(caps()),
         zones: vec![zone("1", ZonePreset::Left)],
         overrides: values(&[(SettingId::BrightnessMax, 0.7)]),
+        order: 0,
     }
 }
 
@@ -416,14 +417,11 @@ fn cualquier_nombre_que_la_app_guarda_se_puede_volver_a_importar() {
 
     let (_other, target) = fresh();
     apply(&target, &text, DuplicatePolicy::Skip);
-    let names: Vec<String> = target
-        .load_devices()
-        .unwrap()
-        .into_iter()
-        .map(|d| d.name)
-        .collect();
+    let saved = target.load_devices().unwrap();
+    let name = |id: &str| &saved.iter().find(|d| d.id == dev(id)).unwrap().name;
+    assert_eq!(name("fake1"), &long);
     // Sin nombre, se muestra su id (como al importar el setup del script)
-    assert_eq!(names, [long, "fake2".to_owned()]);
+    assert_eq!(name("fake2"), "fake2");
 }
 
 #[test]

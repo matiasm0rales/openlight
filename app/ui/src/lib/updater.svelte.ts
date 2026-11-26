@@ -1,5 +1,6 @@
-// Actualizaciones automáticas (tauri-plugin-updater): busca al arrancar y cada 6 horas, y cuando
-// la persona lo pide descarga, devuelve los focos a como estaban, instala y reinicia.
+// Actualizaciones automáticas (tauri-plugin-updater): busca al arrancar y cada 6 horas (si la
+// búsqueda falla, reintenta con esperas cada vez más largas), y cuando la persona lo pide
+// descarga, devuelve los focos a como estaban, instala y reinicia.
 //
 // Nada se instala sin que se toque "Actualizar y reiniciar".
 import { getVersion } from "@tauri-apps/api/app";
@@ -11,9 +12,12 @@ import {
   CHECK_EVERY_MS,
   CHECK_TIMEOUT_MS,
   DOWNLOAD_TIMEOUT_MS,
+  REOPEN_MIN_MS,
   TICK_MS,
   classifyUpdateError,
+  noRelease,
   plainNotes,
+  retryDelay,
   type UpdateErrorKind,
   type UpdateStep,
 } from "./updates";
@@ -57,8 +61,12 @@ export const updates = $state({
 
 /** El recurso del plugin detrás de `updates.available`. */
 let pending: Update | null = null;
-/** Última búsqueda que contestó (0 = ninguna). */
-let lastCheck = 0;
+/** Cuándo empezó la última búsqueda, haya salido bien o no (0 = ninguna). */
+let lastAttempt = 0;
+/** Desde cuándo toca la próxima búsqueda automática. */
+let nextCheck = 0;
+/** Búsquedas fallidas seguidas: cada una alarga la espera. */
+let failures = 0;
 let stop: (() => void) | null = null;
 
 /** Hay una instalación en curso. */
@@ -93,13 +101,20 @@ export function dismissUpdate(): void {
 export async function checkForUpdates(manual = false): Promise<void> {
   if (updates.phase !== "idle" || updates.installed) return;
   updates.phase = "checking";
+  lastAttempt = Date.now();
   if (manual) {
     updates.upToDate = false;
     if (updates.error?.step === "check") updates.error = null;
   }
   try {
-    const found = await check({ timeout: CHECK_TIMEOUT_MS });
-    lastCheck = Date.now();
+    const found = await check({ timeout: CHECK_TIMEOUT_MS }).catch((cause: unknown) => {
+      // Sin ninguna versión publicada se está al día. Con una ya ofrecida, en cambio, es el
+      // servidor que falla: la oferta no se descarta.
+      if (noRelease(cause) && !pending) return null;
+      throw cause;
+    });
+    failures = 0;
+    nextCheck = lastAttempt + CHECK_EVERY_MS;
     // Un error de descarga o instalación se conserva mientras la versión ofrecida sea la misma.
     if (updates.error && (updates.error.step === "check" || found?.version !== updates.available?.version)) updates.error = null;
     void pending?.close().catch(() => {});
@@ -108,6 +123,7 @@ export async function checkForUpdates(manual = false): Promise<void> {
     updates.upToDate = !found;
     if (manual) updates.dismissed = null;
   } catch (cause) {
+    nextCheck = lastAttempt + retryDelay(++failures);
     if (manual) updates.error = problem("check", cause);
     else console.warn("no se pudo buscar actualizaciones:", cause);
   } finally {
@@ -186,8 +202,9 @@ async function relaunchNow(): Promise<void> {
   }
 }
 
+/** Busca si ya toca. `checkForUpdates` no encima dos búsquedas. */
 function tick(): void {
-  if (stop && updates.auto && Date.now() - lastCheck >= CHECK_EVERY_MS) void checkForUpdates();
+  if (stop && updates.auto && Date.now() >= nextCheck) void checkForUpdates();
 }
 
 /** Arranca la búsqueda automática (solo en la ventana principal). Devuelve cómo detenerla. */
@@ -198,8 +215,11 @@ export function startUpdater(): () => void {
     .catch((cause) => console.warn("no se pudo leer la versión:", cause));
   const timer = setInterval(tick, TICK_MS);
   // Los temporizadores no corren con la compu suspendida ni son puntuales con la ventana oculta:
-  // también se mira al volver a mostrarla.
-  const onVisible = () => document.visibilityState === "visible" && tick();
+  // también se mira al volver a mostrarla. macOS puede avisar eso muchas veces por segundo (cada
+  // vez que otra ventana la tapa y la destapa): nunca busca antes de `REOPEN_MIN_MS`.
+  const onVisible = () => {
+    if (document.visibilityState === "visible" && Date.now() - lastAttempt >= REOPEN_MIN_MS) tick();
+  };
   document.addEventListener("visibilitychange", onVisible);
   stop = () => {
     clearInterval(timer);

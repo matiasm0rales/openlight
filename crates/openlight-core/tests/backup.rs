@@ -402,6 +402,30 @@ fn una_version_desconocida_se_avisa_como_tal() {
     }
 }
 
+/// La app acepta cualquier nombre de foco (el usuario o la nube): el respaldo también, o se
+/// exportaría un archivo que después no se puede importar.
+#[test]
+fn cualquier_nombre_que_la_app_guarda_se_puede_volver_a_importar() {
+    let (_tmp, source) = store();
+    let long = "Foco ".repeat(100);
+    let mut devices = [record("fake1"), record("fake2")];
+    devices[0].name = long.clone();
+    devices[1].name = String::new();
+    source.save_devices(&devices).unwrap();
+    let text = backup::render(&collect(&source, &[])).unwrap();
+
+    let (_other, target) = fresh();
+    apply(&target, &text, DuplicatePolicy::Skip);
+    let names: Vec<String> = target
+        .load_devices()
+        .unwrap()
+        .into_iter()
+        .map(|d| d.name)
+        .collect();
+    // Sin nombre, se muestra su id (como al importar el setup del script)
+    assert_eq!(names, [long, "fake2".to_owned()]);
+}
+
 #[test]
 fn se_lee_aunque_un_editor_le_haya_puesto_bom() {
     backup::parse(&format!("\u{feff}{}", exported())).unwrap();
@@ -418,7 +442,7 @@ type Change = fn(&mut Value);
 
 #[test]
 fn un_valor_que_la_app_no_acepta_rechaza_todo_el_archivo() {
-    let cases: [(&str, Change); 12] = [
+    let cases: [(&str, Change); 11] = [
         ("id que sale de la carpeta", |v| {
             v["devices"][0]["id"] = json!("../../SECRETA")
         }),
@@ -426,7 +450,6 @@ fn un_valor_que_la_app_no_acepta_rechaza_todo_el_archivo() {
             let copy = v["devices"][0].clone();
             v["devices"].as_array_mut().unwrap().push(copy);
         }),
-        ("foco sin nombre", |v| v["devices"][0]["name"] = json!("  ")),
         ("zona fuera del monitor", |v| {
             v["devices"][0]["zones"][0]["rect"]["w"] = json!(3.0)
         }),

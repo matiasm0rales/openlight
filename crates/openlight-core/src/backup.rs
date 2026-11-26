@@ -251,7 +251,10 @@ fn validate(backup: &mut Backup) -> Result<()> {
             check_device_id(&device.id).is_ok(),
             "hay un id de foco no válido",
         )?;
-        require(named(&device.name), "hay un foco sin nombre")?;
+        // La app acepta cualquier nombre; sin ninguno se muestra el id
+        if device.name.trim().is_empty() {
+            device.name = device.id.0.clone();
+        }
         require(
             device.zones.len() <= MAX_ZONES && device.zones.iter().all(|z| z.rect.is_valid()),
             "hay un foco con zonas no válidas",

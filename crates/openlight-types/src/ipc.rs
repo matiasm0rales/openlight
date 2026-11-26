@@ -101,7 +101,7 @@ pub struct PermissionStatus {
 
 // ---------- Nube y dispositivos ----------
 
-/// Credenciales tal como las escribe el usuario en el paso 6. `Debug` oculta el secreto.
+/// Credenciales tal como las escribe el usuario en el paso 6. `Debug` no muestra ninguna.
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 pub struct CloudCredentialsInput {
     /// Access ID.
@@ -115,10 +115,8 @@ pub struct CloudCredentialsInput {
 impl fmt::Debug for CloudCredentialsInput {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("CloudCredentialsInput")
-            .field("access_id", &self.access_id)
-            .field("access_secret", &"[REDACTED]")
             .field("region", &self.region)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 

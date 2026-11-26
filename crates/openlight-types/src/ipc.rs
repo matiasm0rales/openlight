@@ -357,9 +357,53 @@ pub struct PipelineStatsEvent {
     pub devices: Vec<DeviceRate>,
 }
 
+// ---------- Respaldo ----------
+
+/// Qué hacer al importar un respaldo con lo que ya existe en esta compu.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Type)]
+#[serde(rename_all = "snake_case")]
+pub enum DuplicatePolicy {
+    /// Dejar lo de esta compu como está.
+    Skip,
+    /// Pisarlo con lo del respaldo.
+    Replace,
+}
+
+/// Un foco de un respaldo, para el resumen.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct BackupDeviceSummary {
+    /// Id.
+    pub id: DeviceId,
+    /// Nombre que trae el respaldo.
+    pub name: String,
+}
+
+/// Qué trae un respaldo, antes de aplicarlo.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct BackupSummary {
+    /// Cuándo se exportó (`2026-11-24T18:30:05Z`).
+    pub created_at: String,
+    /// Versión de OpenLight que lo exportó.
+    pub app_version: String,
+    /// Focos que en esta compu no están.
+    pub new_devices: Vec<BackupDeviceSummary>,
+    /// Focos que ya están configurados acá.
+    pub existing_devices: Vec<BackupDeviceSummary>,
+}
+
+/// Resultado de bajar de la nube las claves que faltan.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct MissingKeysReport {
+    /// Focos cuya clave ya quedó en el llavero.
+    pub fetched: Vec<DeviceId>,
+    /// Focos que no están en la cuenta de Tuya: siguen sin clave.
+    pub not_found: Vec<DeviceId>,
+}
+
 // ---------- Importar y diagnóstico ----------
 
-/// Resultado de importar el setup del script (`devices.json`, `config.json`, `calibracion.json`).
+/// Resultado de importar el setup del script (`devices.json`, `config.json`, `calibracion.json`)
+/// o un respaldo.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 pub struct ImportReport {
     /// Focos importados (sus claves ya están en el llavero).

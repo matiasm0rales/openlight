@@ -46,6 +46,9 @@ pub fn run() {
             windows::show_main(app);
         }))
         .plugin(tauri_plugin_opener::init())
+        // El diálogo de guardar del respaldo, solo desde Rust: ninguna capability se lo da a
+        // una ventana
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         // Solo para reiniciar después de actualizar
         .plugin(tauri_plugin_process::init())

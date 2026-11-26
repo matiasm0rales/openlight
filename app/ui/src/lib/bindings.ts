@@ -103,6 +103,20 @@ export const commands = {
 	 *  porque la página tiene algo a medias (una actualización instalándose).
 	 */
 	uiHold: (hold: boolean, options?: InvokeOptions) => __TAURI_INVOKE<null>("ui_hold", { hold }, options),
+	/**
+	 *  Exporta el respaldo (sin claves) al archivo que se elija en el diálogo del sistema. El
+	 *  diálogo se abre desde acá: la ventana nunca dice dónde escribir. Devuelve la ruta, o `None`
+	 *  si se canceló.
+	 */
+	backupExport: (options?: InvokeOptions) => __TAURI_INVOKE<string | null>("backup_export", undefined, options),
+	/**  Qué trae un respaldo (el texto del archivo) y qué focos ya están. No cambia nada. */
+	backupInspect: (content: string, options?: InvokeOptions) => __TAURI_INVOKE<BackupSummary>("backup_inspect", { content }, options),
+	/**  Importa un respaldo, salteando o pisando lo que ya está. Los focos nuevos quedan sin clave. */
+	backupImport: (content: string, duplicates: DuplicatePolicy, options?: InvokeOptions) => __TAURI_INVOKE<ImportReport>("backup_import", { content, duplicates }, options),
+	/**  Focos configurados que no tienen su clave en el llavero. */
+	devicesWithoutKey: (options?: InvokeOptions) => __TAURI_INVOKE<DeviceId[]>("devices_without_key", undefined, options),
+	/**  Baja de la nube las claves que faltan, con las credenciales guardadas. */
+	fetchMissingKeys: (options?: InvokeOptions) => __TAURI_INVOKE<MissingKeysReport>("fetch_missing_keys", undefined, options),
 	/**  Importa el setup del script Python desde una carpeta. */
 	importLegacy: (folder: string, options?: InvokeOptions) => __TAURI_INVOKE<ImportReport>("import_legacy", { folder }, options),
 	/**  Últimas líneas del log (las más nuevas al final), para el visor del diagnóstico. */
@@ -127,6 +141,26 @@ export const EVENT_PIPELINE_STATS = "stats://pipeline" as const;
 export const EVENT_SESSION_STATE = "session://state" as const;
 
 /* Types */
+/**  Un foco de un respaldo, para el resumen. */
+export type BackupDeviceSummary = {
+	/**  Id. */
+	id: DeviceId,
+	/**  Nombre que trae el respaldo. */
+	name: string,
+};
+
+/**  Qué trae un respaldo, antes de aplicarlo. */
+export type BackupSummary = {
+	/**  Cuándo se exportó (`2026-11-24T18:30:05Z`). */
+	created_at: string,
+	/**  Versión de OpenLight que lo exportó. */
+	app_version: string,
+	/**  Focos que en esta compu no están. */
+	new_devices: BackupDeviceSummary[],
+	/**  Focos que ya están configurados acá. */
+	existing_devices: BackupDeviceSummary[],
+};
+
 /**  Un punto de la tabla de calibración (`calibracion.json`: `{"30": {"tono": 26, "sat": 1.3}}`). */
 export type CalibrationPoint = {
 	/**  Tono de pantalla, en grados (0, 30, ... 330). */
@@ -486,6 +520,13 @@ export type DpRange = {
 	step: number,
 };
 
+/**  Qué hacer al importar un respaldo con lo que ya existe en esta compu. */
+export type DuplicatePolicy = 
+/**  Dejar lo de esta compu como está. */
+"skip" | 
+/**  Pisarlo con lo del respaldo. */
+"replace";
+
 /**  Evento `effect://devices`. */
 export type EffectDevicesEvent = {
 	/**  Los focos que el usuario sacó del efecto. */
@@ -549,6 +590,10 @@ export type ErrorCode =
 "no_zones" | 
 /**  La carpeta a importar no tiene un setup válido. */
 "import_invalid" | 
+/**  El archivo no es un respaldo de OpenLight o está dañado. */
+"backup_invalid" | 
+/**  El respaldo usa una versión del formato que esta app no entiende. */
+"backup_unsupported_version" | 
 /**  Ajuste fuera de rango o desconocido. */
 "invalid_setting" | 
 /**  Error de configuración o de disco. */
@@ -606,7 +651,10 @@ export type Hsv = {
 	v: number | null,
 };
 
-/**  Resultado de importar el setup del script (`devices.json`, `config.json`, `calibracion.json`). */
+/**
+ *  Resultado de importar el setup del script (`devices.json`, `config.json`, `calibracion.json`)
+ *  o un respaldo.
+ */
 export type ImportReport = {
 	/**  Focos importados (sus claves ya están en el llavero). */
 	devices: DeviceId[],
@@ -722,6 +770,14 @@ export type ManualSet =
 } } | 
 /**  Una escena del foco, por su valor de DP. */
 { kind: "scene"; value: string };
+
+/**  Resultado de bajar de la nube las claves que faltan. */
+export type MissingKeysReport = {
+	/**  Focos cuya clave ya quedó en el llavero. */
+	fetched: DeviceId[],
+	/**  Focos que no están en la cuenta de Tuya: siguen sin clave. */
+	not_found: DeviceId[],
+};
 
 /**  Rectángulo normalizado: `x`, `y`, `w`, `h` en `0..1` relativos al monitor. */
 export type NormRect = {

@@ -45,6 +45,8 @@ export const app = $state({
   busy: {} as Record<string, boolean>,
   /** Se reinició el permiso de pantalla: falta volver a darlo y reabrir la app. */
   screenRepaired: false,
+  /** Focos sin su clave (recién importados de un respaldo). Solo lo carga Dispositivos. */
+  withoutKey: [] as string[],
 });
 
 let uid = 0;
@@ -95,6 +97,7 @@ export async function runFix(action: FixAction, err: UserFacingError, retry?: ()
         return false;
       }
       dismissCode("device_key_rejected", device);
+      keyArrived(device);
       await refreshDevices();
       return true;
     }
@@ -160,6 +163,17 @@ export async function refreshDevices(): Promise<void> {
   // Con un orden guardándose, la lista que llega puede ser la de antes: se mantiene lo que se ve.
   if (r.ok) app.devices = reordering ? sortByIds(r.value, reordering.wanted) : r.value;
   else raise(r.error, refreshDevices);
+}
+
+export async function refreshKeys(): Promise<void> {
+  const r = await attempt(() => commands.devicesWithoutKey());
+  if (r.ok) app.withoutKey = r.value;
+  else raise(r.error, refreshKeys);
+}
+
+/** Llegó la clave de un foco: deja de figurar como pendiente. */
+export function keyArrived(device: string): void {
+  app.withoutKey = app.withoutKey.filter((id) => id !== device);
 }
 
 /** El guardado de un orden en curso: lo que se quiere y lo último que confirmó el backend. */

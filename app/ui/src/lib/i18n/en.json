@@ -259,6 +259,14 @@
       "title": "Couldn't import that folder",
       "detail": "No valid devices.json was found."
     },
+    "backup_invalid": {
+      "title": "Couldn't read that backup",
+      "detail": "The file isn't an OpenLight backup or it's damaged. Choose the .json you saved with “Export backup”."
+    },
+    "backup_unsupported_version": {
+      "title": "That backup is from another version",
+      "detail": "The file uses format {found} and this version of OpenLight reads format {supported}. Update OpenLight and try again."
+    },
     "brightness_range": {
       "title": "Maximum brightness can't be below the minimum",
       "detail": "A minimum of {min}% and a maximum of {max}% leave no range. Raise the maximum or lower the minimum. To turn a light off use \"Remove from effect\" or \"Turn off\"."
@@ -723,6 +731,7 @@
     },
     "calibrated": "Calibrated",
     "not_calibrated": "Not calibrated",
+    "no_key": "No key",
     "renewed": "Key renewed. The bulb is connected again.",
     "identify": "Identify",
     "remove": "Remove",
@@ -840,8 +849,38 @@
       "calibration_unassigned": "I found a calibration but I don't know which bulb it belongs to. Calibrate each bulb from the dashboard.",
       "calibration_invalid": "I couldn't read calibracion.json, so I ignored it. You can calibrate again from the dashboard.",
       "skipped_non_light": "I skipped devices that are not lights (plugs, sensors).",
-      "ip_invalid": "An IP from the old setup is not valid and was ignored: it will be found automatically."
+      "ip_invalid": "An IP from the old setup is not valid and was ignored: it will be found automatically.",
+      "backup_zones_moved": "Some zones pointed to a monitor this computer doesn't have, so they moved to the main one. Check them under Zones."
     }
+  },
+  "backup": {
+    "title": "Backup",
+    "lead": "Save your bulbs, zones, calibration, settings and profiles to a file to move them to another computer.",
+    "no_keys": "It doesn't include your bulbs' keys, your Tuya Access ID or Access Secret, or IP addresses. After importing it, the keys are downloaded again from the Tuya cloud.",
+    "export": "Export backup",
+    "import": "Import backup",
+    "saved": "Backup saved to {path}",
+    "pick_again": "Choose another file",
+    "summary_title": "Import backup",
+    "made": "Exported on {date} with OpenLight {version}.",
+    "new": "New bulbs: {n}",
+    "existing": "Already on this computer: {n}",
+    "policy": "If something is already on this computer",
+    "skip": "Skip",
+    "skip_help": "What you already have here doesn't change. Only what's missing is added.",
+    "replace": "Overwrite",
+    "replace_help": "Repeated bulbs, their order, settings and profiles become what the backup says. Nothing is deleted.",
+    "keys_later": "New bulbs have no key until you download it from the Tuya cloud.",
+    "confirm": "Import",
+    "done": "Backup imported. Bulbs: {devices}. Calibrations: {calibrations}.",
+    "settings_applied": "The backup's settings were applied.",
+    "settings_kept": "Your settings stayed as they were.",
+    "keys_title": "Keys are missing",
+    "keys_text": "You can't use these bulbs until their key is downloaded from the Tuya cloud: {names}.",
+    "keys_fetch": "Download keys from the cloud",
+    "keys_credentials": "Add Access ID and Secret",
+    "keys_fetched": "Keys downloaded: {n}.",
+    "keys_not_found": "Not in your Tuya account: {names}. Link them in Smart Life and try again."
   },
   "update": {
     "section_title": "Updates",

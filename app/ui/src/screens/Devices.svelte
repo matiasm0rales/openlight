@@ -2,10 +2,11 @@
   // F. Dispositivos: agregar o quitar focos, "Renovar clave" en un clic, IP fija o automática,
   // protocolo y DPs. Abajo, las zonas de cada foco.
   import type { ConfiguredDevice_Serialize, UserFacingError } from "../lib/bindings";
-  import { app, dismissCode, raise, refreshDevices } from "../lib/app.svelte";
+  import { app, dismissCode, keyArrived, raise, refreshDevices } from "../lib/app.svelte";
   import { attempt, commands } from "../lib/ipc";
   import { go } from "../lib/router.svelte";
   import { t } from "../lib/i18n/index.svelte";
+  import BackupPanel from "../lib/components/BackupPanel.svelte";
   import ErrorCard from "../lib/components/ErrorCard.svelte";
   import Icon from "../lib/components/Icon.svelte";
   import ZonesPanel from "../lib/components/ZonesPanel.svelte";
@@ -44,6 +45,7 @@
     errors[d.id] = null;
     renewed[d.id] = true;
     dismissCode("device_key_rejected", d.id);
+    keyArrived(d.id);
   }
 
   async function remove() {
@@ -106,6 +108,7 @@
           <div class="chips">
             <span class="chip">v{d.version}</span>
             <span class="chip" class:ok={d.calibrated}>{d.calibrated ? t("devices.calibrated") : t("devices.not_calibrated")}</span>
+            {#if app.withoutKey.includes(d.id)}<span class="chip warn">{t("devices.no_key")}</span>{/if}
             {#if st?.kind === "error"}<span class="chip danger">{t(`error.${st.code}.title`)}</span>{/if}
           </div>
         </div>
@@ -162,6 +165,8 @@
       <li class="card empty"><p>{t("dashboard.empty_text")}</p></li>
     {/each}
   </ul>
+
+  <BackupPanel />
 
   {#if app.devices.length}
     <section class="zones" aria-labelledby="zones-title">

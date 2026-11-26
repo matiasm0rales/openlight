@@ -8,8 +8,8 @@ use std::time::Duration;
 use openlight_core::{DeviceGuard, DeviceRecord, Holder, next_order};
 use openlight_types::ipc::{ConfiguredDevice, DeviceAddRequest, ManualSet, TestPattern};
 use openlight_types::{
-    Capabilities, DeviceError, DeviceId, Dps, ErrorCode, FixAction, HelpTopic, Hsv,
-    ProtocolVersion, SendChannel, UserFacingError, Zone, ZonePreset,
+    Capabilities, DeviceError, DeviceId, DpMapping, Dps, ErrorCode, FixAction, HelpTopic, Hsv,
+    ProtocolVersion, Secret, SendChannel, UserFacingError, Zone, ZonePreset,
 };
 use secrets::SecretKey;
 use serde_json::{Value, json};
@@ -366,10 +366,7 @@ impl Backend {
         // Siempre de la nube: lo que hay en memoria puede ser la clave vieja
         self.cache().cloud_devices.remove(&device);
         let entry = self.cloud_entry(&device).await?;
-        self.secrets.set(
-            &SecretKey::DeviceLocalKey(device.clone()),
-            &entry.device.local_key,
-        )?;
+        self.store_cloud_key(&device, &entry.device.local_key, entry.mapping)?;
         self.release_manual(&device);
         // El actor de la sesión tiene la clave vieja: se reinicia con la nueva
         if self.session_uses(&device).await {
@@ -381,6 +378,28 @@ impl Backend {
             self.config_changed();
         }
         Ok(())
+    }
+
+    /// Guarda en el llavero la clave de un foco recién bajada de la nube y, si no tenía el mapeo
+    /// de DPs (viene de un respaldo), también lo guarda. `false` si el foco ya no está.
+    pub(crate) fn store_cloud_key(
+        &self,
+        device: &DeviceId,
+        key: &Secret<String>,
+        mapping: Option<DpMapping>,
+    ) -> CmdResult<bool> {
+        let _edit = self.edit_lock();
+        let mut records = self.records()?;
+        let Some(record) = records.iter_mut().find(|r| &r.id == device) else {
+            return Ok(false);
+        };
+        self.secrets
+            .set(&SecretKey::DeviceLocalKey(device.clone()), key)?;
+        if record.mapping.is_none() && mapping.is_some() {
+            record.mapping = mapping;
+            self.store.save_devices(&records)?;
+        }
+        Ok(true)
     }
 }
 

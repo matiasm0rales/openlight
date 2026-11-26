@@ -28,7 +28,8 @@ use openlight_lib::events::AppEvent;
 use openlight_lib::logging::{LogHandle, LogRing, RING_CAPACITY, RingLayer};
 use openlight_lib::state::CloudFactory;
 use openlight_types::ipc::{
-    CloudCredentialsInput, DeviceAddRequest, ManualSet, OnboardingStep, SettingScope, TestPattern,
+    CloudCredentialsInput, DeviceAddRequest, DuplicatePolicy, ManualSet, OnboardingStep,
+    SettingScope, TestPattern,
 };
 use openlight_types::{
     CloudCredentials, Region, SettingId, SettingValue, TuyaCloud, Zone, ZonePreset,
@@ -260,6 +261,7 @@ async fn ningun_secreto_sale_en_el_log_el_zip_los_datos_ni_el_ipc() {
         Overrides {
             local_key: Some(*LOCAL_KEY),
             cloud: Some(cloud),
+            ..Overrides::default()
         },
     )
     .await;
@@ -423,6 +425,42 @@ async fn ningun_secreto_sale_en_el_log_el_zip_los_datos_ni_el_ipc() {
         .await;
     assert!(add_fails.is_err(), "{add_fails:?}");
     out.command("device_add (mapeo con error)", &add_fails);
+
+    // ---------- Respaldo ----------
+    let content = b.backup_export().unwrap();
+    out.add("texto del respaldo", content.clone());
+    let backup_file = tmp.path().join("respaldo.json");
+    out.command("backup_export", &b.backup_save(&backup_file));
+    out.add(
+        "archivo del respaldo",
+        std::fs::read_to_string(&backup_file).unwrap(),
+    );
+    out.command("backup_inspect", &b.backup_inspect(&content));
+    let restored = b.backup_import(&content, DuplicatePolicy::Replace).await;
+    assert!(restored.is_ok(), "{restored:?}");
+    out.command("backup_import", &restored);
+    // Elegir por error un archivo con la clave: el error no puede repetirla
+    let key = String::from_utf8_lossy(LOCAL_KEY);
+    for wrong in [
+        json!([{"id": id.0, "key": key}]).to_string(),
+        json!({"format": "openlight-backup", "version": 1, "created_at": "x",
+               "app_version": "x", "devices": key})
+        .to_string(),
+    ] {
+        let rejected = b.backup_inspect(&wrong);
+        assert!(rejected.is_err(), "{rejected:?}");
+        out.command("backup_inspect (otro archivo)", &rejected);
+    }
+    h.secrets
+        .delete(&SecretKey::DeviceLocalKey(id.clone()))
+        .unwrap();
+    out.command("devices_without_key", &b.devices_without_key());
+    let fetched = b.fetch_missing_keys().await;
+    assert!(
+        fetched.as_ref().is_ok_and(|r| r.fetched == [id.clone()]),
+        "{fetched:?}"
+    );
+    out.command("fetch_missing_keys", &fetched);
 
     // ---------- Diagnóstico ----------
     out.command(

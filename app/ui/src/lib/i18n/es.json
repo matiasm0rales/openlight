@@ -259,6 +259,14 @@
       "title": "No pude importar esa carpeta",
       "detail": "No encontré un devices.json válido."
     },
+    "backup_invalid": {
+      "title": "No pude leer ese respaldo",
+      "detail": "El archivo no es un respaldo de OpenLight o está dañado. Elegí el .json que guardaste con «Exportar respaldo»."
+    },
+    "backup_unsupported_version": {
+      "title": "Ese respaldo es de otra versión",
+      "detail": "El archivo usa el formato {found} y esta versión de OpenLight lee el {supported}. Actualizá OpenLight y probá de nuevo."
+    },
     "brightness_range": {
       "title": "El brillo máximo no puede ser menor que el mínimo",
       "detail": "Con mínimo {min} % y máximo {max} % no queda rango. Subí el máximo o bajá el mínimo. Para apagar un foco usá «Sacar del efecto» o «Apagar»."
@@ -723,6 +731,7 @@
     },
     "calibrated": "Calibrado",
     "not_calibrated": "Sin calibrar",
+    "no_key": "Sin clave",
     "renewed": "Clave renovada. El foco ya está conectado.",
     "identify": "Identificar",
     "remove": "Quitar",
@@ -840,8 +849,38 @@
       "calibration_unassigned": "Encontré una calibración pero no sé de qué foco es. Calibrá cada foco desde el panel.",
       "calibration_invalid": "No pude leer calibracion.json, así que lo ignoré. Podés calibrar de nuevo desde el panel.",
       "skipped_non_light": "Omití dispositivos que no son luces (enchufes, sensores).",
-      "ip_invalid": "Una IP del setup anterior no es válida y la ignoré: se va a buscar sola."
+      "ip_invalid": "Una IP del setup anterior no es válida y la ignoré: se va a buscar sola.",
+      "backup_zones_moved": "Alguna zona apuntaba a un monitor que no está en esta compu y la pasé al monitor principal. Revisala en Zonas."
     }
+  },
+  "backup": {
+    "title": "Respaldo",
+    "lead": "Guardá tus focos, zonas, calibración, ajustes y perfiles en un archivo para llevarlos a otra compu.",
+    "no_keys": "No incluye las claves de los focos, el Access ID ni el Access Secret de Tuya, ni las direcciones IP. Después de importarlo, las claves se vuelven a bajar de la nube de Tuya.",
+    "export": "Exportar respaldo",
+    "import": "Importar respaldo",
+    "saved": "Respaldo guardado en {path}",
+    "pick_again": "Elegir otro archivo",
+    "summary_title": "Importar respaldo",
+    "made": "Se exportó el {date} con OpenLight {version}.",
+    "new": "Focos nuevos: {n}",
+    "existing": "Ya están en esta compu: {n}",
+    "policy": "Si algo ya está en esta compu",
+    "skip": "Saltear",
+    "skip_help": "Lo que ya tenés acá no cambia. Solo se suma lo que falta.",
+    "replace": "Pisar",
+    "replace_help": "Los focos repetidos, su orden, los ajustes y los perfiles quedan como en el respaldo. No se borra nada.",
+    "keys_later": "Los focos nuevos quedan sin clave hasta que la bajes de la nube de Tuya.",
+    "confirm": "Importar",
+    "done": "Respaldo importado. Focos: {devices}. Calibraciones: {calibrations}.",
+    "settings_applied": "Se aplicaron los ajustes del respaldo.",
+    "settings_kept": "Tus ajustes quedaron como estaban.",
+    "keys_title": "Faltan claves",
+    "keys_text": "No vas a poder usar estos focos hasta bajar su clave de la nube de Tuya: {names}.",
+    "keys_fetch": "Bajar claves de la nube",
+    "keys_credentials": "Cargar Access ID y Secret",
+    "keys_fetched": "Claves bajadas: {n}.",
+    "keys_not_found": "No están en tu cuenta de Tuya: {names}. Vinculalos en Smart Life y probá de nuevo."
   },
   "update": {
     "section_title": "Actualizaciones",

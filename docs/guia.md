@@ -291,7 +291,36 @@ Para apagar un foco usá **Apagar** (fuera del efecto): el brillo máximo en lo 
   vincular el foco en Smart Life.
 - **Identificar** lo hace parpadear. **Protocolo y DPs** muestra lo que detectó la app.
 - **Quitar** borra su clave del llavero y su calibración.
+- **Respaldo**, para llevar tus focos a otra compu (ver abajo).
 - Abajo se editan las **zonas**.
+
+#### Llevar tus focos a otra compu
+
+**Exportar respaldo** guarda un `.json` con tus focos (nombre, protocolo, zonas, ajustes propios,
+calibración y el orden de la lista), los ajustes globales, los perfiles y qué focos sacaste del
+efecto.
+
+El archivo **no incluye** las claves de los focos, el Access ID, el Access Secret ni las
+direcciones IP. Sí incluye nombres e ids de tus focos: miralo antes de compartirlo.
+
+En la otra compu, **Importar respaldo** muestra primero cuántos focos son nuevos y cuántos ya
+están, y te deja elegir:
+
+- **Saltear:** lo que ya tenés no cambia; solo se suma lo que falta, y los focos nuevos van al
+  final de la lista. En una compu recién instalada entra todo, en el mismo orden.
+- **Pisar:** los focos repetidos, los ajustes globales y los perfiles quedan como en el archivo.
+  La lista toma el orden del archivo; los focos que solo están en esta compu van después.
+
+En ningún caso se borra un foco, un perfil o una calibración que el archivo no tenga. Si una zona
+apuntaba a un monitor que no está, pasa al monitor principal.
+
+Los focos nuevos quedan **sin clave**. Tocá **Bajar claves de la nube**: usa las claves de tu
+proyecto de Tuya. Si en esa compu todavía no las cargaste, los focos quedan pendientes y el botón
+**Cargar Access ID y Secret** te lleva al [paso 6 del asistente](#6-claves-del-proyecto). La
+dirección IP se busca sola; si usabas una fija, volvé a ponerla con **Editar**.
+
+En una compu nueva la app abre con el asistente: tocá **Seguir después** y entrá a
+**Dispositivos**.
 
 ### Diagnóstico
 

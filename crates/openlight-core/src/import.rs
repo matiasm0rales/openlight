@@ -284,15 +284,18 @@ fn read_optional<T: for<'de> Deserialize<'de>>(folder: &Path, name: &str) -> Res
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
         Err(e) => return Err(CoreError::Import(format!("no se pudo leer {name}: {e}"))),
     };
-    // El mensaje de serde repite el valor que no esperaba (que puede ser una clave local), y
-    // este error llega a la UI: solo se dice dónde falla
     serde_json::from_str(&text).map(Some).map_err(|e| {
         CoreError::Import(format!(
-            "{name} no tiene el formato esperado (línea {}, columna {})",
-            e.line(),
-            e.column()
+            "{name} no tiene el formato esperado ({})",
+            error_place(&e)
         ))
     })
+}
+
+/// Dónde falla un JSON que eligió el usuario. El mensaje de serde repite el valor que no
+/// esperaba (que puede ser una clave local), y estos errores llegan a la UI: solo se dice dónde.
+pub(crate) fn error_place(error: &serde_json::Error) -> String {
+    format!("línea {}, columna {}", error.line(), error.column())
 }
 
 fn read_calibration(folder: &Path, warnings: &mut Vec<String>) -> Option<Vec<CalibrationPoint>> {

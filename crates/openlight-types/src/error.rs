@@ -66,6 +66,10 @@ pub enum ErrorCode {
     NoZones,
     /// La carpeta a importar no tiene un setup válido.
     ImportInvalid,
+    /// El archivo no es un respaldo de OpenLight o está dañado.
+    BackupInvalid,
+    /// El respaldo usa una versión del formato que esta app no entiende.
+    BackupUnsupportedVersion,
     /// Ajuste fuera de rango o desconocido.
     InvalidSetting,
     /// Error de configuración o de disco.
@@ -78,7 +82,7 @@ pub enum ErrorCode {
 
 impl ErrorCode {
     /// Todos los códigos (para verificar que cada uno tenga sus textos).
-    pub const ALL: [Self; 30] = [
+    pub const ALL: [Self; 32] = [
         Self::ScreenPermissionDenied,
         Self::ScreenPermissionStale,
         Self::LocalNetworkDenied,
@@ -105,6 +109,8 @@ impl ErrorCode {
         Self::CloudNoCredentials,
         Self::NoZones,
         Self::ImportInvalid,
+        Self::BackupInvalid,
+        Self::BackupUnsupportedVersion,
         Self::InvalidSetting,
         Self::Storage,
         Self::NotImplemented,

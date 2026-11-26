@@ -70,6 +70,17 @@ pub enum CoreError {
     /// La carpeta a importar no tiene un setup válido.
     #[error("no se puede importar: {0}")]
     Import(String),
+    /// El archivo no es un respaldo que se pueda leer. El texto nunca repite su contenido.
+    #[error("respaldo no válido: {0}")]
+    Backup(String),
+    /// El respaldo usa una versión del formato que no se entiende.
+    #[error("el respaldo usa el formato {found}; esta versión lee el {supported}")]
+    BackupVersion {
+        /// Versión que trae.
+        found: u64,
+        /// La que se entiende.
+        supported: u32,
+    },
 }
 
 impl CoreError {
@@ -115,6 +126,8 @@ impl From<CoreError> for UserFacingError {
             CoreError::Device(DeviceError::Timeout) => ErrorCode::DeviceTimeout,
             CoreError::Device(_) => ErrorCode::Internal,
             CoreError::Import(_) => ErrorCode::ImportInvalid,
+            CoreError::Backup(_) => ErrorCode::BackupInvalid,
+            CoreError::BackupVersion { .. } => ErrorCode::BackupUnsupportedVersion,
         };
         let action = match code {
             ErrorCode::ScreenPermissionDenied => {
@@ -146,6 +159,9 @@ impl From<CoreError> for UserFacingError {
         }
         match error {
             CoreError::DeviceLocked { device, .. } => visible.with_param("device", device.0),
+            CoreError::BackupVersion { found, supported } => visible
+                .with_param("found", found.to_string())
+                .with_param("supported", supported.to_string()),
             _ => visible,
         }
     }

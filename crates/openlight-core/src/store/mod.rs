@@ -39,6 +39,8 @@ pub const DEVICES_VERSION: u32 = 1;
 pub const CALIBRATION_VERSION: u32 = 1;
 /// Versión actual de `state.json`.
 pub const STATE_VERSION: u32 = 1;
+/// Máximo de zonas por foco.
+pub const MAX_ZONES: usize = 8;
 
 /// Contenido de `config.json`.
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
@@ -406,7 +408,7 @@ impl Store {
 }
 
 /// Ids de Tuya: letras, números, `_` y `-`. Nada que salga de la carpeta de calibración.
-fn check_device_id(id: &DeviceId) -> Result<()> {
+pub(crate) fn check_device_id(id: &DeviceId) -> Result<()> {
     let ok = !id.0.is_empty()
         && id.0.len() <= 64
         && id

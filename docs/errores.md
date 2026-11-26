@@ -22,6 +22,8 @@ cambian entre versiones.
   [`cloud_trial_expired`](#cloud_trial_expired) · [`cloud_network`](#cloud_network) ·
   [`cloud_no_credentials`](#cloud_no_credentials)
 - Configuración y otros: [`no_zones`](#no_zones) · [`import_invalid`](#import_invalid) ·
+  [`backup_invalid`](#backup_invalid) ·
+  [`backup_unsupported_version`](#backup_unsupported_version) ·
   [`invalid_setting`](#invalid_setting) · [`storage`](#storage) ·
   [`not_implemented`](#not_implemented) · [`internal`](#internal)
 
@@ -353,6 +355,25 @@ pasa por la nube.
 - **Por qué pasa:** la ruta está mal, falta `devices.json` (o `config.json`), el archivo está
   dañado o no tiene ninguna luz.
 - **Arreglo:** poné la carpeta del script, la que contiene `devices.json`. OpenLight solo la lee.
+
+### backup_invalid
+
+**«No pude leer ese respaldo»**
+
+- **Qué significa:** el archivo elegido no se puede importar.
+- **Por qué pasa:** no es un respaldo de OpenLight (por ejemplo, el `devices.json` del script),
+  está dañado o alguien lo editó y quedó un valor que la app no acepta.
+- **Arreglo:** elegí el `.json` que guardaste con **Exportar respaldo**. Si se dañó, exportá uno
+  nuevo en la otra compu. El `devices.json` del script se importa desde el primer paso del
+  asistente.
+
+### backup_unsupported_version
+
+**«Ese respaldo es de otra versión»**
+
+- **Qué significa:** el formato del archivo no es el que lee esta versión de OpenLight.
+- **Por qué pasa:** el respaldo lo exportó una versión más nueva.
+- **Arreglo:** actualizá OpenLight en esta compu y volvé a importarlo.
 
 ### invalid_setting
 

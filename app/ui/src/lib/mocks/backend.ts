@@ -21,6 +21,7 @@ import {
   EVENT_ERROR_RAISED,
   EVENT_PIPELINE_STATS,
   EVENT_SESSION_STATE,
+  type BackupSummary,
   type CalibrationPoint,
   type CalibrationState,
   type CloudCredentialsInput,
@@ -29,12 +30,15 @@ import {
   type DeviceHealthEvent_Serialize,
   type DeviceSessionState,
   type DisconnectReason,
+  type DuplicatePolicy,
   type ErrorCode,
   type FixAction,
   type Hsv,
+  type ImportReport,
   type LinkHealth_Serialize,
   type LogLine,
   type ManualSet,
+  type MissingKeysReport,
   type OnboardingState,
   type OnboardingStep,
   type PermissionKind,
@@ -70,6 +74,8 @@ interface MockState {
   permissions: Record<PermissionKind, PermissionState>;
   keyRejected: string[];
   calibrations: Record<string, CalibrationPoint[]>;
+  /** Focos sin clave (los que llegaron de un respaldo). */
+  noKey?: string[];
 }
 
 const STORAGE_KEY = "openlight.mock";
@@ -140,6 +146,15 @@ const ALL_STEPS: Record<string, OnboardingStep> = {
   calibrate: "calibrate",
   done: "done",
 };
+
+/** Lo que el mock mira de un archivo de respaldo. */
+interface MockBackup {
+  format: string;
+  version: number;
+  created_at: string;
+  app_version: string;
+  devices: (Pick<ConfiguredDevice_Serialize, "id" | "name" | "version" | "zones" | "overrides"> & { order?: number })[];
+}
 
 /** Copia profunda que también acepta los proxies reactivos de Svelte (como el IPC real, vía JSON). */
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
@@ -623,6 +638,7 @@ class MockBackend {
     await this.wait(1200);
     if (!this.state.credentials) throw err("cloud_invalid_token", [{ kind: "show_help", value: "cloud_project" }]);
     this.state.keyRejected = this.state.keyRejected.filter((x) => x !== id);
+    this.state.noKey = this.withoutKey().filter((x) => x !== id);
     this.persist();
     this.addLog("info", "tuya_cloud", `${d.name}: clave local renovada desde la nube`);
     if (this.session === "active") {
@@ -732,6 +748,82 @@ class MockBackend {
     this.calibration = null;
     this.persist();
     return null;
+  }
+
+  // ---------- Respaldo ----------
+
+  async backupExport(): Promise<string> {
+    await this.wait(300);
+    return `~/Downloads/openlight-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  }
+
+  /** Como `openlight_core::backup::parse`, con lo justo: qué es y de qué versión. */
+  private parseBackup(content: string): MockBackup {
+    const invalid = () => err("backup_invalid", [{ kind: "retry" }]);
+    let file: Partial<MockBackup>;
+    try {
+      file = JSON.parse(content) as Partial<MockBackup>;
+    } catch {
+      throw invalid();
+    }
+    if (file?.format !== "openlight-backup" || typeof file.version !== "number") throw invalid();
+    if (file.version !== 1) throw err("backup_unsupported_version", [{ kind: "retry" }], { found: String(file.version), supported: "1" });
+    if (!Array.isArray(file.devices)) throw invalid();
+    return file as MockBackup;
+  }
+
+  backupInspect(content: string): BackupSummary {
+    const file = this.parseBackup(content);
+    const here = (id: string) => this.state.devices.some((d) => d.id === id);
+    const brief = (list: MockBackup["devices"]) => list.map((d) => ({ id: d.id, name: d.name }));
+    return {
+      created_at: file.created_at,
+      app_version: file.app_version,
+      new_devices: brief(file.devices.filter((d) => !here(d.id))),
+      existing_devices: brief(file.devices.filter((d) => here(d.id))),
+    };
+  }
+
+  async backupImport(content: string, duplicates: DuplicatePolicy): Promise<ImportReport> {
+    const file = this.parseBackup(content);
+    await this.wait(400);
+    const imported: string[] = [];
+    // Como el backend: manda `order`, y los que entran van al final de la lista.
+    for (const d of [...file.devices].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))) {
+      const current = this.state.devices.find((x) => x.id === d.id);
+      if (current && duplicates === "skip") continue;
+      const fields = { name: d.name, version: d.version, zones: d.zones ?? [], overrides: d.overrides ?? {} };
+      if (current) Object.assign(current, fields);
+      else {
+        const cloud = CLOUD_DEVICES.find((c) => c.id === d.id) ?? CLOUD_DEVICES[0];
+        this.state.devices.push({ ...configuredFrom(cloud, null), id: d.id, ip: null, ...fields });
+        (this.state.noKey ??= []).push(d.id);
+      }
+      this.state.deviceOverrides[d.id] = { ...fields.overrides };
+      imported.push(d.id);
+    }
+    // Pisando, los del archivo van primero en su orden y después los que solo están acá.
+    if (duplicates === "replace") {
+      const place = (id: string) => (imported.includes(id) ? imported.indexOf(id) : imported.length);
+      this.state.devices.sort((a, b) => place(a.id) - place(b.id));
+    }
+    this.persist();
+    return { devices: imported, calibrations: 0, settings_applied: duplicates === "replace", warnings: [] };
+  }
+
+  withoutKey(): string[] {
+    return (this.state.noKey ?? []).filter((id) => this.state.devices.some((d) => d.id === id));
+  }
+
+  async fetchMissingKeys(): Promise<MissingKeysReport> {
+    const pending = this.withoutKey();
+    if (pending.length === 0) return { fetched: [], not_found: [] };
+    await this.wait(900);
+    if (!this.state.credentials) throw err("cloud_no_credentials", [{ kind: "show_help", value: "cloud_project" }]);
+    const inAccount = (id: string) => CLOUD_DEVICES.some((c) => c.id === id);
+    this.state.noKey = pending.filter((id) => !inAccount(id));
+    this.persist();
+    return { fetched: pending.filter(inAccount), not_found: [...this.state.noKey] };
   }
 
   async importLegacy(folder: string) {
@@ -879,6 +971,16 @@ class MockBackend {
       case "calibration_cancel":
         this.calibration = null;
         return null;
+      case "backup_export":
+        return this.backupExport();
+      case "backup_inspect":
+        return this.backupInspect(a.content);
+      case "backup_import":
+        return this.backupImport(a.content, a.duplicates);
+      case "devices_without_key":
+        return this.withoutKey();
+      case "fetch_missing_keys":
+        return this.fetchMissingKeys();
       case "import_legacy":
         return this.importLegacy(a.folder);
       case "diagnostics_log":

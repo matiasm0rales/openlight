@@ -19,6 +19,13 @@ pub mod tray;
 pub mod tray_backend;
 pub mod windows;
 
+/// El contexto de Tauri (configuración, íconos y archivos de la UI). Es una función aparte para
+/// que `examples/banco.rs` use el mismo: generarlo dos veces embebe `Info.plist` dos veces.
+#[doc(hidden)]
+pub fn context() -> tauri::Context {
+    tauri::generate_context!()
+}
+
 /// Arranca la app.
 pub fn run() {
     use tauri::Manager;
@@ -59,7 +66,7 @@ pub fn run() {
             }
             Ok(())
         })
-        .build(tauri::generate_context!())
+        .build(context())
         .expect("error al iniciar OpenLight")
         .run(|app, event| {
             // Salir restaura los focos (Cmd+Q, "Salir" del tray, cerrar la sesión del sistema):

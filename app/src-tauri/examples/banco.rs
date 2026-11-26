@@ -742,7 +742,7 @@ fn ventana(opciones: Opciones) {
     // Los focos y el asistente quedan listos antes de que la UI pregunte por ellos
     tauri::async_runtime::block_on(mundo.configurar());
 
-    let mut context = tauri::generate_context!();
+    let mut context = openlight_lib::context();
     // Otro identificador: nada de lo que guarde la ventana se mezcla con la app instalada
     context.config_mut().identifier = "io.github.matiasm0rales.openlight.banco".into();
     for config in &mut context.config_mut().app.windows {

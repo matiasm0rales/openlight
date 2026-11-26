@@ -260,6 +260,29 @@ kbd {
 .btn.danger {
   --b-fg: var(--danger);
 }
+/* Secundaria con recuadro: acompaña a una primaria sin competir con ella. */
+.btn.secondary {
+  --b-bg: var(--surface);
+  box-shadow: inset 0 0 0 1.5px var(--line-strong);
+}
+.btn.secondary:hover {
+  background: var(--surface-3);
+  box-shadow: inset 0 0 0 1.5px var(--faint);
+}
+/* Elimina algo: color de error con recuadro; se llena al pasar por encima y en la confirmación. */
+.btn.destructive {
+  --b-bg: var(--danger-soft);
+  --b-fg: var(--danger);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--danger) 60%, transparent);
+}
+.btn.destructive:hover,
+.btn.destructive.solid {
+  background: var(--danger);
+  color: var(--surface);
+}
+.btn.destructive.solid:hover {
+  background: color-mix(in srgb, var(--danger) 85%, var(--text));
+}
 .btn.small {
   min-height: 36px;
   padding: 0.35em 1em;
@@ -340,21 +363,18 @@ textarea {
   min-height: 46px;
   padding: 0.6em 1.1em;
   border-radius: var(--radius-md);
-  border: 1.5px solid transparent;
+  border: 1.5px solid var(--line-strong);
   background: var(--surface-2);
   color: var(--text);
   font: 1rem/1.3 var(--font-body);
   transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease);
-}
-select {
-  border-radius: 999px;
 }
 input[type="text"]:hover,
 input[type="password"]:hover,
 input[type="search"]:hover,
 select:hover,
 textarea:hover {
-  border-color: var(--line-strong);
+  border-color: var(--faint);
 }
 input[type="text"]::placeholder,
 input[type="password"]::placeholder {
@@ -362,6 +382,56 @@ input[type="password"]::placeholder {
 }
 input[aria-invalid="true"] {
   border-color: var(--danger);
+}
+
+/* Select: el mismo cuerpo que los inputs y un chevron propio, dentro de un círculo, dibujado con
+   degradados para que tome los tokens. El menú que se despliega sigue siendo el del sistema. */
+select {
+  --chevron: var(--muted);
+  --well: var(--surface);
+  -webkit-appearance: none;
+  appearance: none;
+  padding-right: 3.1rem;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  background-image:
+    linear-gradient(45deg, transparent calc(50% - 1px), var(--chevron) 0 calc(50% + 1px), transparent 0),
+    linear-gradient(135deg, transparent calc(50% - 1px), var(--chevron) 0 calc(50% + 1px), transparent 0),
+    radial-gradient(circle closest-side, var(--well) calc(100% - 1px), transparent);
+  background-repeat: no-repeat;
+  background-position:
+    right 21px center,
+    right 16px center,
+    right 7px center;
+  background-size:
+    6px 6px,
+    6px 6px,
+    30px 30px;
+}
+select:hover:not(:disabled) {
+  --chevron: var(--text);
+  --well: var(--surface-3);
+}
+/* El foco de teclado global redondea a 10 px: el select conserva su radio. */
+select:focus-visible {
+  border-radius: var(--radius-md);
+}
+select:disabled,
+select:disabled:hover {
+  --chevron: var(--faint);
+  --well: transparent;
+  border-color: var(--line);
+  color: var(--faint);
+  cursor: not-allowed;
+}
+/* En alto contraste los degradados no se pintan: vuelve el control del sistema. */
+@media (forced-colors: active) {
+  select {
+    -webkit-appearance: auto;
+    appearance: auto;
+    padding-right: 1.1em;
+    background-image: none;
+  }
 }
 
 input[type="checkbox"],

@@ -16,6 +16,10 @@
   let { deviceId }: { deviceId: string | null } = $props();
   let selected = $state(untrack(() => deviceId) ?? app.devices[0]?.id ?? "");
   const device = $derived(app.devices.find((d) => d.id === selected));
+  // Un foco pedido que ya no existe (se quitó) cae en el primero, como entrar sin elegir ninguno.
+  $effect(() => {
+    if (!device && app.devices.length) selected = app.devices[0].id;
+  });
   const caps = $derived(device?.capabilities);
   const scenes = (scenesFile as { scenes: { id: string; name: Record<string, string>; value: string }[] }).scenes;
 
@@ -79,7 +83,12 @@
   </header>
 
   {#if !device}
-    <div class="card empty"><p>{t("manual.no_devices")}</p><button type="button" class="btn primary" onclick={() => go("onboarding")}>{t("dashboard.empty_cta")}</button></div>
+    <div class="card empty">
+      <Icon name="bulb" size={34} />
+      <h2>{t("manual.no_devices")}</h2>
+      <p class="muted">{t("manual.no_devices_help")}</p>
+      <button type="button" class="btn primary" onclick={() => go("devices")}><Icon name="devices" size={16} />{t("manual.go_devices")}</button>
+    </div>
   {:else}
     <div class="bar">
       <div class="field">
@@ -172,6 +181,8 @@
     display: flex;
     gap: 0.6rem;
     align-items: center;
+    /* El alto del selector de foco: quedan centrados entre sí. */
+    min-height: 46px;
     font-weight: 700;
   }
   .notice {
@@ -309,11 +320,13 @@
     flex-wrap: wrap;
     gap: 0.4rem;
   }
+  /* Mismo estado vacío que el panel. */
   .empty {
     display: grid;
-    gap: 0.8rem;
-    justify-items: start;
-    padding: 1.4rem;
+    justify-items: center;
+    gap: 0.7rem;
+    padding: 3rem 1.5rem;
+    text-align: center;
   }
   @media (max-width: 760px) {
     .layout {
